@@ -24,6 +24,8 @@ jobs:
         uses: withastro/action@v3
         with:
           node-version: 22
+        env:
+          RAWG_API_KEY: ${{ secrets.RAWG_API_KEY }}
 
   deploy:
     needs: build

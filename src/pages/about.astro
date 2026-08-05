@@ -1,0 +1,209 @@
+---
+import Layout from "../layouts/Layout.astro";
+
+const experience = [
+	{
+		role: "Offensive Security Researcher (Intern)",
+		org: "Praetorian",
+		type: "Internship",
+		dates: "Mar 2026 – Present · 6 mos",
+		location: "Austin, Texas Metropolitan Area · On-site",
+		bullets: ["Summer 2026 offensive security research internship, focused on AI security — probing AI systems to find where they break before attackers do."],
+	},
+	{
+		role: "AI Engineer Intern",
+		org: "SourcePulse LLC",
+		type: "Internship",
+		dates: "Jul 2024 – Jun 2025 · 1 yr",
+		location: "Austin, Texas Metropolitan Area · On-site",
+		bullets: [
+			"Developed a generative AI application to help state governments handle and certify paperwork, automating bureaucratic processes via KPI generation.",
+			"Integrated with existing systems and adapted to evolving regulations to reduce administrative burden and speed up public service delivery.",
+		],
+	},
+	{
+		role: "Director of Development",
+		org: "Teens Who Care",
+		type: "Part-time",
+		dates: "Aug 2023 – May 2025 · 1 yr 10 mos",
+		location: "Austin, Texas Metropolitan Area · Hybrid",
+		bullets: ["Community leadership through connecting, fundraising, and civic organizing."],
+	},
+	{
+		role: "3rd Degree Black Belt Instructor",
+		org: "Austin Karate Academy",
+		type: "Part-time",
+		dates: "Jul 2013 – Present · 13 yrs",
+		location: "Austin, Texas Metropolitan Area · On-site",
+		bullets: [],
+	},
+];
+
+const education = {
+	school: "Carnegie Mellon University — School of Computer Science",
+	dates: "2025 – 2029",
+	courses: [
+		"15-122: Principles of Imperative Computation",
+		"15-150: Principles of Functional Programming",
+		"15-151: Mathematical Foundations for Computer Science",
+		"73-102: Principles of Microeconomics",
+		"07-131: Great Practical Ideas in Computer Science",
+		"21-241: Matrices and Linear Transformations",
+		"02-180: Great Ideas in Computational Biology",
+		"21-295: Putnam Seminar",
+	],
+};
+---
+
+<Layout title="About">
+	<section class="about">
+		<h1>About</h1>
+
+		<h2>Experience</h2>
+		<ol class="timeline">
+			{
+				experience.map((job) => (
+					<li class="entry">
+						<div class="entry-head">
+							<h3>{job.role}</h3>
+							<span class="org">{job.org} · {job.type}</span>
+						</div>
+						<div class="meta">
+							<span>{job.dates}</span>
+							<span>{job.location}</span>
+						</div>
+						{job.bullets.length > 0 && (
+							<ul>
+								{job.bullets.map((b) => <li>{b}</li>)}
+							</ul>
+						)}
+					</li>
+				))
+			}
+		</ol>
+
+		<h2>Education</h2>
+		<div class="entry">
+			<div class="entry-head">
+				<h3>{education.school}</h3>
+			</div>
+			<div class="meta">
+				<span>{education.dates}</span>
+			</div>
+			<p class="courses-label">Coursework</p>
+			<ul class="courses">
+				{education.courses.map((c) => <li>{c}</li>)}
+			</ul>
+		</div>
+	</section>
+</Layout>
+
+<style>
+	.about {
+		max-width: 720px;
+		margin: 0 auto;
+		padding: 3.5rem 1.5rem 5rem;
+	}
+
+	h1 {
+		font-size: clamp(2rem, 4vw, 2.75rem);
+		color: var(--gold-hi);
+		margin: 0 0 2.5rem;
+	}
+
+	h2 {
+		font-size: 1.3rem;
+		color: var(--gold-mid);
+		border-bottom: 2px solid var(--stone-dark);
+		padding-bottom: 0.5rem;
+		margin: 2.5rem 0 1.5rem;
+	}
+
+	h2:first-of-type {
+		margin-top: 0;
+	}
+
+	.timeline {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 1.75rem;
+	}
+
+	.entry {
+		background: var(--stone-panel);
+		border: 2px solid var(--outline);
+		padding: 1.25rem 1.5rem;
+	}
+
+	.entry-head h3 {
+		font-size: 1.05rem;
+		margin: 0 0 0.2rem;
+		color: var(--parchment);
+	}
+
+	.org {
+		font-weight: 500;
+		color: var(--parchment-dim);
+		font-size: 0.9rem;
+	}
+
+	.meta {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.4rem 1rem;
+		font-size: 0.8rem;
+		color: var(--parchment-dim);
+		margin: 0.5rem 0 0.75rem;
+	}
+
+	.entry ul:not(.courses) {
+		margin: 0;
+		padding-left: 1.1rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.4rem;
+	}
+
+	.entry ul:not(.courses) li {
+		font-size: 0.92rem;
+		line-height: 1.5;
+		color: var(--parchment);
+	}
+
+	.courses-label {
+		font-size: 0.78rem;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		color: var(--parchment-dim);
+		margin: 0 0 0.6rem;
+	}
+
+	.courses {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+		gap: 0.4rem 1rem;
+	}
+
+	.courses li {
+		font-size: 0.85rem;
+		color: var(--parchment);
+		padding-left: 0.9rem;
+		position: relative;
+	}
+
+	.courses li::before {
+		content: "";
+		position: absolute;
+		left: 0;
+		top: 0.55em;
+		width: 5px;
+		height: 5px;
+		background: var(--moss);
+	}
+</style>

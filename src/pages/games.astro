@@ -1,18 +1,149 @@
 ---
 import Layout from "../layouts/Layout.astro";
+import { currentlyPlaying } from "../data/currentlyPlaying";
+
+interface RawgGame {
+	name: string;
+	background_image: string | null;
+	released: string | null;
+	rating: number;
+	genres: { name: string }[];
+}
+
+let game: RawgGame | null = null;
+
+if (currentlyPlaying.rawgSlug) {
+	const apiKey = import.meta.env.RAWG_API_KEY;
+	if (!apiKey) {
+		console.warn("RAWG_API_KEY is not set — skipping cover art lookup for the currently-playing banner.");
+	} else {
+		try {
+			const res = await fetch(`https://api.rawg.io/api/games/${currentlyPlaying.rawgSlug}?key=${apiKey}`);
+			if (res.ok) {
+				game = await res.json();
+			} else {
+				console.warn(`RAWG lookup failed for "${currentlyPlaying.rawgSlug}": ${res.status}`);
+			}
+		} catch (err) {
+			console.warn(`RAWG lookup errored for "${currentlyPlaying.rawgSlug}":`, err);
+		}
+	}
+}
+
+const hasBanner = Boolean(currentlyPlaying.rawgSlug || currentlyPlaying.notes);
 ---
 
 <Layout title="Games">
-	<section class="stub">
+	<section class="games">
 		<h1>Games</h1>
-		<p>Placeholder — game reviews will live here.</p>
+
+		{
+			hasBanner && (
+				<div class="banner" style={game?.background_image ? `--bg: url(${game.background_image})` : undefined}>
+					<div class="banner-inner">
+						<span class="eyebrow">Currently playing</span>
+						<h2>{game?.name ?? "Untitled"}</h2>
+						<div class="tags">
+							{currentlyPlaying.platform && <span class="tag">{currentlyPlaying.platform}</span>}
+							{game?.released && <span class="tag">{game.released.slice(0, 4)}</span>}
+							{game?.genres?.slice(0, 2).map((g) => <span class="tag">{g.name}</span>)}
+						</div>
+						{currentlyPlaying.notes && <p class="notes">{currentlyPlaying.notes}</p>}
+					</div>
+				</div>
+			)
+		}
+
+		{!hasBanner && <p class="placeholder">Nothing set as currently playing — edit src/data/currentlyPlaying.ts.</p>}
+
+		<p class="placeholder">Game reviews will live here.</p>
 	</section>
 </Layout>
 
 <style>
-	.stub {
-		max-width: 720px;
+	.games {
+		max-width: 820px;
 		margin: 0 auto;
-		padding: 4rem 1.5rem;
+		padding: 3.5rem 1.5rem 5rem;
+	}
+
+	h1 {
+		font-size: clamp(2rem, 4vw, 2.75rem);
+		color: var(--gold-hi);
+		margin: 0 0 2.5rem;
+	}
+
+	.banner {
+		position: relative;
+		border: 2px solid var(--outline);
+		background-color: var(--stone-panel);
+		background-image: var(--bg, none);
+		background-size: cover;
+		background-position: center;
+		min-height: 260px;
+		display: flex;
+		align-items: flex-end;
+		margin-bottom: 2rem;
+		overflow: hidden;
+	}
+
+	.banner::before {
+		content: "";
+		position: absolute;
+		inset: 0;
+		background: linear-gradient(180deg, rgba(2, 3, 4, 0.15) 0%, rgba(2, 3, 4, 0.92) 100%);
+	}
+
+	.banner-inner {
+		position: relative;
+		z-index: 1;
+		padding: 1.75rem 2rem;
+		width: 100%;
+	}
+
+	.eyebrow {
+		display: inline-block;
+		font-size: 0.75rem;
+		font-weight: 800;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--outline);
+		background: var(--gold-mid);
+		padding: 0.25rem 0.6rem;
+		margin-bottom: 0.6rem;
+	}
+
+	.banner h2 {
+		font-size: clamp(1.5rem, 3.5vw, 2.1rem);
+		margin: 0 0 0.6rem;
+		color: var(--parchment);
+	}
+
+	.tags {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		margin-bottom: 0.9rem;
+	}
+
+	.tag {
+		font-size: 0.78rem;
+		font-weight: 500;
+		color: var(--parchment-dim);
+		border: 1px solid var(--stone);
+		padding: 0.2rem 0.55rem;
+	}
+
+	.notes {
+		font-size: 0.95rem;
+		line-height: 1.6;
+		color: var(--parchment);
+		max-width: 60ch;
+		margin: 0;
+	}
+
+	.placeholder {
+		color: var(--parchment-dim);
+		font-size: 0.95rem;
 	}
 </style>
