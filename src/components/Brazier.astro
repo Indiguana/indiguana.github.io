@@ -1,0 +1,96 @@
+---
+interface Props {
+	href: string;
+	label: string;
+	delay?: number;
+}
+
+const { href, label, delay = 0 } = Astro.props;
+---
+
+<a class="brazier" href={href} style={`--delay: ${delay}s`}>
+	<span class="brazier__flame" aria-hidden="true">
+		<span class="brazier__logo-slot">logo</span>
+	</span>
+	<span class="brazier__stand" aria-hidden="true"></span>
+	<span class="brazier__label">{label}</span>
+</a>
+
+<style>
+	.brazier {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.6rem;
+		text-decoration: none;
+		color: inherit;
+		padding: 0.5rem;
+		border-radius: 8px;
+		transition: transform 0.15s ease;
+	}
+
+	.brazier:hover,
+	.brazier:focus-visible {
+		transform: translateY(-4px);
+	}
+
+	.brazier:hover .brazier__flame,
+	.brazier:focus-visible .brazier__flame {
+		box-shadow: 0 0 24px 8px var(--ember-glow);
+	}
+
+	.brazier__flame {
+		width: 64px;
+		height: 64px;
+		border-radius: 12px 12px 4px 4px;
+		background: radial-gradient(circle at 50% 30%, var(--ember-glow), var(--ember) 70%);
+		box-shadow: 0 0 16px 4px rgba(255, 157, 66, 0.55);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		animation: flicker 2.4s ease-in-out infinite;
+		animation-delay: var(--delay, 0s);
+	}
+
+	.brazier__logo-slot {
+		width: 40px;
+		height: 40px;
+		border: 1px dashed rgba(11, 10, 13, 0.6);
+		border-radius: 4px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 0.6rem;
+		color: rgba(11, 10, 13, 0.7);
+		background: rgba(11, 10, 13, 0.15);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+	}
+
+	.brazier__stand {
+		width: 10px;
+		height: 28px;
+		background: linear-gradient(var(--stone-light), var(--stone));
+	}
+
+	.brazier__label {
+		font-size: 0.95rem;
+		letter-spacing: 0.03em;
+		padding: 0.3rem 0.9rem;
+		border: 1px solid var(--stone-light);
+		border-radius: 999px;
+		background: rgba(255, 255, 255, 0.04);
+	}
+
+	@keyframes flicker {
+		0%,
+		100% {
+			transform: scale(1);
+			opacity: 1;
+		}
+		50% {
+			transform: scale(1.05);
+			opacity: 0.9;
+		}
+	}
+</style>
