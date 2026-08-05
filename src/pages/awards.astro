@@ -1,18 +1,114 @@
 ---
 import Layout from "../layouts/Layout.astro";
+
+const awards = [
+	{
+		title: "National Merit Finalist",
+		issuer: "National Merit Scholarship Corporation",
+		date: "Feb 2025",
+		description: "220 Index with 1480 score — top 1 percent of all PSAT test takers in the USA.",
+	},
+	{
+		title: "1st Place, Pratham USA AI Hackathon",
+		issuer: "Pratham",
+		date: "Aug 2024",
+		description:
+			"Won the competition with Aifin, an app earning $2,000, designed to give rural youth in India access to a high-quality interview-prep tool — users upload videos responding to prompts, and a resume, which the app checks and evaluates.",
+	},
+	{
+		title: "USACO Gold Division",
+		issuer: "USA Computing Olympiad",
+		date: "Feb 2024",
+		description:
+			"Scored 667 in the March US Open, placing in the Gold division (2nd highest) — about 2 test cases off qualifying for Platinum.",
+	},
+	{
+		title: "AIME Qualifier",
+		issuer: "Mathematical Association of America",
+		date: "Nov 2023",
+		description: "Qualified for the American Invitational Mathematics Examination with a score of 103.5 on the AMC12.",
+	},
+	{
+		title: "International Tang Soo Do Competitor",
+		issuer: "Tang Soo Do",
+		date: "",
+		description: "Competed in three international tournaments — Wales, Amsterdam, and North Carolina.",
+	},
+];
 ---
 
 <Layout title="Awards">
-	<section class="stub">
+	<section class="awards">
 		<h1>Awards</h1>
-		<p>Placeholder — honors and recognitions will live here.</p>
+		<ol class="award-list">
+			{
+				awards.map((a) => (
+					<li class="award">
+						<div class="award-head">
+							<h2>{a.title}</h2>
+							<span class="meta">{a.issuer}{a.date && ` · ${a.date}`}</span>
+						</div>
+						<p>{a.description}</p>
+					</li>
+				))
+			}
+		</ol>
 	</section>
 </Layout>
 
 <style>
-	.stub {
+	.awards {
 		max-width: 720px;
 		margin: 0 auto;
-		padding: 4rem 1.5rem;
+		padding: 3.5rem 1.5rem 5rem;
+	}
+
+	h1 {
+		font-size: clamp(2rem, 4vw, 2.75rem);
+		color: var(--gold-hi);
+		margin: 0 0 2.5rem;
+	}
+
+	.award-list {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 1.5rem;
+	}
+
+	.award {
+		background: var(--stone-panel);
+		border: 2px solid var(--outline);
+		padding: 1.25rem 1.5rem;
+	}
+
+	.award-head {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 0.5rem;
+		margin-bottom: 0.5rem;
+	}
+
+	.award-head h2 {
+		font-size: 1.05rem;
+		margin: 0;
+		color: var(--parchment);
+	}
+
+	.meta {
+		font-size: 0.8rem;
+		color: var(--parchment-dim);
+		white-space: nowrap;
+	}
+
+	.award p {
+		font-size: 0.92rem;
+		line-height: 1.6;
+		color: var(--parchment);
+		margin: 0;
 	}
 </style>

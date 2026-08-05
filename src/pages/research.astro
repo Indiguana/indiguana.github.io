@@ -1,18 +1,128 @@
 ---
 import Layout from "../layouts/Layout.astro";
+
+const projects = [
+	{
+		title: "Finding Attack Patterns in Jailbreaking of Large Language Models",
+		dates: "Jul 2024 – Present",
+		description:
+			"Researching weaknesses of LLMs — prompt injection, overreliance on AI outputs, and supply chain vulnerabilities — using clustering algorithms alongside neural-network-based approaches to find effective countermeasures and make LLMs more secure, reliable, and trustworthy.",
+		link: null,
+	},
+	{
+		title: "Regenerating Voices for Laryngectomy Patients Using Voice Cloning",
+		dates: "Aug 2023 – Jun 2024",
+		description:
+			"A person's voice is integral to their identity, yet many lose theirs to ailments like laryngitis or medical procedures. Built a voice-cloning system with MatchaTTS-based encoder-decoder neural networks that capture vocal nuances — pitch, accent — to generate high-fidelity, personalized voice replicas, refined through additional voice samples.",
+		link: null,
+	},
+	{
+		title: "Leveraging Deep Learning for Tracking Calories in Food",
+		dates: "Oct 2022 – Mar 2023",
+		description:
+			"Trained a deep-learning model (MobileNetV2 transfer learning, 56 food classes, ~91% test accuracy) to recognize food from a photo and estimate its calorie content, aimed at replacing error-prone manual calorie tracking. Built as a Streamlit app with automatic calorie lookup.",
+		link: "https://github.com/Indiguana/ComputerVision-Calorie-Tracker",
+	},
+	{
+		title: "Leveraging Computer Vision Models to Detect Debris in Lakes and Rivers",
+		dates: "Sep 2020 – Feb 2021",
+		description:
+			"Used YOLOv3 and Darknet to scan drone footage of Lake Travis to identify and localize debris and pollution in the water.",
+		link: null,
+	},
+];
 ---
 
 <Layout title="Research">
-	<section class="stub">
+	<section class="research">
 		<h1>Research</h1>
-		<p>Placeholder — papers, projects, and writeups will live here.</p>
+		<ol class="projects">
+			{
+				projects.map((p) => (
+					<li class="project">
+						<div class="project-head">
+							<h2>{p.title}</h2>
+							<span class="dates">{p.dates}</span>
+						</div>
+						<p>{p.description}</p>
+						{p.link && (
+							<a class="repo-link" href={p.link} target="_blank" rel="noopener noreferrer">
+								View on GitHub →
+							</a>
+						)}
+					</li>
+				))
+			}
+		</ol>
 	</section>
 </Layout>
 
 <style>
-	.stub {
-		max-width: 720px;
+	.research {
+		max-width: 760px;
 		margin: 0 auto;
-		padding: 4rem 1.5rem;
+		padding: 3.5rem 1.5rem 5rem;
+	}
+
+	h1 {
+		font-size: clamp(2rem, 4vw, 2.75rem);
+		color: var(--gold-hi);
+		margin: 0 0 2.5rem;
+	}
+
+	.projects {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 1.75rem;
+	}
+
+	.project {
+		background: var(--stone-panel);
+		border: 2px solid var(--outline);
+		padding: 1.5rem 1.75rem;
+	}
+
+	.project-head {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 0.5rem;
+		margin-bottom: 0.6rem;
+	}
+
+	.project-head h2 {
+		font-size: 1.1rem;
+		margin: 0;
+		color: var(--parchment);
+	}
+
+	.dates {
+		font-size: 0.8rem;
+		color: var(--parchment-dim);
+		white-space: nowrap;
+	}
+
+	.project p {
+		font-size: 0.92rem;
+		line-height: 1.6;
+		color: var(--parchment);
+		margin: 0;
+	}
+
+	.repo-link {
+		display: inline-block;
+		margin-top: 0.9rem;
+		font-size: 0.85rem;
+		font-weight: 700;
+		color: var(--gold-mid);
+		text-decoration: none;
+	}
+
+	.repo-link:hover {
+		color: var(--gold-hi);
 	}
 </style>
