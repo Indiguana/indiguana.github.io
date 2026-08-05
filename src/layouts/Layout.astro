@@ -31,15 +31,37 @@ const { title } = Astro.props;
 </html>
 
 <style is:global>
+	@font-face {
+		font-family: "Archivo Black";
+		src: url("/fonts/archivo-black.woff2") format("woff2");
+		font-weight: 400;
+		font-display: swap;
+	}
+	@font-face {
+		font-family: "Manrope";
+		src: url("/fonts/manrope-500.woff2") format("woff2");
+		font-weight: 500;
+		font-display: swap;
+	}
+	@font-face {
+		font-family: "Manrope";
+		src: url("/fonts/manrope-800.woff") format("woff");
+		font-weight: 800;
+		font-display: swap;
+	}
+
 	:root {
 		color-scheme: dark;
-		--cave-black: #0b0a0d;
-		--cave-dark: #16131a;
-		--stone: #3a3440;
-		--stone-light: #6b6272;
-		--ember: #ff9d42;
-		--ember-glow: #ffb463;
+		--void: #020304;
+		--stone: #4b5b64;
+		--stone-dark: #262f35;
+		--stone-panel: #171d21;
+		--moss: #6f9450;
 		--parchment: #ece3d2;
+		--parchment-dim: #a79f8f;
+		--gold-hi: #ffe9a8;
+		--gold-mid: #f2c25b;
+		--outline: #1c140f;
 	}
 
 	* {
@@ -54,13 +76,22 @@ const { title } = Astro.props;
 	}
 
 	body {
-		background: var(--cave-black);
+		background: var(--void);
 		color: var(--parchment);
-		font-family: "Georgia", "Times New Roman", serif;
+		font-family: "Manrope", ui-sans-serif, system-ui, sans-serif;
 	}
 
 	a {
 		color: inherit;
+	}
+
+	h1,
+	h2,
+	h3 {
+		font-family: "Archivo Black", ui-sans-serif, system-ui, sans-serif;
+		font-weight: 400;
+		letter-spacing: -0.01em;
+		text-wrap: balance;
 	}
 
 	.site-header {
@@ -69,39 +100,43 @@ const { title } = Astro.props;
 		justify-content: space-between;
 		flex-wrap: wrap;
 		gap: 0.75rem;
-		padding: 1rem 1.5rem;
-		background: var(--cave-dark);
-		border-bottom: 1px solid var(--stone);
+		padding: 1.1rem 1.75rem;
+		background: var(--stone-panel);
+		border-bottom: 2px solid var(--outline);
 		position: sticky;
 		top: 0;
 		z-index: 10;
 	}
 
 	.site-header__name {
-		font-weight: bold;
-		font-size: 1.1rem;
+		font-family: "Archivo Black", ui-sans-serif, system-ui, sans-serif;
+		font-size: clamp(1.5rem, 2.4vw, 2.1rem);
+		letter-spacing: -0.01em;
 		text-decoration: none;
-		letter-spacing: 0.03em;
+		color: var(--parchment);
+		text-transform: uppercase;
 	}
 
 	.site-header__nav {
 		display: flex;
-		gap: 1.25rem;
+		gap: 1.5rem;
 		flex-wrap: wrap;
 	}
 
 	.site-header__nav a {
-		text-decoration: none;
+		font-family: "Manrope", sans-serif;
+		font-weight: 500;
 		font-size: 0.95rem;
-		opacity: 0.85;
+		text-decoration: none;
+		color: var(--parchment-dim);
+		letter-spacing: 0.02em;
 	}
 
 	.site-header__nav a:hover {
-		opacity: 1;
-		text-decoration: underline;
+		color: var(--gold-hi);
 	}
 
 	main {
-		min-height: calc(100vh - 60px);
+		min-height: calc(100vh - 73px);
 	}
 </style>
