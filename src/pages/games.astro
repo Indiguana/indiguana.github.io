@@ -1,6 +1,7 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import { currentlyPlaying } from "../data/currentlyPlaying";
+import { gamesList, type GameEntry } from "../data/gamesList";
 
 interface RawgGame {
 	name: string;
@@ -10,27 +11,33 @@ interface RawgGame {
 	genres: { name: string }[];
 }
 
-let game: RawgGame | null = null;
+const apiKey = import.meta.env.RAWG_API_KEY;
 
-if (currentlyPlaying.rawgSlug) {
-	const apiKey = import.meta.env.RAWG_API_KEY;
-	if (!apiKey) {
-		console.warn("RAWG_API_KEY is not set — skipping cover art lookup for the currently-playing banner.");
-	} else {
-		try {
-			const res = await fetch(`https://api.rawg.io/api/games/${currentlyPlaying.rawgSlug}?key=${apiKey}`);
-			if (res.ok) {
-				game = await res.json();
-			} else {
-				console.warn(`RAWG lookup failed for "${currentlyPlaying.rawgSlug}": ${res.status}`);
-			}
-		} catch (err) {
-			console.warn(`RAWG lookup errored for "${currentlyPlaying.rawgSlug}":`, err);
+async function fetchRawgGame(slug: string): Promise<RawgGame | null> {
+	if (!slug || !apiKey) return null;
+	try {
+		const res = await fetch(`https://api.rawg.io/api/games/${slug}?key=${apiKey}`);
+		if (!res.ok) {
+			console.warn(`RAWG lookup failed for "${slug}": ${res.status}`);
+			return null;
 		}
+		return await res.json();
+	} catch (err) {
+		console.warn(`RAWG lookup errored for "${slug}":`, err);
+		return null;
 	}
 }
 
+if (!apiKey) {
+	console.warn("RAWG_API_KEY is not set — skipping cover art lookups on the Games page.");
+}
+
+const currentGame = await fetchRawgGame(currentlyPlaying.rawgSlug);
 const hasBanner = Boolean(currentlyPlaying.rawgSlug || currentlyPlaying.notes);
+
+const listWithGames: { entry: GameEntry; game: RawgGame | null }[] = await Promise.all(
+	gamesList.map(async (entry) => ({ entry, game: await fetchRawgGame(entry.rawgSlug) }))
+);
 ---
 
 <Layout title="Games">
@@ -39,14 +46,14 @@ const hasBanner = Boolean(currentlyPlaying.rawgSlug || currentlyPlaying.notes);
 
 		{
 			hasBanner && (
-				<div class="banner" style={game?.background_image ? `--bg: url(${game.background_image})` : undefined}>
+				<div class="banner" style={currentGame?.background_image ? `--bg: url(${currentGame.background_image})` : undefined}>
 					<div class="banner-inner">
 						<span class="eyebrow">Currently playing</span>
-						<h2>{game?.name ?? "Untitled"}</h2>
+						<h2>{currentGame?.name ?? "Untitled"}</h2>
 						<div class="tags">
 							{currentlyPlaying.platform && <span class="tag">{currentlyPlaying.platform}</span>}
-							{game?.released && <span class="tag">{game.released.slice(0, 4)}</span>}
-							{game?.genres?.slice(0, 2).map((g) => <span class="tag">{g.name}</span>)}
+							{currentGame?.released && <span class="tag">{currentGame.released.slice(0, 4)}</span>}
+							{currentGame?.genres?.slice(0, 2).map((g) => <span class="tag">{g.name}</span>)}
 						</div>
 						{currentlyPlaying.notes && <p class="notes">{currentlyPlaying.notes}</p>}
 					</div>
@@ -56,13 +63,37 @@ const hasBanner = Boolean(currentlyPlaying.rawgSlug || currentlyPlaying.notes);
 
 		{!hasBanner && <p class="placeholder">Nothing set as currently playing — edit src/data/currentlyPlaying.ts.</p>}
 
-		<p class="placeholder">Game reviews will live here.</p>
+		<h2 class="section-title">Reviews</h2>
+
+		{listWithGames.length === 0 && <p class="placeholder">No games listed yet — add entries to src/data/gamesList.ts.</p>}
+
+		{
+			listWithGames.length > 0 && (
+				<ul class="grid">
+					{listWithGames.map(({ entry, game }) => (
+						<li class="card">
+							<div class="cover" style={game?.background_image ? `--cover: url(${game.background_image})` : undefined}>
+								{!game?.background_image && <span class="cover-fallback">{(game?.name ?? entry.rawgSlug).slice(0, 1)}</span>}
+							</div>
+							<div class="card-body">
+								<h3>{game?.name ?? entry.rawgSlug}</h3>
+								<div class="tags">
+									<span class="tag">{entry.platform}</span>
+									{entry.rating && <span class="tag tag-rating">{entry.rating}</span>}
+								</div>
+								<p class="note">{entry.note}</p>
+							</div>
+						</li>
+					))}
+				</ul>
+			)
+		}
 	</section>
 </Layout>
 
 <style>
 	.games {
-		max-width: 820px;
+		max-width: 960px;
 		margin: 0 auto;
 		padding: 3.5rem 1.5rem 5rem;
 	}
@@ -71,6 +102,14 @@ const hasBanner = Boolean(currentlyPlaying.rawgSlug || currentlyPlaying.notes);
 		font-size: clamp(2rem, 4vw, 2.75rem);
 		color: var(--gold-hi);
 		margin: 0 0 2.5rem;
+	}
+
+	.section-title {
+		font-size: 1.3rem;
+		color: var(--gold-mid);
+		border-bottom: 2px solid var(--stone-dark);
+		padding-bottom: 0.5rem;
+		margin: 2.5rem 0 1.5rem;
 	}
 
 	.banner {
@@ -83,7 +122,6 @@ const hasBanner = Boolean(currentlyPlaying.rawgSlug || currentlyPlaying.notes);
 		min-height: 260px;
 		display: flex;
 		align-items: flex-end;
-		margin-bottom: 2rem;
 		overflow: hidden;
 	}
 
@@ -134,6 +172,13 @@ const hasBanner = Boolean(currentlyPlaying.rawgSlug || currentlyPlaying.notes);
 		padding: 0.2rem 0.55rem;
 	}
 
+	.tag-rating {
+		color: var(--outline);
+		background: var(--gold-mid);
+		border-color: var(--gold-mid);
+		font-weight: 800;
+	}
+
 	.notes {
 		font-size: 0.95rem;
 		line-height: 1.6;
@@ -145,5 +190,63 @@ const hasBanner = Boolean(currentlyPlaying.rawgSlug || currentlyPlaying.notes);
 	.placeholder {
 		color: var(--parchment-dim);
 		font-size: 0.95rem;
+	}
+
+	.grid {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+		gap: 1.25rem;
+	}
+
+	.card {
+		border: 2px solid var(--outline);
+		background: var(--stone-panel);
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+	}
+
+	.cover {
+		height: 140px;
+		background-color: var(--stone-dark);
+		background-image: var(--cover, none);
+		background-size: cover;
+		background-position: center;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.cover-fallback {
+		font-family: "Archivo Black", ui-sans-serif, system-ui, sans-serif;
+		font-size: 2rem;
+		color: var(--parchment-dim);
+	}
+
+	.card-body {
+		padding: 1rem 1.1rem 1.2rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	.card-body h3 {
+		font-size: 1rem;
+		margin: 0;
+		color: var(--parchment);
+	}
+
+	.card-body .tags {
+		margin-bottom: 0;
+	}
+
+	.note {
+		font-size: 0.88rem;
+		line-height: 1.5;
+		color: var(--parchment-dim);
+		margin: 0;
 	}
 </style>
