@@ -10,7 +10,9 @@ import Brazier from "../components/Brazier.astro";
 		<div class="shrine">
 			<div class="pillar-wrap">
 				<canvas id="pillar-canvas"></canvas>
-				<a class="portrait" href="/about" aria-label="About Indi">Photo</a>
+				<a class="portrait" href="/about" aria-label="About Indi">
+					<img src="/images/portrait.jpg" alt="" />
+				</a>
 			</div>
 
 			<div class="braziers">
@@ -75,21 +77,21 @@ import Brazier from "../components/Brazier.astro";
 		width: 172px;
 		height: 172px;
 		border-radius: 50%;
-		background: radial-gradient(circle at 35% 30%, #d8ceb8, #a89f8c);
+		overflow: hidden;
+		background: #a89f8c;
 		border: 6px solid var(--outline);
 		outline: 4px solid var(--gold-mid);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		color: var(--outline);
-		font-family: "Manrope", sans-serif;
-		font-weight: 800;
-		font-size: 0.9rem;
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
+		display: block;
 		text-decoration: none;
 		cursor: pointer;
 		transition: outline-color 0.15s ease, transform 0.15s ease;
+	}
+
+	.portrait img {
+		display: block;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
 	}
 
 	.portrait:hover,
