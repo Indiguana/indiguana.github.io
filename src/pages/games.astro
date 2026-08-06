@@ -3,40 +3,60 @@ import Layout from "../layouts/Layout.astro";
 import { currentlyPlaying } from "../data/currentlyPlaying";
 import { gamesList, type GameEntry } from "../data/gamesList";
 
-interface RawgGame {
+const apiKey = import.meta.env.STEAMGRIDDB_API_KEY;
+
+interface SgdbSearchResult {
+	id: number;
 	name: string;
-	background_image: string | null;
-	released: string | null;
-	rating: number;
-	genres: { name: string }[];
 }
 
-const apiKey = import.meta.env.RAWG_API_KEY;
+interface SgdbGrid {
+	url: string;
+}
 
-async function fetchRawgGame(slug: string): Promise<RawgGame | null> {
-	if (!slug || !apiKey) return null;
+async function fetchCoverUrl(title: string): Promise<string | null> {
+	if (!title || !apiKey) return null;
 	try {
-		const res = await fetch(`https://api.rawg.io/api/games/${slug}?key=${apiKey}`);
-		if (!res.ok) {
-			console.warn(`RAWG lookup failed for "${slug}": ${res.status}`);
+		const searchRes = await fetch(`https://www.steamgriddb.com/api/v2/search/autocomplete/${encodeURIComponent(title)}`, {
+			headers: { Authorization: `Bearer ${apiKey}` },
+		});
+		if (!searchRes.ok) {
+			console.warn(`SteamGridDB search failed for "${title}": ${searchRes.status}`);
 			return null;
 		}
-		return await res.json();
+		const searchJson = await searchRes.json();
+		const results: SgdbSearchResult[] = searchJson.data ?? [];
+		if (results.length === 0) {
+			console.warn(`SteamGridDB found no games for "${title}"`);
+			return null;
+		}
+		const gameId = results[0].id;
+
+		const gridsRes = await fetch(`https://www.steamgriddb.com/api/v2/grids/game/${gameId}?dimensions=600x900&limit=1`, {
+			headers: { Authorization: `Bearer ${apiKey}` },
+		});
+		if (!gridsRes.ok) {
+			console.warn(`SteamGridDB grids lookup failed for "${title}": ${gridsRes.status}`);
+			return null;
+		}
+		const gridsJson = await gridsRes.json();
+		const grids: SgdbGrid[] = gridsJson.data ?? [];
+		return grids[0]?.url ?? null;
 	} catch (err) {
-		console.warn(`RAWG lookup errored for "${slug}":`, err);
+		console.warn(`SteamGridDB lookup errored for "${title}":`, err);
 		return null;
 	}
 }
 
 if (!apiKey) {
-	console.warn("RAWG_API_KEY is not set — skipping cover art lookups on the Games page.");
+	console.warn("STEAMGRIDDB_API_KEY is not set — skipping cover art lookups on the Games page.");
 }
 
-const currentGame = await fetchRawgGame(currentlyPlaying.rawgSlug);
-const hasBanner = Boolean(currentlyPlaying.rawgSlug || currentlyPlaying.notes);
+const currentCover = await fetchCoverUrl(currentlyPlaying.title);
+const hasBanner = Boolean(currentlyPlaying.title || currentlyPlaying.notes);
 
-const listWithGames: { entry: GameEntry; game: RawgGame | null }[] = await Promise.all(
-	gamesList.map(async (entry) => ({ entry, game: await fetchRawgGame(entry.rawgSlug) }))
+const listWithCovers: { entry: GameEntry; cover: string | null }[] = await Promise.all(
+	gamesList.map(async (entry) => ({ entry, cover: await fetchCoverUrl(entry.title) }))
 );
 ---
 
@@ -46,15 +66,11 @@ const listWithGames: { entry: GameEntry; game: RawgGame | null }[] = await Promi
 
 		{
 			hasBanner && (
-				<div class="banner" style={currentGame?.background_image ? `--bg: url(${currentGame.background_image})` : undefined}>
+				<div class="banner" style={currentCover ? `--bg: url(${currentCover})` : undefined}>
 					<div class="banner-inner">
 						<span class="eyebrow">Currently playing</span>
-						<h2>{currentGame?.name ?? "Untitled"}</h2>
-						<div class="tags">
-							{currentlyPlaying.platform && <span class="tag">{currentlyPlaying.platform}</span>}
-							{currentGame?.released && <span class="tag">{currentGame.released.slice(0, 4)}</span>}
-							{currentGame?.genres?.slice(0, 2).map((g) => <span class="tag">{g.name}</span>)}
-						</div>
+						<h2>{currentlyPlaying.title || "Untitled"}</h2>
+						<div class="tags">{currentlyPlaying.platform && <span class="tag">{currentlyPlaying.platform}</span>}</div>
 						{currentlyPlaying.notes && <p class="notes">{currentlyPlaying.notes}</p>}
 					</div>
 				</div>
@@ -65,18 +81,18 @@ const listWithGames: { entry: GameEntry; game: RawgGame | null }[] = await Promi
 
 		<h2 class="section-title">Reviews</h2>
 
-		{listWithGames.length === 0 && <p class="placeholder">No games listed yet — add entries to src/data/gamesList.ts.</p>}
+		{listWithCovers.length === 0 && <p class="placeholder">No games listed yet — add entries to src/data/gamesList.ts.</p>}
 
 		{
-			listWithGames.length > 0 && (
+			listWithCovers.length > 0 && (
 				<ul class="grid">
-					{listWithGames.map(({ entry, game }) => (
+					{listWithCovers.map(({ entry, cover }) => (
 						<li class="card">
-							<div class="cover" style={game?.background_image ? `--cover: url(${game.background_image})` : undefined}>
-								{!game?.background_image && <span class="cover-fallback">{(game?.name ?? entry.rawgSlug).slice(0, 1)}</span>}
+							<div class="cover" style={cover ? `--cover: url(${cover})` : undefined}>
+								{!cover && <span class="cover-fallback">{entry.title.slice(0, 1)}</span>}
 							</div>
 							<div class="card-body">
-								<h3>{game?.name ?? entry.rawgSlug}</h3>
+								<h3>{entry.title}</h3>
 								<div class="tags">
 									<span class="tag">{entry.platform}</span>
 									{entry.rating && <span class="tag tag-rating">{entry.rating}</span>}

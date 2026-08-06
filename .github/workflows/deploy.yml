@@ -25,7 +25,7 @@ jobs:
         with:
           node-version: 22
         env:
-          RAWG_API_KEY: ${{ secrets.RAWG_API_KEY }}
+          STEAMGRIDDB_API_KEY: ${{ secrets.STEAMGRIDDB_API_KEY }}
 
   deploy:
     needs: build

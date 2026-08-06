@@ -1,6 +1,6 @@
 export interface GameEntry {
-	// Slug from the game's RAWG.io URL, e.g. https://rawg.io/games/elden-ring -> "elden-ring".
-	rawgSlug: string;
+	// Just the game's name — used to automatically look up cover art via SteamGridDB.
+	title: string;
 	platform: string;
 	// Freeform, e.g. "9/10", "S tier", "Still deciding".
 	rating?: string;
