@@ -12,10 +12,10 @@ export const researchProjects: ResearchProject[] = [
 	{
 		slug: "llm-jailbreak-patterns",
 		title: "Finding Attack Patterns in Jailbreaking of Large Language Models",
-		dates: "Jul 2024 – Present",
+		dates: "Jul 2024 – Oct 2025",
 		description:
-			"Researching weaknesses of LLMs(prompt injection, overreliance on AI outputs, and supply chain vulnerabilities)using clustering algorithms alongside neural-network-based approaches to find effective countermeasures and make LLMs more secure, reliable, and trustworthy.",
-		githubLink: null,
+			"Studied recurring patterns in successful prompt injection attacks against an LLM, using the Tensor Trust dataset of real player-submitted attacks. Embedded and clustered 7,178 unique successful attacks (sentence embeddings, t-SNE, HDBSCAN), finding 118 semantic clusters; the most repeated attacks ranged from direct instruction injection to rare-token and repeated-character spam.",
+		githubLink: "https://github.com/Indiguana/LLM_weakness",
 		poster: null,
 	},
 	{
