@@ -30,16 +30,17 @@ export const gamesList: GameEntry[] = [
 
 	{ slug: "hitman-trilogy", title: "Hitman Trilogy", platform: "" },
 
-	{ slug: "god-of-war", title: "God of War", platform: "" },
+	{ slug: "god-of-war", title: "God of War (2018)", platform: "" },
 	{ slug: "god-of-war-ragnarok", title: "God of War Ragnarök", platform: "" },
 
 	{ slug: "red-dead-redemption-2", title: "Red Dead Redemption 2", platform: "" },
 
 	{ slug: "horizon-forbidden-west", title: "Horizon Forbidden West", platform: "" },
 
+	{ slug: "zelda-ocarina-of-time", title: "The Legend of Zelda: Ocarina of Time", platform: "" },
 	{ slug: "zelda-breath-of-the-wild", title: "The Legend of Zelda: Breath of the Wild", platform: "" },
 	{ slug: "zelda-tears-of-the-kingdom", title: "The Legend of Zelda: Tears of the Kingdom", platform: "" },
-	{ slug: "zelda-links-awakening", title: "The Legend of Zelda: Link's Awakening", platform: "" },
+	{ slug: "zelda-links-awakening", title: "The Legend of Zelda: Link's Awakening (Switch)", platform: "" },
 
 	{ slug: "jedi-survivor", title: "Star Wars Jedi: Survivor", platform: "" },
 	{ slug: "jedi-fallen-order", title: "Star Wars Jedi: Fallen Order", platform: "" },
@@ -47,4 +48,9 @@ export const gamesList: GameEntry[] = [
 	{ slug: "lego-batman-2", title: "LEGO Batman 2: DC Super Heroes", platform: "" },
 	{ slug: "lego-batman", title: "LEGO Batman: The Videogame", platform: "" },
 	{ slug: "lego-pirates-of-the-caribbean", title: "LEGO Pirates of the Caribbean: The Video Game", platform: "" },
+
+	{ slug: "ghost-of-tsushima", title: "Ghost of Tsushima", platform: "" },
+
+	{ slug: "indiana-jones-staff-of-kings", title: "Indiana Jones and the Staff of Kings", platform: "" },
+	{ slug: "indiana-jones-great-circle", title: "Indiana Jones and the Great Circle", platform: "" },
 ];
