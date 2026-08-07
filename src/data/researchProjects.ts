@@ -14,7 +14,7 @@ export const researchProjects: ResearchProject[] = [
 		title: "Finding Attack Patterns in Jailbreaking of Large Language Models",
 		dates: "Jul 2024 – Present",
 		description:
-			"Researching weaknesses of LLMs — prompt injection, overreliance on AI outputs, and supply chain vulnerabilities — using clustering algorithms alongside neural-network-based approaches to find effective countermeasures and make LLMs more secure, reliable, and trustworthy.",
+			"Researching weaknesses of LLMs(prompt injection, overreliance on AI outputs, and supply chain vulnerabilities)using clustering algorithms alongside neural-network-based approaches to find effective countermeasures and make LLMs more secure, reliable, and trustworthy.",
 		githubLink: null,
 		poster: null,
 	},
@@ -41,7 +41,7 @@ export const researchProjects: ResearchProject[] = [
 		title: "Utilising Machine Learning to Detect Debris in Lakes and Rivers",
 		dates: "Sep 2020 – Feb 2021",
 		description:
-			"Flew a drone over local water bodies (including Cypress Creek) and ran two pretrained object detectors — Darknet and YOLOv3, no fine-tuning — to identify debris, then manually checked detections against what was actually in each scene. YOLOv3 reached ~32% accuracy vs. ~7% for Darknet; common materials like glass, plastic, and cans were identified far more reliably than irregular debris. Also tested robustness against Gaussian noise and partial/cropped images.",
+			"Flew a drone over local water bodies (including Cypress Creek) and ran two pretrained object detectors, Darknet and YOLOv3 (no fine-tuning), to identify debris, then manually checked detections against what was actually in each scene. YOLOv3 reached ~32% accuracy vs. ~7% for Darknet; common materials like glass, plastic, and cans were identified far more reliably than irregular debris. Also tested robustness against Gaussian noise and partial/cropped images.",
 		githubLink: "https://github.com/Indiguana/ComputerVision-Drone-Debris-Detector",
 		poster: "/images/posters/drone-debris-detector.jpg",
 	},
