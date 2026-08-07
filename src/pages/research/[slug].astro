@@ -1,17 +1,23 @@
 ---
 import Layout from "../../layouts/Layout.astro";
 import { researchProjects } from "../../data/researchProjects";
+import { getEntry, render } from "astro:content";
 
-export function getStaticPaths() {
-	return researchProjects
-		.filter((p) => p.poster)
-		.map((p) => ({
-			params: { slug: p.slug },
-			props: { project: p },
-		}));
+export async function getStaticPaths() {
+	const withDetailPage = researchProjects.filter((p) => p.poster || p.writeup);
+	return Promise.all(
+		withDetailPage.map(async (p) => {
+			const writeup = p.writeup ? await getEntry("writeups", p.slug) : undefined;
+			const Content = writeup ? (await render(writeup)).Content : undefined;
+			return {
+				params: { slug: p.slug },
+				props: { project: p, Content },
+			};
+		})
+	);
 }
 
-const { project } = Astro.props;
+const { project, Content } = Astro.props;
 ---
 
 <Layout title={project.title}>
@@ -28,10 +34,16 @@ const { project } = Astro.props;
 					</a>
 				)}
 			</div>
-			<p class="description">{project.description}</p>
+			{!Content && <p class="description">{project.description}</p>}
 		</div>
 
-		<img class="poster" src={project.poster} alt={`${project.title} — poster board`} />
+		{project.poster && <img class="poster" src={project.poster} alt={`${project.title} — poster board`} />}
+
+		{Content && (
+			<div class="writeup">
+				<Content />
+			</div>
+		)}
 	</section>
 </Layout>
 
@@ -102,5 +114,65 @@ const { project } = Astro.props;
 		width: 100%;
 		height: auto;
 		border: 2px solid var(--outline);
+	}
+
+	.writeup {
+		max-width: 70ch;
+		color: var(--parchment);
+		line-height: 1.65;
+		font-size: 0.95rem;
+	}
+
+	.writeup :global(h2) {
+		font-size: 1.2rem;
+		color: var(--gold-mid);
+		border-bottom: 2px solid var(--stone-dark);
+		padding-bottom: 0.4rem;
+		margin: 2.25rem 0 1rem;
+	}
+
+	.writeup :global(h2:first-child) {
+		margin-top: 0;
+	}
+
+	.writeup :global(p) {
+		margin: 0 0 1rem;
+	}
+
+	.writeup :global(ol),
+	.writeup :global(ul) {
+		margin: 0 0 1rem;
+		padding-left: 1.25rem;
+	}
+
+	.writeup :global(li) {
+		margin-bottom: 0.4rem;
+	}
+
+	.writeup :global(a) {
+		color: var(--gold-mid);
+	}
+
+	.writeup :global(a:hover) {
+		color: var(--gold-hi);
+	}
+
+	.writeup :global(img) {
+		display: block;
+		width: 100%;
+		height: auto;
+		border: 2px solid var(--outline);
+		margin: 1rem 0 0.5rem;
+	}
+
+	.writeup :global(strong) {
+		color: var(--gold-hi);
+	}
+
+	.writeup :global(code) {
+		background: var(--stone-panel);
+		border: 1px solid var(--stone-dark);
+		padding: 0.1rem 0.35rem;
+		font-size: 0.85em;
 	}
 </style>

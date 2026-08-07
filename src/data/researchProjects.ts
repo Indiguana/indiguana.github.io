@@ -6,6 +6,8 @@ export interface ResearchProject {
 	githubLink: string | null;
 	// Path to a poster board image under public/, or null if none is available.
 	poster: string | null;
+	// True if there's a matching entry in src/content/writeups/<slug>.md.
+	writeup?: boolean;
 }
 
 export const researchProjects: ResearchProject[] = [
@@ -17,6 +19,7 @@ export const researchProjects: ResearchProject[] = [
 			"Studied recurring patterns in successful prompt injection attacks against an LLM, using the Tensor Trust dataset of real player-submitted attacks. Embedded and clustered 7,178 unique successful attacks (sentence embeddings, t-SNE, HDBSCAN), finding 118 semantic clusters; the most repeated attacks ranged from direct instruction injection to rare-token and repeated-character spam.",
 		githubLink: "https://github.com/Indiguana/LLM_weakness",
 		poster: null,
+		writeup: true,
 	},
 	{
 		slug: "voice-cloning-laryngectomy",
