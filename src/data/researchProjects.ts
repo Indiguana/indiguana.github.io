@@ -20,12 +20,12 @@ export const researchProjects: ResearchProject[] = [
 	},
 	{
 		slug: "voice-cloning-laryngectomy",
-		title: "Regenerating Voices for Laryngectomy Patients Using Voice Cloning",
+		title: "Leveraging Generative AI to Synthesize the Lost Voice of Laryngectomy Patients",
 		dates: "Aug 2023 – Jun 2024",
 		description:
-			"A person's voice is integral to their identity, yet many lose theirs to ailments like laryngitis or medical procedures. Built a voice-cloning system with MatchaTTS-based encoder-decoder neural networks that capture vocal nuances — pitch, accent — to generate high-fidelity, personalized voice replicas, refined through additional voice samples.",
-		githubLink: null,
-		poster: null,
+			"Fine-tuned Matcha-TTS (an encoder-decoder TTS model trained with Optimal-Transport Conditional Flow Matching) on a single target speaker's voice to let laryngectomy patients regain their voice identity. The 14M-parameter model reached a Mean Opinion Score of 3.66/5 and a real-time factor of 0.038 — fast enough for live conversation — then was exported to ONNX for lightweight, on-device inference.",
+		githubLink: "https://github.com/Indiguana/otcfm-VoiceClone",
+		poster: "/images/posters/voice-cloning-laryngectomy.jpg",
 	},
 	{
 		slug: "calorie-tracker",
