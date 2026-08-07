@@ -1,0 +1,117 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import { gamesList } from "../../data/gamesList";
+import { fetchCoverUrl } from "../../lib/steamgriddb";
+
+export async function getStaticPaths() {
+	return Promise.all(
+		gamesList.map(async (entry) => ({
+			params: { slug: entry.slug },
+			props: { entry, cover: await fetchCoverUrl(entry.title) },
+		}))
+	);
+}
+
+const { entry, cover } = Astro.props;
+---
+
+<Layout title={entry.title}>
+	<section class="review-page">
+		<a class="back-link" href="/games">← Games</a>
+
+		<div class="head">
+			<div class="cover" style={cover ? `--cover: url(${cover})` : undefined}>
+				{!cover && <span class="cover-fallback">{entry.title.slice(0, 1)}</span>}
+			</div>
+			<div class="head-text">
+				<h1>{entry.title}</h1>
+				<div class="tags">
+					{entry.platform && <span class="tag">{entry.platform}</span>}
+					{entry.rating && <span class="tag tag-rating">{entry.rating}</span>}
+				</div>
+				<p class="placeholder">Review coming soon.</p>
+			</div>
+		</div>
+	</section>
+</Layout>
+
+<style>
+	.review-page {
+		max-width: 800px;
+		margin: 0 auto;
+		padding: 3.5rem 1.5rem 5rem;
+	}
+
+	.back-link {
+		display: inline-block;
+		font-size: 0.85rem;
+		font-weight: 700;
+		color: var(--gold-mid);
+		text-decoration: none;
+		margin-bottom: 2rem;
+	}
+
+	.back-link:hover {
+		color: var(--gold-hi);
+	}
+
+	.head {
+		display: flex;
+		gap: 1.75rem;
+		align-items: flex-start;
+	}
+
+	.cover {
+		flex-shrink: 0;
+		width: 160px;
+		aspect-ratio: 2 / 3;
+		background-color: var(--stone-dark);
+		background-image: var(--cover, none);
+		background-size: cover;
+		background-position: center;
+		border: 2px solid var(--outline);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.cover-fallback {
+		font-family: "Archivo Black", ui-sans-serif, system-ui, sans-serif;
+		font-size: 2.5rem;
+		color: var(--parchment-dim);
+	}
+
+	h1 {
+		font-size: clamp(1.4rem, 3vw, 2rem);
+		color: var(--gold-hi);
+		margin: 0 0 0.75rem;
+	}
+
+	.tags {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		margin-bottom: 0.9rem;
+	}
+
+	.tag {
+		font-size: 0.78rem;
+		font-weight: 500;
+		color: var(--parchment-dim);
+		border: 1px solid var(--stone);
+		padding: 0.2rem 0.55rem;
+	}
+
+	.tag-rating {
+		color: var(--outline);
+		background: var(--gold-mid);
+		border-color: var(--gold-mid);
+		font-weight: 800;
+	}
+
+	.placeholder {
+		color: var(--parchment-dim);
+		font-size: 0.95rem;
+		margin: 0;
+	}
+</style>
