@@ -1,36 +1,6 @@
 ---
 import Layout from "../layouts/Layout.astro";
-
-const projects = [
-	{
-		title: "Finding Attack Patterns in Jailbreaking of Large Language Models",
-		dates: "Jul 2024 – Present",
-		description:
-			"Researching weaknesses of LLMs — prompt injection, overreliance on AI outputs, and supply chain vulnerabilities — using clustering algorithms alongside neural-network-based approaches to find effective countermeasures and make LLMs more secure, reliable, and trustworthy.",
-		link: null,
-	},
-	{
-		title: "Regenerating Voices for Laryngectomy Patients Using Voice Cloning",
-		dates: "Aug 2023 – Jun 2024",
-		description:
-			"A person's voice is integral to their identity, yet many lose theirs to ailments like laryngitis or medical procedures. Built a voice-cloning system with MatchaTTS-based encoder-decoder neural networks that capture vocal nuances — pitch, accent — to generate high-fidelity, personalized voice replicas, refined through additional voice samples.",
-		link: null,
-	},
-	{
-		title: "Leveraging Deep Learning for Tracking Calories in Food",
-		dates: "Oct 2022 – Mar 2023",
-		description:
-			"Trained a deep-learning model (MobileNetV2 transfer learning, 56 food classes, ~91% test accuracy) to recognize food from a photo and estimate its calorie content, aimed at replacing error-prone manual calorie tracking. Built as a Streamlit app with automatic calorie lookup.",
-		link: "https://github.com/Indiguana/ComputerVision-Calorie-Tracker",
-	},
-	{
-		title: "Utilising Machine Learning to Detect Debris in Lakes and Rivers",
-		dates: "Sep 2020 – Feb 2021",
-		description:
-			"Flew a drone over local water bodies (including Cypress Creek) and ran two pretrained object detectors — Darknet and YOLOv3, no fine-tuning — to identify debris, then manually checked detections against what was actually in each scene. YOLOv3 reached ~32% accuracy vs. ~7% for Darknet; common materials like glass, plastic, and cans were identified far more reliably than irregular debris. Also tested robustness against Gaussian noise and partial/cropped images.",
-		link: "https://github.com/Indiguana/ComputerVision-Drone-Debris-Detector",
-	},
-];
+import { researchProjects } from "../data/researchProjects";
 ---
 
 <Layout title="Research">
@@ -38,18 +8,31 @@ const projects = [
 		<h1>Research</h1>
 		<ol class="projects">
 			{
-				projects.map((p) => (
+				researchProjects.map((p) => (
 					<li class="project">
 						<div class="project-head">
-							<h2>{p.title}</h2>
+							{p.poster ? (
+								<a class="title-link" href={`/research/${p.slug}`}>
+									<h2>{p.title}</h2>
+								</a>
+							) : (
+								<h2>{p.title}</h2>
+							)}
 							<span class="dates">{p.dates}</span>
 						</div>
 						<p>{p.description}</p>
-						{p.link && (
-							<a class="repo-link" href={p.link} target="_blank" rel="noopener noreferrer">
-								View on GitHub →
-							</a>
-						)}
+						<div class="links">
+							{p.poster && (
+								<a class="poster-link" href={`/research/${p.slug}`}>
+									View poster board →
+								</a>
+							)}
+							{p.githubLink && (
+								<a class="repo-link" href={p.githubLink} target="_blank" rel="noopener noreferrer">
+									View on GitHub →
+								</a>
+							)}
+						</div>
 					</li>
 				))
 			}
@@ -100,6 +83,15 @@ const projects = [
 		color: var(--parchment);
 	}
 
+	.title-link {
+		text-decoration: none;
+	}
+
+	.title-link:hover h2,
+	.title-link:focus-visible h2 {
+		color: var(--gold-hi);
+	}
+
 	.dates {
 		font-size: 0.8rem;
 		color: var(--parchment-dim);
@@ -113,15 +105,23 @@ const projects = [
 		margin: 0;
 	}
 
+	.links {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem 1.25rem;
+		margin-top: 0.9rem;
+	}
+
+	.poster-link,
 	.repo-link {
 		display: inline-block;
-		margin-top: 0.9rem;
 		font-size: 0.85rem;
 		font-weight: 700;
 		color: var(--gold-mid);
 		text-decoration: none;
 	}
 
+	.poster-link:hover,
 	.repo-link:hover {
 		color: var(--gold-hi);
 	}
