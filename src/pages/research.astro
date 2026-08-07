@@ -24,11 +24,11 @@ const projects = [
 		link: "https://github.com/Indiguana/ComputerVision-Calorie-Tracker",
 	},
 	{
-		title: "Leveraging Computer Vision Models to Detect Debris in Lakes and Rivers",
+		title: "Utilising Machine Learning to Detect Debris in Lakes and Rivers",
 		dates: "Sep 2020 – Feb 2021",
 		description:
-			"Used YOLOv3 and Darknet to scan drone footage of Lake Travis to identify and localize debris and pollution in the water.",
-		link: null,
+			"Flew a drone over local water bodies (including Cypress Creek) and ran two pretrained object detectors — Darknet and YOLOv3, no fine-tuning — to identify debris, then manually checked detections against what was actually in each scene. YOLOv3 reached ~32% accuracy vs. ~7% for Darknet; common materials like glass, plastic, and cans were identified far more reliably than irregular debris. Also tested robustness against Gaussian noise and partial/cropped images.",
+		link: "https://github.com/Indiguana/ComputerVision-Drone-Debris-Detector",
 	},
 ];
 ---
