@@ -8,9 +8,24 @@ export interface ResearchProject {
 	poster: string | null;
 	// True if there's a matching entry in src/content/writeups/<slug>.md.
 	writeup?: boolean;
+	// External writeup (e.g. arXiv) to link instead of an on-site page.
+	writeupLink?: string;
+	// Shown in place of a GitHub link when the code isn't public.
+	repoNote?: string;
 }
 
 export const researchProjects: ResearchProject[] = [
+	{
+		slug: "agent-skill-retrieval",
+		title: "Comparative Approaches to Agent Retrieval over Large Skill Libraries",
+		dates: "Jul 2026 – Aug 2026",
+		description:
+			"Compared two ways of picking which skills an AI agent should load from a 690-skill library: a hybrid ranker (BM25 + dense embeddings) and a typed knowledge graph of 1,421 LLM-generated workflow edges. On 117 realistic queries the ranker hit the right skill in the top 5 73.5% of the time, while graph neighbors did worse than simply returning more ranked results at the same token budget (−11.2 points, p=0.0007). 98.6% of the typed edges connected skills the ranker already surfaced together, and 73% of missed queries were unreachable in the graph at all — structural links can't widen retrieval when they live inside the same embedding neighborhood.",
+		githubLink: null,
+		repoNote: "Repo is company-private",
+		poster: null,
+		writeupLink: "https://arxiv.org/abs/2608.06196",
+	},
 	{
 		slug: "llm-jailbreak-patterns",
 		title: "Finding Attack Patterns in Jailbreaking of Large Language Models",
