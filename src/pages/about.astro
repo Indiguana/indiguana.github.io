@@ -55,6 +55,12 @@ const experience = [
 	<section class="about">
 		<h1>About</h1>
 
+		<h2>Links</h2>
+		<div class="entry links">
+			<a href="https://github.com/Indiguana" target="_blank" rel="noopener noreferrer">GitHub →</a>
+			<a href="https://www.linkedin.com/in/indivara-kolluru-267661263/" target="_blank" rel="noopener noreferrer">LinkedIn →</a>
+		</div>
+
 		<h2>Education</h2>
 		<div class="entry">
 			<div class="entry-head">
@@ -138,6 +144,24 @@ const experience = [
 		background: var(--stone-panel);
 		border: 2px solid var(--outline);
 		padding: 1.25rem 1.5rem;
+	}
+
+	.links {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem 2rem;
+	}
+
+	.links a {
+		font-size: 0.95rem;
+		font-weight: 800;
+		color: var(--gold-mid);
+		text-decoration: none;
+	}
+
+	.links a:hover,
+	.links a:focus-visible {
+		color: var(--gold-hi);
 	}
 
 	.entry-head {

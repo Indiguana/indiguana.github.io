@@ -11,7 +11,11 @@ import { researchProjects } from "../data/researchProjects";
 				researchProjects.map((p) => (
 					<li class="project">
 						<div class="project-head">
-							{p.poster || p.writeup ? (
+							{p.writeupLink ? (
+								<a class="title-link" href={p.writeupLink} target="_blank" rel="noopener noreferrer">
+									<h2>{p.title}</h2>
+								</a>
+							) : p.poster || p.writeup ? (
 								<a class="title-link" href={`/research/${p.slug}`}>
 									<h2>{p.title}</h2>
 								</a>
@@ -22,15 +26,23 @@ import { researchProjects } from "../data/researchProjects";
 						</div>
 						<p>{p.description}</p>
 						<div class="links">
-							{(p.poster || p.writeup) && (
-								<a class="poster-link" href={`/research/${p.slug}`}>
+							{p.writeupLink ? (
+								<a class="poster-link" href={p.writeupLink} target="_blank" rel="noopener noreferrer">
 									View writeup →
 								</a>
+							) : (
+								(p.poster || p.writeup) && (
+									<a class="poster-link" href={`/research/${p.slug}`}>
+										View writeup →
+									</a>
+								)
 							)}
-							{p.githubLink && (
+							{p.githubLink ? (
 								<a class="repo-link" href={p.githubLink} target="_blank" rel="noopener noreferrer">
 									View on GitHub →
 								</a>
+							) : (
+								p.repoNote && <span class="repo-note">{p.repoNote}</span>
 							)}
 						</div>
 					</li>
@@ -124,5 +136,11 @@ import { researchProjects } from "../data/researchProjects";
 	.poster-link:hover,
 	.repo-link:hover {
 		color: var(--gold-hi);
+	}
+
+	.repo-note {
+		font-size: 0.85rem;
+		font-weight: 700;
+		color: var(--parchment-dim);
 	}
 </style>
