@@ -57,12 +57,14 @@ const marqueeDuration = `${gameQuotes.length * 4}s`;
 
 		<script>
 			/* Quotes resolve out of noise as they cross the middle of the banner,
-			   and scramble again on their way off either edge. */
+			   and scramble again on their way off either edge. The running order is
+			   reshuffled on load and again every time the marquee completes a lap. */
 			const band = document.querySelector<HTMLElement>(".quote-band");
-			const quotes = Array.from(document.querySelectorAll<HTMLElement>(".quote"));
+			const track = document.querySelector<HTMLElement>(".quote-band__track");
+			const lists = Array.from(document.querySelectorAll<HTMLElement>(".quote-band__list"));
 			const stillPlease = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-			if (band && quotes.length > 0 && !stillPlease) {
+			if (band && track && lists.length > 0 && !stillPlease) {
 				// Array.from keeps the astral glyphs (hieroglyphs, emoji) as whole
 				// characters instead of splitting them into surrogate halves.
 				const GLYPHS = Array.from(
@@ -74,80 +76,140 @@ const marqueeDuration = `${gameQuotes.length * 4}s`;
 				);
 				// Fraction of the band's width, at each end, spent resolving.
 				const RAMP = 0.3;
+				// How long the whole banner takes to resolve after a reshuffle.
+				const SETTLE_MS = 1100;
+
+				const POOL = Array.from(lists[0].querySelectorAll<HTMLElement>(".quote"), (q) => q.dataset.quote || "");
 
 				function noise(seed: number) {
 					const n = Math.sin(seed * 12.9898) * 43758.5453;
 					return n - Math.floor(n);
 				}
 
-				type Line = { cells: HTMLElement[]; chars: string[]; shown: string[]; revealAt: number[] };
-				let lines: Line[] = [];
+				function shuffle(list: string[]) {
+					const out = list.slice();
+					for (let i = out.length - 1; i > 0; i--) {
+						const j = Math.floor(Math.random() * (i + 1));
+						[out[i], out[j]] = [out[j], out[i]];
+					}
+					return out;
+				}
 
 				/* A Greek letter, a hieroglyph and an "e" are all different widths, so
 				   swapping them inside one text node would resize the quote and drag the
 				   marquee's loop point with it. Instead each character gets its own cell,
 				   fixed to the width the real character occupies: whatever glyph lands in
-				   a cell, the line stays exactly as wide as the sentence it spells. */
-				function buildCells() {
-					lines = quotes.map((q) => {
-						const text = q.dataset.quote || "";
-						const chars = Array.from(text);
+				   a cell, the line stays exactly as wide as the sentence it spells.
 
-						q.style.width = "";
-						q.textContent = text;
-						const width = q.getBoundingClientRect().width;
+				   Measured once per distinct quote and cached, so reshuffling is only
+				   element building — no repeat trip through layout. */
+				type Metrics = { width: number; cells: number[] };
+				const metrics = new Map<string, Metrics>();
 
-						// Per-character advances, measured from the real laid-out text so
-						// the split version sits where the unsplit one did.
-						const range = document.createRange();
-						const node = q.firstChild!;
-						const cells: HTMLElement[] = [];
-						let offset = 0;
-						for (const ch of chars) {
-							range.setStart(node, offset);
-							range.setEnd(node, offset + ch.length);
-							const cell = document.createElement("span");
-							cell.className = "glyph";
-							cell.style.width = `${range.getBoundingClientRect().width}px`;
-							cell.textContent = ch;
-							cells.push(cell);
-							offset += ch.length;
+				function measure(text: string): Metrics {
+					const cached = metrics.get(text);
+					if (cached) return cached;
+
+					const probe = document.createElement("span");
+					probe.className = "quote";
+					probe.style.position = "absolute";
+					probe.style.visibility = "hidden";
+					probe.textContent = text;
+					band!.appendChild(probe);
+
+					const width = probe.getBoundingClientRect().width;
+					// Per-character advances, read off the real laid-out text so the
+					// split-up version sits where the unsplit one did.
+					const range = document.createRange();
+					const node = probe.firstChild!;
+					const cells: number[] = [];
+					let offset = 0;
+					for (const ch of Array.from(text)) {
+						range.setStart(node, offset);
+						range.setEnd(node, offset + ch.length);
+						cells.push(range.getBoundingClientRect().width);
+						offset += ch.length;
+					}
+					probe.remove();
+
+					const measured = { width, cells };
+					metrics.set(text, measured);
+					return measured;
+				}
+
+				type Line = { el: HTMLElement; chars: string[]; cells: HTMLElement[]; shown: string[]; revealAt: number[] };
+				let lines: Line[] = [];
+				let order: string[] = POOL;
+
+				// Both copies always get the same order: they are what the -50% loop
+				// point is measured against, so they have to stay identical.
+				function render(next: string[]) {
+					order = next;
+					lines = [];
+
+					for (const list of lists) {
+						const batch = document.createDocumentFragment();
+
+						for (const text of order) {
+							const { width, cells: widths } = measure(text);
+							const chars = Array.from(text);
+
+							const el = document.createElement("span");
+							el.className = "quote";
+							el.dataset.quote = text;
+							el.style.width = `${width}px`;
+
+							const cells = chars.map((ch, i) => {
+								const cell = document.createElement("span");
+								cell.className = "glyph";
+								cell.style.width = `${widths[i]}px`;
+								cell.textContent = ch;
+								return cell;
+							});
+							el.append(...cells);
+
+							const dot = document.createElement("span");
+							dot.className = "quote-dot";
+							dot.textContent = "·";
+
+							batch.append(el, dot);
+							lines.push({
+								el,
+								chars,
+								cells,
+								shown: chars.slice(),
+								// Each character resolves at its own point in the sweep, so the
+								// quote speckles into place rather than wiping left to right.
+								revealAt: chars.map((_, i) => 0.15 + noise(i * 2.7 + 1.3) * 0.85),
+							});
 						}
 
-						q.replaceChildren(...cells);
-						q.style.width = `${width}px`;
-
-						return {
-							cells,
-							chars,
-							shown: chars.slice(),
-							// Each character resolves at its own point in the sweep, so the
-							// quote speckles into place rather than wiping left to right.
-							revealAt: chars.map((_, i) => 0.15 + noise(i * 2.7 + 1.3) * 0.85),
-						};
-					});
+						list.replaceChildren(batch);
+					}
 				}
 
 				let frame = 0;
+				let settleFrom = 0;
+
 				function tick() {
 					frame += 1;
 					// Position updates every frame so the reveal stays smooth, but the
 					// glyphs themselves only churn every 3rd frame (~20/sec).
 					const churn = Math.floor(frame / 3);
 					const bandBox = band!.getBoundingClientRect();
+					// A fresh order arrives mid-screen, so hold everything scrambled for a
+					// beat and let the new quotes resolve rather than popping into place.
+					const settle = Math.min(1, (performance.now() - settleFrom) / SETTLE_MS);
 
-					quotes.forEach((q, qi) => {
-						const line = lines[qi];
-						if (!line) return;
-
-						const box = q.getBoundingClientRect();
-						if (box.right < bandBox.left || box.left > bandBox.right) return;
+					for (const line of lines) {
+						const box = line.el.getBoundingClientRect();
+						if (box.right < bandBox.left || box.left > bandBox.right) continue;
 
 						const at = (box.left + box.width / 2 - bandBox.left) / bandBox.width;
 						let progress = 1;
 						if (at > 1 - RAMP) progress = (1 - at) / RAMP;
 						else if (at < RAMP) progress = at / RAMP;
-						progress = Math.min(1, Math.max(0, progress));
+						progress = Math.min(Math.min(1, Math.max(0, progress)), settle);
 
 						for (let i = 0; i < line.chars.length; i++) {
 							const ch = line.chars[i];
@@ -162,21 +224,32 @@ const marqueeDuration = `${gameQuotes.length * 4}s`;
 								line.shown[i] = target;
 							}
 						}
-						q.style.opacity = String(0.4 + 0.6 * progress);
-					});
+						line.el.style.opacity = String(0.4 + 0.6 * progress);
+					}
 
 					requestAnimationFrame(tick);
 				}
 
+				// One lap done: deal the quotes again for the next pass.
+				track.addEventListener("animationiteration", () => {
+					render(shuffle(POOL));
+					settleFrom = performance.now();
+				});
+
 				let resizeTimer = 0;
 				window.addEventListener("resize", () => {
 					window.clearTimeout(resizeTimer);
-					resizeTimer = window.setTimeout(buildCells, 150);
+					resizeTimer = window.setTimeout(() => {
+						// Quote size is clamped against the viewport, so every width is stale.
+						metrics.clear();
+						render(order);
+					}, 150);
 				});
 
 				// Measure once the webfont is in place, or the cells are Manrope-sized.
 				document.fonts.ready.then(() => {
-					buildCells();
+					render(shuffle(POOL));
+					settleFrom = performance.now();
 					requestAnimationFrame(tick);
 				});
 			}
