@@ -55,6 +55,15 @@ export const researchProjects: ResearchProject[] = [
 		poster: "/images/posters/calorie-tracker.jpg",
 	},
 	{
+		slug: "parabolic-reflector-5g",
+		title: "Minimizing 5G Interference at Airports by Using Parabolic Reflectors",
+		dates: "Oct 2021 – Jan 2022",
+		description:
+			"Built a foil-and-cardstock parabolic reflector (a y = x²/40 paraboloid, shaped around the emitter's focal point) and measured what it did to a router's signal via RSSI. Sweeping the reflector through combinations of vertical and horizontal angles, the best orientation — 0° up, 45° right — took the signal from −39 dBm unaided to −17 dBm, a 22 dBm gain, with each reflector covering about 180°. The argument: focusing existing towers this way would reduce how many are needed near airports, and with them the frequency clutter that 5G rollout pushed into aviation bands.",
+		githubLink: null,
+		poster: "/images/posters/parabolic-reflector-5g.jpg",
+	},
+	{
 		slug: "drone-debris-detector",
 		title: "Utilising Machine Learning to Detect Debris in Lakes and Rivers",
 		dates: "Sep 2020 – Feb 2021",
