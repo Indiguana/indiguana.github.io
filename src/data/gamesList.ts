@@ -28,7 +28,7 @@ export const gamesList: GameEntry[] = [
 	{ slug: "ratchet-clank-rift-apart", title: "Ratchet & Clank: Rift Apart", platform: "" },
 	{ slug: "ratchet-clank-crack-in-time", title: "Ratchet & Clank: A Crack in Time", platform: "" },
 
-	{ slug: "hitman-trilogy", title: "Hitman Trilogy", platform: "" },
+	{ slug: "hitman-world-of-assassination", title: "Hitman: World of Assassination", platform: "" },
 
 	{ slug: "god-of-war", title: "God of War (2018)", platform: "" },
 	{ slug: "god-of-war-ragnarok", title: "God of War Ragnarök", platform: "" },
