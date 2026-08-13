@@ -53,4 +53,11 @@ export const gamesList: GameEntry[] = [
 
 	{ slug: "indiana-jones-staff-of-kings", title: "Indiana Jones and the Staff of Kings", platform: "" },
 	{ slug: "indiana-jones-great-circle", title: "Indiana Jones and the Great Circle", platform: "" },
+
+	{ slug: "fifa-11", title: "FIFA 11", platform: "" },
+	{ slug: "fifa-15", title: "FIFA 15", platform: "" },
+	{ slug: "fifa-20", title: "FIFA 20", platform: "" },
+	{ slug: "fifa-22", title: "FIFA 22", platform: "" },
+	{ slug: "ea-sports-fc-24", title: "EA Sports FC 24", platform: "" },
+	{ slug: "ea-sports-fc-26", title: "EA Sports FC 26", platform: "" },
 ];
