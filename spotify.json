@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-04T14:10:50.309Z",
+  "fetchedAt": "2026-09-04T17:41:14.981Z",
   "nowPlaying": {
-    "isPlaying": true,
-    "title": "Heavier",
-    "artist": "ODESZA, Yellow House",
-    "album": "Heavier",
-    "art": "https://i.scdn.co/image/ab67616d00001e028698d68e525fec9c6143d6ed",
-    "url": "https://open.spotify.com/track/5KPYMz7DUZc6ZdcxNgfL18",
-    "progressMs": 62572,
-    "durationMs": 257799,
-    "playedAt": "2026-09-04T14:10:50.309Z"
+    "isPlaying": false,
+    "title": "It Wasn't Me",
+    "artist": "Shaggy, Rik Rok",
+    "album": "Hot Shot",
+    "art": "https://i.scdn.co/image/ab67616d00001e029449f9491c364d28a9668e17",
+    "url": "https://open.spotify.com/track/3WkibOpDF7cQ5xntM1epyf",
+    "progressMs": null,
+    "durationMs": 227600,
+    "playedAt": "2026-09-04T16:48:04.190Z"
   },
   "topArtists": [
     {
