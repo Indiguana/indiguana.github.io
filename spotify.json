@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-04T17:41:14.981Z",
+  "fetchedAt": "2026-09-04T22:25:59.825Z",
   "nowPlaying": {
-    "isPlaying": false,
-    "title": "It Wasn't Me",
-    "artist": "Shaggy, Rik Rok",
-    "album": "Hot Shot",
-    "art": "https://i.scdn.co/image/ab67616d00001e029449f9491c364d28a9668e17",
-    "url": "https://open.spotify.com/track/3WkibOpDF7cQ5xntM1epyf",
-    "progressMs": null,
-    "durationMs": 227600,
-    "playedAt": "2026-09-04T16:48:04.190Z"
+    "isPlaying": true,
+    "title": "Live While We're Young",
+    "artist": "One Direction",
+    "album": "Take Me Home (Expanded Edition)",
+    "art": "https://i.scdn.co/image/ab67616d00001e024e31e0d38b89b8fb239d4fbf",
+    "url": "https://open.spotify.com/track/6Vh03bkEfXqekWp7Y1UBRb",
+    "progressMs": 20227,
+    "durationMs": 200213,
+    "playedAt": "2026-09-04T22:25:59.825Z"
   },
   "topArtists": [
     {
