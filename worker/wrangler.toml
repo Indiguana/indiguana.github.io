@@ -1,0 +1,8 @@
+name = "spotify-panels"
+main = "src/index.ts"
+compatibility_date = "2025-09-01"
+
+# Secrets are never stored here. Set them once with:
+#   npx wrangler secret put SPOTIFY_CLIENT_ID
+#   npx wrangler secret put SPOTIFY_CLIENT_SECRET
+#   npx wrangler secret put SPOTIFY_REFRESH_TOKEN

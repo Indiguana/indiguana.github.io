@@ -1,12 +1,22 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import Brazier from "../components/Brazier.astro";
+import NowPlaying from "../components/NowPlaying.astro";
+import TopFive from "../components/TopFive.astro";
+
+// Public URL of the Cloudflare Worker in worker/ that proxies Spotify. Left
+// unset, the panels simply never appear — see worker/README.md.
+const spotifyEndpoint = import.meta.env.PUBLIC_SPOTIFY_ENDPOINT;
 ---
 
 <Layout title="Home">
 	<canvas id="cave-canvas"></canvas>
 
-	<section class="scene">
+	<section class="scene" data-spotify-endpoint={spotifyEndpoint}>
+		<div class="panel-slot panel-slot--left">
+			<NowPlaying />
+		</div>
+
 		<div class="shrine">
 			<div class="pillar-wrap">
 				<canvas id="pillar-canvas"></canvas>
@@ -21,6 +31,10 @@ import Brazier from "../components/Brazier.astro";
 				<Brazier href="/games" label="Games" logoSrc="/images/logos/games.png" flameSeed={0} />
 				<Brazier href="/blog" label="Blog" logoSrc="/images/logos/blog.png" flameSeed={1} />
 			</div>
+		</div>
+
+		<div class="panel-slot panel-slot--right">
+			<TopFive />
 		</div>
 	</section>
 </Layout>
@@ -44,6 +58,24 @@ import Brazier from "../components/Brazier.astro";
 		align-items: center;
 		justify-content: center;
 		padding: 2rem 1rem 2.5rem;
+	}
+
+	/* The cave interior is capped at 60% of the viewport width (see the
+	   background loop below), so 19vw keeps these panels on painted rock and
+	   clear of the starfield. .scene is already position: relative. */
+	.panel-slot {
+		position: absolute;
+		top: 50%;
+		transform: translateY(-50%);
+		width: min(19vw, 250px);
+	}
+
+	.panel-slot--left {
+		left: 1.5rem;
+	}
+
+	.panel-slot--right {
+		right: 1.5rem;
 	}
 
 	.shrine {
@@ -106,6 +138,40 @@ import Brazier from "../components/Brazier.astro";
 		flex-wrap: wrap;
 		justify-content: center;
 		margin-top: 3rem;
+	}
+
+	/* Narrower than this there is no rock shelf left to sit on, so the panels
+	   drop out of the scene and stack beneath the shrine. */
+	@media (max-width: 1100px) {
+		.scene {
+			flex-direction: column;
+			gap: 2.5rem;
+		}
+
+		.shrine {
+			order: 0;
+		}
+
+		.panel-slot {
+			position: static;
+			transform: none;
+			width: min(100%, 250px);
+		}
+
+		.panel-slot--left {
+			order: 1;
+		}
+
+		.panel-slot--right {
+			order: 2;
+		}
+	}
+
+	@media (max-width: 640px) {
+		.panel-slot {
+			width: 100%;
+			max-width: 340px;
+		}
 	}
 
 	@media (max-width: 480px) {
@@ -337,5 +403,260 @@ import Brazier from "../components/Brazier.astro";
 				ctx.fillRect(mx, my, 1, 1);
 			}
 		}
+	}
+</script>
+
+<script>
+	/* ---- Spotify panels ----
+	   Both cave panels are driven from one fetch against the Worker in worker/.
+	   The markup already exists (see NowPlaying.astro / TopFive.astro); this
+	   only fills nodes in, so Astro's scoped styles still apply. */
+
+	interface PanelItem {
+		name: string;
+		sub: string;
+		art: string | null;
+		url: string | null;
+	}
+
+	interface NowPlayingData {
+		isPlaying: boolean;
+		title: string;
+		artist: string;
+		album: string;
+		art: string | null;
+		url: string | null;
+		progressMs: number | null;
+		durationMs: number | null;
+		playedAt: string | null;
+	}
+
+	interface SpotifyPayload {
+		fetchedAt?: string;
+		nowPlaying: NowPlayingData | null;
+		topArtists: PanelItem[];
+		topTracks: PanelItem[];
+	}
+
+	type TopMode = "artists" | "tracks";
+
+	const scene = document.querySelector<HTMLElement>(".scene");
+	const endpoint = scene?.dataset.spotifyEndpoint;
+	const npPanel = document.querySelector<HTMLElement>("[data-now-playing]");
+	const topPanel = document.querySelector<HTMLElement>("[data-top-five]");
+
+	if (endpoint && npPanel && topPanel) {
+		const POLL_MS = 30_000;
+
+		const npHeading = npPanel.querySelector<HTMLElement>("[data-np-heading]")!;
+		const npArt = npPanel.querySelector<HTMLImageElement>("[data-np-art]")!;
+		const npEq = npPanel.querySelector<HTMLElement>("[data-np-eq]")!;
+		const npLink = npPanel.querySelector<HTMLAnchorElement>("[data-np-link]")!;
+		const npTitle = npPanel.querySelector<HTMLElement>("[data-np-title]")!;
+		const npArtist = npPanel.querySelector<HTMLElement>("[data-np-artist]")!;
+		const npAgo = npPanel.querySelector<HTMLElement>("[data-np-ago]")!;
+		const npBar = npPanel.querySelector<HTMLElement>("[data-np-bar]")!;
+		const npFill = npPanel.querySelector<HTMLElement>("[data-np-fill]")!;
+
+		/* The Worker is polled every 30s, so the progress bar is advanced
+		   locally in between from the last known position. */
+		let barDuration = 0;
+		let barBase = 0;
+		let barSetAt = 0;
+		let barAdvancing = false;
+
+		function paintProgress() {
+			if (barDuration <= 0) return;
+			const elapsed = barAdvancing ? barBase + (Date.now() - barSetAt) : barBase;
+			npFill.style.width = `${Math.min(100, (elapsed / barDuration) * 100)}%`;
+		}
+
+		/* The snapshot published by .github/workflows/spotify.yml can be up to
+		   half an hour old, so "now playing" would usually be a lie. Only claim
+		   live playback when the data was fetched moments ago, which is true for
+		   the optional Worker path and effectively never for the snapshot. */
+		const LIVE_WINDOW_MS = 60_000;
+		let fetchedAt: number | null = null;
+
+		function isLive(data: NowPlayingData): boolean {
+			if (!data.isPlaying) return false;
+			if (fetchedAt === null) return false;
+			return Date.now() - fetchedAt < LIVE_WINDOW_MS;
+		}
+
+		function timeAgo(iso: string | null): string {
+			if (!iso) return "";
+			const ms = Date.now() - Date.parse(iso);
+			if (!Number.isFinite(ms) || ms < 0) return "";
+			const minutes = Math.round(ms / 60_000);
+			if (minutes < 1) return "just now";
+			const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+			if (minutes < 60) return rtf.format(-minutes, "minute");
+			const hours = Math.round(minutes / 60);
+			if (hours < 24) return rtf.format(-hours, "hour");
+			return rtf.format(-Math.round(hours / 24), "day");
+		}
+
+		let lastPlayedAt: string | null = null;
+
+		function paintAgo() {
+			const text = timeAgo(lastPlayedAt);
+			npAgo.textContent = text;
+			npAgo.hidden = !text;
+		}
+
+		function renderNowPlaying(data: NowPlayingData | null) {
+			if (!data || !data.title) {
+				npPanel!.hidden = true;
+				return;
+			}
+
+			const live = isLive(data);
+			npHeading.textContent = live ? "Now Listening" : "Recently Played";
+			npTitle.textContent = data.title;
+			npArtist.textContent = data.artist;
+			npEq.hidden = !live;
+
+			if (data.art) {
+				npArt.src = data.art;
+				npArt.alt = data.album ? `${data.album} cover art` : "";
+				npArt.hidden = false;
+			} else {
+				npArt.removeAttribute("src");
+				npArt.hidden = true;
+			}
+
+			if (data.url) npLink.href = data.url;
+			else npLink.removeAttribute("href");
+
+			/* A progress bar on half-hour-old data would be meaningless, so it
+			   only appears when the track really is playing right now. */
+			if (live && data.durationMs && data.progressMs !== null) {
+				barDuration = data.durationMs;
+				barBase = data.progressMs;
+				barSetAt = Date.now();
+				barAdvancing = true;
+				npBar.hidden = false;
+				lastPlayedAt = null;
+				paintProgress();
+			} else {
+				barDuration = 0;
+				barAdvancing = false;
+				npBar.hidden = true;
+				lastPlayedAt = data.playedAt;
+			}
+			paintAgo();
+
+			npPanel!.hidden = false;
+		}
+
+		const tablist = topPanel.querySelector<HTMLElement>('[role="tablist"]')!;
+		const tabs = Array.from(topPanel.querySelectorAll<HTMLButtonElement>("[data-top-tab]"));
+		const list = topPanel.querySelector<HTMLElement>("[data-top-list]")!;
+		const rows = Array.from(topPanel.querySelectorAll<HTMLElement>("[data-top-row]"));
+
+		let top: Record<TopMode, PanelItem[]> = { artists: [], tracks: [] };
+		let mode: TopMode = "artists";
+
+		function renderTop() {
+			const items = top[mode];
+			rows.forEach((row, i) => {
+				const item = items[i];
+				if (!item) {
+					row.hidden = true;
+					return;
+				}
+
+				const art = row.querySelector<HTMLImageElement>("[data-row-art]")!;
+				const link = row.querySelector<HTMLAnchorElement>("[data-row-link]")!;
+				row.querySelector<HTMLElement>("[data-row-name]")!.textContent = item.name;
+
+				/* Artists come back with no subtitle — Spotify removed genres from
+				   that endpoint — so collapse the line instead of leaving a gap. */
+				const sub = row.querySelector<HTMLElement>("[data-row-sub]")!;
+				sub.textContent = item.sub;
+				sub.hidden = !item.sub;
+
+				if (item.art) {
+					art.src = item.art;
+					art.hidden = false;
+				} else {
+					art.removeAttribute("src");
+					art.hidden = true;
+				}
+
+				if (item.url) link.href = item.url;
+				else link.removeAttribute("href");
+
+				row.hidden = false;
+			});
+
+			topPanel!.hidden = items.length === 0;
+		}
+
+		function selectTab(next: TopMode, moveFocus: boolean) {
+			mode = next;
+			tabs.forEach((tab) => {
+				const on = tab.dataset.topTab === next;
+				tab.classList.toggle("is-active", on);
+				tab.setAttribute("aria-selected", String(on));
+				tab.tabIndex = on ? 0 : -1;
+				if (on) {
+					list.setAttribute("aria-labelledby", tab.id);
+					if (moveFocus) tab.focus();
+				}
+			});
+			renderTop();
+		}
+
+		tabs.forEach((tab) => {
+			tab.addEventListener("click", () => selectTab(tab.dataset.topTab as TopMode, false));
+		});
+
+		/* Only two tabs, so either arrow key just flips to the other one. */
+		tablist.addEventListener("keydown", (event) => {
+			if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+			event.preventDefault();
+			selectTab(mode === "artists" ? "tracks" : "artists", true);
+		});
+
+		let pollTimer: number | undefined;
+
+		async function load() {
+			try {
+				const res = await fetch(endpoint!, { cache: "no-store" });
+				if (!res.ok) throw new Error(`Spotify endpoint returned ${res.status}`);
+				const data: SpotifyPayload = await res.json();
+				fetchedAt = data.fetchedAt ? Date.parse(data.fetchedAt) : Date.now();
+				renderNowPlaying(data.nowPlaying);
+				top = { artists: data.topArtists ?? [], tracks: data.topTracks ?? [] };
+				renderTop();
+			} catch (err) {
+				/* A dead Worker should leave the cave exactly as it was. */
+				console.warn("Spotify panels unavailable:", err);
+				npPanel!.hidden = true;
+				topPanel!.hidden = true;
+			}
+		}
+
+		function startPolling() {
+			window.clearInterval(pollTimer);
+			pollTimer = window.setInterval(load, POLL_MS);
+		}
+
+		/* No point polling a tab nobody is looking at. */
+		document.addEventListener("visibilitychange", () => {
+			if (document.hidden) {
+				window.clearInterval(pollTimer);
+			} else {
+				load();
+				startPolling();
+			}
+		});
+
+		window.setInterval(paintProgress, 1000);
+		window.setInterval(paintAgo, 60_000);
+		load();
+		startPolling();
 	}
 </script>

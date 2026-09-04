@@ -1,0 +1,206 @@
+---
+/*
+ * Left-hand cave panel: what's playing on Spotify right now.
+ *
+ * Markup only — index.astro's script fetches the data and fills these nodes in.
+ * Every element is rendered here rather than built in JS on purpose: Astro
+ * scopes this component's styles by hashing the elements in *this* file, so
+ * nodes created at runtime would come out unstyled.
+ */
+---
+
+<aside class="panel" data-now-playing hidden>
+	<span class="panel__title" data-np-heading>Now Listening</span>
+
+	<div class="art-frame">
+		<img class="art" alt="" data-np-art hidden />
+		<span class="art-fallback" aria-hidden="true">&#9834;</span>
+		<div class="eq" data-np-eq aria-hidden="true" hidden>
+			<span></span><span></span><span></span>
+		</div>
+	</div>
+
+	<a class="track" href="#" target="_blank" rel="noopener noreferrer" data-np-link>
+		<span class="track__title" data-np-title></span>
+		<span class="track__artist" data-np-artist></span>
+	</a>
+
+	<span class="ago" data-np-ago hidden></span>
+
+	<div class="bar" data-np-bar hidden>
+		<span class="bar__fill" data-np-fill></span>
+	</div>
+</aside>
+
+<style>
+	.panel {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.7rem;
+		padding: 0.9rem 0.85rem 1rem;
+		background: var(--stone-panel);
+		border: 2px solid var(--outline);
+	}
+
+	.panel[hidden] {
+		display: none;
+	}
+
+	/* Same chip treatment as .brazier__label and the header nav links. */
+	.panel__title {
+		font-family: "Manrope", sans-serif;
+		font-weight: 800;
+		font-size: 0.62rem;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: var(--outline);
+		background: var(--parchment);
+		padding: 0.3rem 0.7rem;
+		border: 2px solid var(--outline);
+	}
+
+	.art-frame {
+		position: relative;
+		width: 100%;
+		aspect-ratio: 1;
+		background: var(--stone-dark);
+		border: 3px solid var(--outline);
+		outline: 2px solid var(--gold-mid);
+		outline-offset: -6px;
+	}
+
+	.art {
+		display: block;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+
+	.art-fallback {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 2rem;
+		color: var(--stone);
+	}
+
+	/* Sits on top of the album art, so it needs its own contrast. */
+	.eq {
+		position: absolute;
+		right: 0.4rem;
+		bottom: 0.4rem;
+		display: flex;
+		align-items: flex-end;
+		gap: 2px;
+		height: 14px;
+		padding: 3px;
+		background: rgba(2, 3, 4, 0.75);
+	}
+
+	.eq span {
+		width: 3px;
+		height: 100%;
+		background: var(--gold-mid);
+		transform-origin: bottom;
+		animation: eq-bounce 900ms ease-in-out infinite;
+	}
+
+	.eq span:nth-child(2) {
+		animation-delay: 180ms;
+	}
+	.eq span:nth-child(3) {
+		animation-delay: 360ms;
+	}
+
+	@keyframes eq-bounce {
+		0%,
+		100% {
+			transform: scaleY(0.3);
+		}
+		50% {
+			transform: scaleY(1);
+		}
+	}
+
+	.track {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.15rem;
+		text-align: center;
+		text-decoration: none;
+		width: 100%;
+	}
+
+	.track__title {
+		font-weight: 800;
+		font-size: 0.82rem;
+		line-height: 1.25;
+		color: var(--parchment);
+		/* Track names get long; two lines then ellipsis. */
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+	}
+
+	.track__artist {
+		font-size: 0.72rem;
+		line-height: 1.3;
+		color: var(--parchment-dim);
+		display: -webkit-box;
+		-webkit-line-clamp: 1;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+	}
+
+	.track:hover .track__title,
+	.track:focus-visible .track__title {
+		color: var(--gold-hi);
+	}
+
+	/* Shown for a snapshot ("listened 20 minutes ago"); the progress bar takes
+	   its place when the data is live enough to mean anything. */
+	.ago {
+		font-size: 0.62rem;
+		letter-spacing: 0.02em;
+		color: var(--parchment-dim);
+	}
+
+	.ago[hidden] {
+		display: none;
+	}
+
+	.bar {
+		width: 100%;
+		height: 6px;
+		background: var(--stone-dark);
+		border: 2px solid var(--outline);
+	}
+
+	.bar[hidden] {
+		display: none;
+	}
+
+	.bar__fill {
+		display: block;
+		height: 100%;
+		width: 0%;
+		background: var(--gold-mid);
+		transition: width 1s linear;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.eq span {
+			animation: none;
+			transform: scaleY(0.6);
+		}
+
+		.bar__fill {
+			transition: none;
+		}
+	}
+</style>

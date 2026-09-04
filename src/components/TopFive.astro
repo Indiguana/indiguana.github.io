@@ -1,0 +1,191 @@
+---
+/*
+ * Right-hand cave panel: top 5 artists or songs over roughly the last four
+ * weeks, whichever the toggle is on.
+ *
+ * As with NowPlaying.astro, all five rows are rendered here as empty skeletons
+ * and filled in by index.astro's script. Building rows in JS would skip Astro's
+ * style scoping and render them unstyled.
+ */
+
+const RANKS = [1, 2, 3, 4, 5];
+---
+
+<aside class="panel" data-top-five hidden>
+	<span class="panel__title">Current Favourites</span>
+
+	<div class="toggle" role="tablist" aria-label="Current favourites">
+		<button
+			class="toggle__btn is-active"
+			type="button"
+			role="tab"
+			id="top-tab-artists"
+			aria-selected="true"
+			aria-controls="top-list"
+			data-top-tab="artists"
+		>
+			Artists
+		</button>
+		<button
+			class="toggle__btn"
+			type="button"
+			role="tab"
+			id="top-tab-tracks"
+			aria-selected="false"
+			aria-controls="top-list"
+			tabindex="-1"
+			data-top-tab="tracks"
+		>
+			Songs
+		</button>
+	</div>
+
+	<ol class="rows" id="top-list" role="tabpanel" aria-labelledby="top-tab-artists" data-top-list>
+		{
+			RANKS.map((rank) => (
+				<li class="row" data-top-row hidden>
+					<span class="row__rank">{rank}</span>
+					<img class="row__thumb" alt="" data-row-art hidden />
+					<a class="row__text" href="#" target="_blank" rel="noopener noreferrer" data-row-link>
+						<span class="row__name" data-row-name />
+						<span class="row__sub" data-row-sub />
+					</a>
+				</li>
+			))
+		}
+	</ol>
+</aside>
+
+<style>
+	.panel {
+		display: flex;
+		flex-direction: column;
+		gap: 0.7rem;
+		padding: 0.9rem 0.8rem 1rem;
+		background: var(--stone-panel);
+		border: 2px solid var(--outline);
+	}
+
+	.panel[hidden] {
+		display: none;
+	}
+
+	/* Same chip treatment as NowPlaying's heading, .brazier__label and the
+	   header nav links. */
+	.panel__title {
+		align-self: center;
+		font-family: "Manrope", sans-serif;
+		font-weight: 800;
+		font-size: 0.62rem;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: var(--outline);
+		background: var(--parchment);
+		padding: 0.3rem 0.7rem;
+		border: 2px solid var(--outline);
+	}
+
+	.toggle {
+		display: flex;
+		gap: 0.35rem;
+		justify-content: center;
+	}
+
+	.toggle__btn {
+		flex: 1;
+		font-family: "Manrope", sans-serif;
+		font-weight: 800;
+		font-size: 0.62rem;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: var(--outline);
+		background: var(--stone);
+		padding: 0.3rem 0.4rem;
+		border: 2px solid var(--outline);
+		cursor: pointer;
+	}
+
+	.toggle__btn.is-active {
+		background: var(--parchment);
+	}
+
+	.toggle__btn:hover,
+	.toggle__btn:focus-visible {
+		background: var(--gold-hi);
+	}
+
+	.rows {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	.row {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		min-width: 0;
+	}
+
+	.row[hidden] {
+		display: none;
+	}
+
+	.row__rank {
+		flex: none;
+		width: 0.9rem;
+		font-weight: 800;
+		font-size: 0.75rem;
+		color: var(--gold-mid);
+		text-align: right;
+	}
+
+	.row__thumb {
+		flex: none;
+		width: 30px;
+		height: 30px;
+		object-fit: cover;
+		background: var(--stone-dark);
+		border: 2px solid var(--outline);
+	}
+
+	.row__text {
+		display: flex;
+		flex-direction: column;
+		min-width: 0;
+		text-decoration: none;
+	}
+
+	.row__name {
+		font-weight: 800;
+		font-size: 0.72rem;
+		line-height: 1.25;
+		color: var(--parchment);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	/* Spotify dropped `genres` from the top-artists endpoint, so artist rows
+	   have no subtitle. Collapse the line rather than leaving a blank gap. */
+	.row__sub[hidden] {
+		display: none;
+	}
+
+	.row__sub {
+		font-size: 0.63rem;
+		line-height: 1.3;
+		color: var(--parchment-dim);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.row__text:hover .row__name,
+	.row__text:focus-visible .row__name {
+		color: var(--gold-hi);
+	}
+</style>

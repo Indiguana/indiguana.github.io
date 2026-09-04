@@ -1,0 +1,69 @@
+name: Refresh Spotify snapshot
+
+# Publishes a small JSON snapshot that the home page fetches at runtime.
+#
+# It deliberately does NOT commit to main. A push to main triggers deploy.yml,
+# which rebuilds the whole site — and that build makes ~148 SteamGridDB calls
+# (37 games, looked up twice: once in games.astro, once in games/[slug].astro).
+# At this cadence that would be thousands of calls a day and a rate limit.
+# Publishing to a detached data branch keeps the site build out of it entirely.
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: spotify-snapshot
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Fetch snapshot
+        env:
+          SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
+          SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
+          SPOTIFY_REFRESH_TOKEN: ${{ secrets.SPOTIFY_REFRESH_TOKEN }}
+        run: |
+          node scripts/fetch-spotify.mjs "${RUNNER_TEMP}/spotify.json"
+          # Stash the comparison script too: switching to the data branch below
+          # removes it from the working tree.
+          cp scripts/spotify-changed.mjs "${RUNNER_TEMP}/"
+
+      - name: Publish to the spotify-data branch
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git ls-remote --exit-code --heads origin spotify-data >/dev/null 2>&1; then
+            git fetch origin spotify-data --depth 1
+            git checkout -B spotify-data origin/spotify-data
+          else
+            git checkout --orphan spotify-data
+            git rm -rf . >/dev/null 2>&1 || true
+          fi
+
+          # Exits non-zero when only fetchedAt/progressMs moved, so an idle
+          # account doesn't accrue a commit every half hour.
+          if node "${RUNNER_TEMP}/spotify-changed.mjs" spotify.json "${RUNNER_TEMP}/spotify.json"; then
+            cp "${RUNNER_TEMP}/spotify.json" spotify.json
+            git add spotify.json
+            git commit -m "Spotify snapshot $(date -u +%Y-%m-%dT%H:%MZ)"
+            git push origin spotify-data
+            echo "published"
+          else
+            echo "nothing meaningful changed — not publishing"
+          fi

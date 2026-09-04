@@ -26,6 +26,9 @@ jobs:
           node-version: 22
         env:
           STEAMGRIDDB_API_KEY: ${{ secrets.STEAMGRIDDB_API_KEY }}
+          # Public URL, not a secret. Defaults to the snapshot published by
+          # spotify.yml; set the repo variable to override (e.g. a live Worker).
+          PUBLIC_SPOTIFY_ENDPOINT: ${{ vars.PUBLIC_SPOTIFY_ENDPOINT || 'https://raw.githubusercontent.com/Indiguana/indiguana.github.io/spotify-data/spotify.json' }}
 
   deploy:
     needs: build
