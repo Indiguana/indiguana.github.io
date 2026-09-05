@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-05T04:44:46.440Z",
+  "fetchedAt": "2026-09-05T08:43:42.155Z",
   "nowPlaying": {
-    "isPlaying": true,
-    "title": "Careless Whisper",
-    "artist": "George Michael",
-    "album": "Ladies & Gentlemen",
-    "art": "https://i.scdn.co/image/ab67616d00001e02813629baee66b2ec5f90ebee",
-    "url": "https://open.spotify.com/track/5WDLRQ3VCdVrKw0njWe5E5",
-    "progressMs": 35109,
-    "durationMs": 300106,
-    "playedAt": "2026-09-05T04:44:46.440Z"
+    "isPlaying": false,
+    "title": "Minimum ça",
+    "artist": "Dr. Yaro",
+    "album": "Minimum ça",
+    "art": "https://i.scdn.co/image/ab67616d00001e02e2b4a9e1813e0ed20ca0e145",
+    "url": "https://open.spotify.com/track/4mNttG8qiVh4BKrMUrUhCI",
+    "progressMs": null,
+    "durationMs": 149812,
+    "playedAt": "2026-09-05T06:26:09.471Z"
   },
   "topArtists": [
     {
@@ -37,10 +37,10 @@
       "url": "https://open.spotify.com/artist/04gDigrS5kc9YWfZHwBETP"
     },
     {
-      "name": "Drake",
+      "name": "The Weeknd",
       "sub": "",
-      "art": "https://i.scdn.co/image/ab6761610000f1784293385d324db8558179afd9",
-      "url": "https://open.spotify.com/artist/3TVXtAsR1Inumwj472S9r4"
+      "art": "https://i.scdn.co/image/ab6761610000f178c1719ac9e6a75c1c25835018",
+      "url": "https://open.spotify.com/artist/1Xyo4u8uXC1ZmMpatF05PJ"
     }
   ],
   "topTracks": [
