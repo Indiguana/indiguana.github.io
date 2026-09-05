@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-05T19:12:16.568Z",
+  "fetchedAt": "2026-09-05T21:26:07.033Z",
   "nowPlaying": {
     "isPlaying": false,
-    "title": "One Dance",
-    "artist": "Drake, Wizkid, Kyla",
-    "album": "Views",
-    "art": "https://i.scdn.co/image/ab67616d00001e029416ed64daf84936d89e671c",
-    "url": "https://open.spotify.com/track/1zi7xx7UVEFkmKfv06H8x0",
+    "title": "GBP (feat. 21 Savage)",
+    "artist": "Central Cee, 21 Savage",
+    "album": "GBP (feat. 21 Savage)",
+    "art": "https://i.scdn.co/image/ab67616d00001e02bee635680bd0d05559f75804",
+    "url": "https://open.spotify.com/track/5emD8K39MmotlCLOx9qzCH",
     "progressMs": null,
-    "durationMs": 173986,
-    "playedAt": "2026-09-05T18:55:33.840Z"
+    "durationMs": 154800,
+    "playedAt": "2026-09-05T20:35:37.568Z"
   },
   "topArtists": [
     {
@@ -31,25 +31,19 @@
       "url": "https://open.spotify.com/artist/6eUKZXaKkcviH0Ku9w2n3V"
     },
     {
-      "name": "Maroon 5",
-      "sub": "",
-      "art": "https://i.scdn.co/image/ab6761610000f178f8349dfb619a7f842242de77",
-      "url": "https://open.spotify.com/artist/04gDigrS5kc9YWfZHwBETP"
-    },
-    {
       "name": "The Weeknd",
       "sub": "",
       "art": "https://i.scdn.co/image/ab6761610000f178c1719ac9e6a75c1c25835018",
       "url": "https://open.spotify.com/artist/1Xyo4u8uXC1ZmMpatF05PJ"
+    },
+    {
+      "name": "Maroon 5",
+      "sub": "",
+      "art": "https://i.scdn.co/image/ab6761610000f178f8349dfb619a7f842242de77",
+      "url": "https://open.spotify.com/artist/04gDigrS5kc9YWfZHwBETP"
     }
   ],
   "topTracks": [
-    {
-      "name": "That's The Way It Is",
-      "sub": "Daniel Lanois",
-      "art": "https://i.scdn.co/image/ab67616d00004851f337a21d945f44e802a1eb1d",
-      "url": "https://open.spotify.com/track/5ui44u6tEnipuke1eKYpMI"
-    },
     {
       "name": "Professor X",
       "sub": "Dave",
@@ -67,6 +61,12 @@
       "sub": "Calvin Harris, Pharrell Williams, Katy Perry, Big Sean, Funk Wav",
       "art": "https://i.scdn.co/image/ab67616d000048514d3fa5ce7ba599f4fd7803ef",
       "url": "https://open.spotify.com/track/5bcTCxgc7xVfSaMV3RuVke"
+    },
+    {
+      "name": "That's The Way It Is",
+      "sub": "Daniel Lanois",
+      "art": "https://i.scdn.co/image/ab67616d00004851f337a21d945f44e802a1eb1d",
+      "url": "https://open.spotify.com/track/5ui44u6tEnipuke1eKYpMI"
     },
     {
       "name": "Far from Any Road",
