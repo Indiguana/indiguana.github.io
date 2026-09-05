@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-05T17:25:42.870Z",
+  "fetchedAt": "2026-09-05T19:12:16.568Z",
   "nowPlaying": {
-    "isPlaying": true,
-    "title": "Locked out of Heaven",
-    "artist": "Bruno Mars",
-    "album": "Unorthodox Jukebox",
-    "art": "https://i.scdn.co/image/ab67616d00001e02926f43e7cce571e62720fd46",
-    "url": "https://open.spotify.com/track/3w3y8KPTfNeOKPiqUTakBh",
-    "progressMs": 31126,
-    "durationMs": 233478,
-    "playedAt": "2026-09-05T17:25:42.870Z"
+    "isPlaying": false,
+    "title": "One Dance",
+    "artist": "Drake, Wizkid, Kyla",
+    "album": "Views",
+    "art": "https://i.scdn.co/image/ab67616d00001e029416ed64daf84936d89e671c",
+    "url": "https://open.spotify.com/track/1zi7xx7UVEFkmKfv06H8x0",
+    "progressMs": null,
+    "durationMs": 173986,
+    "playedAt": "2026-09-05T18:55:33.840Z"
   },
   "topArtists": [
     {
