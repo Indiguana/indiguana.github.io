@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-05T00:14:21.304Z",
+  "fetchedAt": "2026-09-05T04:44:46.440Z",
   "nowPlaying": {
-    "isPlaying": false,
-    "title": "The Cup of Life (The Official Song of the World Cup, France '98) - Remix - English Radio Edit",
-    "artist": "Ricky Martin, Pablo Flores",
-    "album": "La Copa de la Vida",
-    "art": "https://i.scdn.co/image/ab67616d00001e02415a7799910a46c67fa313f6",
-    "url": "https://open.spotify.com/track/68CzXNGAMmb3k5MhLu0xVb",
-    "progressMs": null,
-    "durationMs": 279920,
-    "playedAt": "2026-09-04T23:46:44.275Z"
+    "isPlaying": true,
+    "title": "Careless Whisper",
+    "artist": "George Michael",
+    "album": "Ladies & Gentlemen",
+    "art": "https://i.scdn.co/image/ab67616d00001e02813629baee66b2ec5f90ebee",
+    "url": "https://open.spotify.com/track/5WDLRQ3VCdVrKw0njWe5E5",
+    "progressMs": 35109,
+    "durationMs": 300106,
+    "playedAt": "2026-09-05T04:44:46.440Z"
   },
   "topArtists": [
     {
@@ -25,12 +25,6 @@
       "url": "https://open.spotify.com/artist/5H4yInM5zmHqpKIoMNAx4r"
     },
     {
-      "name": "Drake",
-      "sub": "",
-      "art": "https://i.scdn.co/image/ab6761610000f1784293385d324db8558179afd9",
-      "url": "https://open.spotify.com/artist/3TVXtAsR1Inumwj472S9r4"
-    },
-    {
       "name": "Ed Sheeran",
       "sub": "",
       "art": "https://i.scdn.co/image/ab6761610000f178d55c95ad400aed87da52daec",
@@ -41,6 +35,12 @@
       "sub": "",
       "art": "https://i.scdn.co/image/ab6761610000f178f8349dfb619a7f842242de77",
       "url": "https://open.spotify.com/artist/04gDigrS5kc9YWfZHwBETP"
+    },
+    {
+      "name": "Drake",
+      "sub": "",
+      "art": "https://i.scdn.co/image/ab6761610000f1784293385d324db8558179afd9",
+      "url": "https://open.spotify.com/artist/3TVXtAsR1Inumwj472S9r4"
     }
   ],
   "topTracks": [
@@ -51,10 +51,10 @@
       "url": "https://open.spotify.com/track/5ui44u6tEnipuke1eKYpMI"
     },
     {
-      "name": "Feels (feat. Pharrell Williams, Katy Perry & Big Sean)",
-      "sub": "Calvin Harris, Pharrell Williams, Katy Perry, Big Sean, Funk Wav",
-      "art": "https://i.scdn.co/image/ab67616d000048514d3fa5ce7ba599f4fd7803ef",
-      "url": "https://open.spotify.com/track/5bcTCxgc7xVfSaMV3RuVke"
+      "name": "Professor X",
+      "sub": "Dave",
+      "art": "https://i.scdn.co/image/ab67616d00004851cae5b7c28e0d94221745ed68",
+      "url": "https://open.spotify.com/track/47lPVbZUh9547oTjx6J4ZV"
     },
     {
       "name": "Love Me Not",
@@ -63,16 +63,16 @@
       "url": "https://open.spotify.com/track/4WFgvKVfEhb3IUAFGrutTR"
     },
     {
+      "name": "Feels (feat. Pharrell Williams, Katy Perry & Big Sean)",
+      "sub": "Calvin Harris, Pharrell Williams, Katy Perry, Big Sean, Funk Wav",
+      "art": "https://i.scdn.co/image/ab67616d000048514d3fa5ce7ba599f4fd7803ef",
+      "url": "https://open.spotify.com/track/5bcTCxgc7xVfSaMV3RuVke"
+    },
+    {
       "name": "Far from Any Road",
       "sub": "The Handsome Family",
       "art": "https://i.scdn.co/image/ab67616d00004851851dd0306e2c810a5cf0d81d",
       "url": "https://open.spotify.com/track/5tWPG0AU9LVjONRofHcLD0"
-    },
-    {
-      "name": "Stereo Love (Original)",
-      "sub": "Edward Maya, Vika Jigulina",
-      "art": "https://i.scdn.co/image/ab67616d00004851b12c3bbec1fa848e0affdde9",
-      "url": "https://open.spotify.com/track/3VakHBkNYe93PXHwHSkL33"
     }
   ]
 }
