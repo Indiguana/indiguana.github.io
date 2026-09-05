@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-05T21:26:07.033Z",
+  "fetchedAt": "2026-09-05T23:04:56.091Z",
   "nowPlaying": {
-    "isPlaying": false,
-    "title": "GBP (feat. 21 Savage)",
-    "artist": "Central Cee, 21 Savage",
-    "album": "GBP (feat. 21 Savage)",
-    "art": "https://i.scdn.co/image/ab67616d00001e02bee635680bd0d05559f75804",
-    "url": "https://open.spotify.com/track/5emD8K39MmotlCLOx9qzCH",
-    "progressMs": null,
-    "durationMs": 154800,
-    "playedAt": "2026-09-05T20:35:37.568Z"
+    "isPlaying": true,
+    "title": "Take It On the Run",
+    "artist": "REO Speedwagon",
+    "album": "Hi Infidelity (30th Anniversary Edition)",
+    "art": "https://i.scdn.co/image/ab67616d00001e02d514470784e3d02ee0bcdb80",
+    "url": "https://open.spotify.com/track/5gys5nzVQIYhgHIfiOJYva",
+    "progressMs": 189289,
+    "durationMs": 239680,
+    "playedAt": "2026-09-05T23:04:56.091Z"
   },
   "topArtists": [
     {
