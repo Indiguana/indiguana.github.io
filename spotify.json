@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-05T08:43:42.155Z",
+  "fetchedAt": "2026-09-05T17:25:42.870Z",
   "nowPlaying": {
-    "isPlaying": false,
-    "title": "Minimum ça",
-    "artist": "Dr. Yaro",
-    "album": "Minimum ça",
-    "art": "https://i.scdn.co/image/ab67616d00001e02e2b4a9e1813e0ed20ca0e145",
-    "url": "https://open.spotify.com/track/4mNttG8qiVh4BKrMUrUhCI",
-    "progressMs": null,
-    "durationMs": 149812,
-    "playedAt": "2026-09-05T06:26:09.471Z"
+    "isPlaying": true,
+    "title": "Locked out of Heaven",
+    "artist": "Bruno Mars",
+    "album": "Unorthodox Jukebox",
+    "art": "https://i.scdn.co/image/ab67616d00001e02926f43e7cce571e62720fd46",
+    "url": "https://open.spotify.com/track/3w3y8KPTfNeOKPiqUTakBh",
+    "progressMs": 31126,
+    "durationMs": 233478,
+    "playedAt": "2026-09-05T17:25:42.870Z"
   },
   "topArtists": [
     {
