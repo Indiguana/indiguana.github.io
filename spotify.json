@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-04T22:25:59.825Z",
+  "fetchedAt": "2026-09-05T00:14:21.304Z",
   "nowPlaying": {
-    "isPlaying": true,
-    "title": "Live While We're Young",
-    "artist": "One Direction",
-    "album": "Take Me Home (Expanded Edition)",
-    "art": "https://i.scdn.co/image/ab67616d00001e024e31e0d38b89b8fb239d4fbf",
-    "url": "https://open.spotify.com/track/6Vh03bkEfXqekWp7Y1UBRb",
-    "progressMs": 20227,
-    "durationMs": 200213,
-    "playedAt": "2026-09-04T22:25:59.825Z"
+    "isPlaying": false,
+    "title": "The Cup of Life (The Official Song of the World Cup, France '98) - Remix - English Radio Edit",
+    "artist": "Ricky Martin, Pablo Flores",
+    "album": "La Copa de la Vida",
+    "art": "https://i.scdn.co/image/ab67616d00001e02415a7799910a46c67fa313f6",
+    "url": "https://open.spotify.com/track/68CzXNGAMmb3k5MhLu0xVb",
+    "progressMs": null,
+    "durationMs": 279920,
+    "playedAt": "2026-09-04T23:46:44.275Z"
   },
   "topArtists": [
     {
@@ -51,6 +51,12 @@
       "url": "https://open.spotify.com/track/5ui44u6tEnipuke1eKYpMI"
     },
     {
+      "name": "Feels (feat. Pharrell Williams, Katy Perry & Big Sean)",
+      "sub": "Calvin Harris, Pharrell Williams, Katy Perry, Big Sean, Funk Wav",
+      "art": "https://i.scdn.co/image/ab67616d000048514d3fa5ce7ba599f4fd7803ef",
+      "url": "https://open.spotify.com/track/5bcTCxgc7xVfSaMV3RuVke"
+    },
+    {
       "name": "Love Me Not",
       "sub": "Ravyn Lenae",
       "art": "https://i.scdn.co/image/ab67616d000048510e62daaea2c7b94053e1c142",
@@ -61,12 +67,6 @@
       "sub": "The Handsome Family",
       "art": "https://i.scdn.co/image/ab67616d00004851851dd0306e2c810a5cf0d81d",
       "url": "https://open.spotify.com/track/5tWPG0AU9LVjONRofHcLD0"
-    },
-    {
-      "name": "Feels (feat. Pharrell Williams, Katy Perry & Big Sean)",
-      "sub": "Calvin Harris, Pharrell Williams, Katy Perry, Big Sean, Funk Wav",
-      "art": "https://i.scdn.co/image/ab67616d000048514d3fa5ce7ba599f4fd7803ef",
-      "url": "https://open.spotify.com/track/5bcTCxgc7xVfSaMV3RuVke"
     },
     {
       "name": "Stereo Love (Original)",
