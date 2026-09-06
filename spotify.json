@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-06T21:29:51.492Z",
+  "fetchedAt": "2026-09-06T23:01:53.288Z",
   "nowPlaying": {
-    "isPlaying": true,
-    "title": "WAGWAN",
-    "artist": "Central Cee",
-    "album": "ALL ROADS LEAD HOME",
-    "art": "https://i.scdn.co/image/ab67616d00001e0210f5b59ee71a232bc0681445",
-    "url": "https://open.spotify.com/track/33XUHrCbrAW6me9ewdCZip",
-    "progressMs": 68955,
-    "durationMs": 127000,
-    "playedAt": "2026-09-06T21:29:51.492Z"
+    "isPlaying": false,
+    "title": "Far From Any Road",
+    "artist": "The Handsome Family",
+    "album": "Singing Bones",
+    "art": "https://i.scdn.co/image/ab67616d00001e0243bf72818b91c6803029dbbe",
+    "url": "https://open.spotify.com/track/3LDkLpuxQlEuEiZmkxpr8S",
+    "progressMs": null,
+    "durationMs": 166493,
+    "playedAt": "2026-09-06T21:54:29.552Z"
   },
   "topArtists": [
     {
@@ -31,16 +31,16 @@
       "url": "https://open.spotify.com/artist/6eUKZXaKkcviH0Ku9w2n3V"
     },
     {
-      "name": "The Weeknd",
-      "sub": "",
-      "art": "https://i.scdn.co/image/ab6761610000f178c1719ac9e6a75c1c25835018",
-      "url": "https://open.spotify.com/artist/1Xyo4u8uXC1ZmMpatF05PJ"
-    },
-    {
       "name": "Maroon 5",
       "sub": "",
       "art": "https://i.scdn.co/image/ab6761610000f178f8349dfb619a7f842242de77",
       "url": "https://open.spotify.com/artist/04gDigrS5kc9YWfZHwBETP"
+    },
+    {
+      "name": "The Weeknd",
+      "sub": "",
+      "art": "https://i.scdn.co/image/ab6761610000f178c1719ac9e6a75c1c25835018",
+      "url": "https://open.spotify.com/artist/1Xyo4u8uXC1ZmMpatF05PJ"
     }
   ],
   "topTracks": [
@@ -49,6 +49,12 @@
       "sub": "Daniel Lanois",
       "art": "https://i.scdn.co/image/ab67616d00004851f337a21d945f44e802a1eb1d",
       "url": "https://open.spotify.com/track/5ui44u6tEnipuke1eKYpMI"
+    },
+    {
+      "name": "Far from Any Road",
+      "sub": "The Handsome Family",
+      "art": "https://i.scdn.co/image/ab67616d00004851851dd0306e2c810a5cf0d81d",
+      "url": "https://open.spotify.com/track/5tWPG0AU9LVjONRofHcLD0"
     },
     {
       "name": "Professor X",
@@ -67,12 +73,6 @@
       "sub": "Calvin Harris, Pharrell Williams, Katy Perry, Big Sean, Funk Wav",
       "art": "https://i.scdn.co/image/ab67616d000048514d3fa5ce7ba599f4fd7803ef",
       "url": "https://open.spotify.com/track/5bcTCxgc7xVfSaMV3RuVke"
-    },
-    {
-      "name": "Far from Any Road",
-      "sub": "The Handsome Family",
-      "art": "https://i.scdn.co/image/ab67616d00004851851dd0306e2c810a5cf0d81d",
-      "url": "https://open.spotify.com/track/5tWPG0AU9LVjONRofHcLD0"
     }
   ]
 }
