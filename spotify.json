@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-06T11:09:54.633Z",
+  "fetchedAt": "2026-09-06T17:11:32.697Z",
   "nowPlaying": {
     "isPlaying": false,
-    "title": "It Was Always You",
-    "artist": "Maroon 5",
-    "album": "V",
-    "art": "https://i.scdn.co/image/ab67616d00001e02442b53773d50e1b5369bb16c",
-    "url": "https://open.spotify.com/track/2PLo8T3kGE9URFvBy3tUdt",
+    "title": "Ghost",
+    "artist": "Justin Bieber",
+    "album": "Justice",
+    "art": "https://i.scdn.co/image/ab67616d00001e026036cfd2a718036fc523855f",
+    "url": "https://open.spotify.com/track/5dPz35akJjPqb17yeqNwqH",
     "progressMs": null,
-    "durationMs": 239920,
-    "playedAt": "2026-09-06T06:57:42.473Z"
+    "durationMs": 153190,
+    "playedAt": "2026-09-06T16:12:11.480Z"
   },
   "topArtists": [
     {
