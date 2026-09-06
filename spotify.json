@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-06T17:11:32.697Z",
+  "fetchedAt": "2026-09-06T19:21:07.082Z",
   "nowPlaying": {
-    "isPlaying": false,
-    "title": "Ghost",
-    "artist": "Justin Bieber",
-    "album": "Justice",
-    "art": "https://i.scdn.co/image/ab67616d00001e026036cfd2a718036fc523855f",
-    "url": "https://open.spotify.com/track/5dPz35akJjPqb17yeqNwqH",
-    "progressMs": null,
-    "durationMs": 153190,
-    "playedAt": "2026-09-06T16:12:11.480Z"
+    "isPlaying": true,
+    "title": "Budapest",
+    "artist": "George Ezra",
+    "album": "Wanted on Voyage (Expanded Edition)",
+    "art": "https://i.scdn.co/image/ab67616d00001e023a60095e50104070cc89ed9f",
+    "url": "https://open.spotify.com/track/2ixsaeFioXJmMgkkbd4uj1",
+    "progressMs": 113803,
+    "durationMs": 200573,
+    "playedAt": "2026-09-06T19:21:07.082Z"
   },
   "topArtists": [
     {
@@ -45,6 +45,12 @@
   ],
   "topTracks": [
     {
+      "name": "That's The Way It Is",
+      "sub": "Daniel Lanois",
+      "art": "https://i.scdn.co/image/ab67616d00004851f337a21d945f44e802a1eb1d",
+      "url": "https://open.spotify.com/track/5ui44u6tEnipuke1eKYpMI"
+    },
+    {
       "name": "Professor X",
       "sub": "Dave",
       "art": "https://i.scdn.co/image/ab67616d00004851cae5b7c28e0d94221745ed68",
@@ -61,12 +67,6 @@
       "sub": "Calvin Harris, Pharrell Williams, Katy Perry, Big Sean, Funk Wav",
       "art": "https://i.scdn.co/image/ab67616d000048514d3fa5ce7ba599f4fd7803ef",
       "url": "https://open.spotify.com/track/5bcTCxgc7xVfSaMV3RuVke"
-    },
-    {
-      "name": "That's The Way It Is",
-      "sub": "Daniel Lanois",
-      "art": "https://i.scdn.co/image/ab67616d00004851f337a21d945f44e802a1eb1d",
-      "url": "https://open.spotify.com/track/5ui44u6tEnipuke1eKYpMI"
     },
     {
       "name": "Far from Any Road",
