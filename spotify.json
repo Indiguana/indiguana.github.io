@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-06T01:09:06.797Z",
+  "fetchedAt": "2026-09-06T06:10:58.521Z",
   "nowPlaying": {
-    "isPlaying": false,
-    "title": "Shut Up and Dance",
-    "artist": "WALK THE MOON",
-    "album": "TALKING IS HARD",
-    "art": "https://i.scdn.co/image/ab67616d00001e02fc39eb9eb3f3824a58f338dc",
-    "url": "https://open.spotify.com/track/4kbj5MwxO1bq9wjT5g9HaA",
-    "progressMs": null,
-    "durationMs": 199080,
-    "playedAt": "2026-09-05T23:22:33.499Z"
+    "isPlaying": true,
+    "title": "One Call Away",
+    "artist": "Charlie Puth",
+    "album": "Nine Track Mind",
+    "art": "https://i.scdn.co/image/ab67616d00001e024fe297c018e495a97662e5ac",
+    "url": "https://open.spotify.com/track/7soJgKhQTO8hLP2JPRkL5O",
+    "progressMs": 98138,
+    "durationMs": 194453,
+    "playedAt": "2026-09-06T06:10:58.521Z"
   },
   "topArtists": [
     {
