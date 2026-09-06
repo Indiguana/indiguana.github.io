@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-05T23:04:56.091Z",
+  "fetchedAt": "2026-09-06T01:09:06.797Z",
   "nowPlaying": {
-    "isPlaying": true,
-    "title": "Take It On the Run",
-    "artist": "REO Speedwagon",
-    "album": "Hi Infidelity (30th Anniversary Edition)",
-    "art": "https://i.scdn.co/image/ab67616d00001e02d514470784e3d02ee0bcdb80",
-    "url": "https://open.spotify.com/track/5gys5nzVQIYhgHIfiOJYva",
-    "progressMs": 189289,
-    "durationMs": 239680,
-    "playedAt": "2026-09-05T23:04:56.091Z"
+    "isPlaying": false,
+    "title": "Shut Up and Dance",
+    "artist": "WALK THE MOON",
+    "album": "TALKING IS HARD",
+    "art": "https://i.scdn.co/image/ab67616d00001e02fc39eb9eb3f3824a58f338dc",
+    "url": "https://open.spotify.com/track/4kbj5MwxO1bq9wjT5g9HaA",
+    "progressMs": null,
+    "durationMs": 199080,
+    "playedAt": "2026-09-05T23:22:33.499Z"
   },
   "topArtists": [
     {
