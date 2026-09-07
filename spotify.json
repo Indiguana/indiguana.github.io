@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-07T01:09:36.150Z",
+  "fetchedAt": "2026-09-07T06:18:57.501Z",
   "nowPlaying": {
     "isPlaying": true,
-    "title": "18",
-    "artist": "One Direction",
-    "album": "FOUR (Deluxe)",
-    "art": "https://i.scdn.co/image/ab67616d00001e0234a29f220057810cce98e1b4",
-    "url": "https://open.spotify.com/track/3JjnGLK8IxkNLvo8Lb3KOM",
-    "progressMs": 98738,
-    "durationMs": 248357,
-    "playedAt": "2026-09-07T01:09:36.150Z"
+    "title": "Gone, Gone, Gone",
+    "artist": "Phillip Phillips",
+    "album": "The World From The Side Of The Moon",
+    "art": "https://i.scdn.co/image/ab67616d00001e025c75f5e02580f4c0c3e80e8e",
+    "url": "https://open.spotify.com/track/56sxN1yKg1dgOZXBcAHkJG",
+    "progressMs": 41159,
+    "durationMs": 209693,
+    "playedAt": "2026-09-07T06:18:57.501Z"
   },
   "topArtists": [
     {
