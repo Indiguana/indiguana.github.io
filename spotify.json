@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-07T18:01:12.040Z",
+  "fetchedAt": "2026-09-07T21:38:43.950Z",
   "nowPlaying": {
-    "isPlaying": false,
-    "title": "St. Patrick's",
-    "artist": "Central Cee",
-    "album": "CAN'T RUSH GREATNESS",
-    "art": "https://i.scdn.co/image/ab67616d00001e0258513cbc1bba4cd4c5f472ce",
-    "url": "https://open.spotify.com/track/2qzzG3HPPphZekVBxlEFLy",
-    "progressMs": null,
-    "durationMs": 160400,
-    "playedAt": "2026-09-07T17:56:57.524Z"
+    "isPlaying": true,
+    "title": "Galway Girl",
+    "artist": "Ed Sheeran",
+    "album": "÷ (Deluxe)",
+    "art": "https://i.scdn.co/image/ab67616d00001e02ba5db46f4b838ef6027e6f96",
+    "url": "https://open.spotify.com/track/0afhq8XCExXpqazXczTSve",
+    "progressMs": 122160,
+    "durationMs": 170826,
+    "playedAt": "2026-09-07T21:38:43.950Z"
   },
   "topArtists": [
     {
