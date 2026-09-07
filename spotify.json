@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-06T23:01:53.288Z",
+  "fetchedAt": "2026-09-07T01:09:36.150Z",
   "nowPlaying": {
-    "isPlaying": false,
-    "title": "Far From Any Road",
-    "artist": "The Handsome Family",
-    "album": "Singing Bones",
-    "art": "https://i.scdn.co/image/ab67616d00001e0243bf72818b91c6803029dbbe",
-    "url": "https://open.spotify.com/track/3LDkLpuxQlEuEiZmkxpr8S",
-    "progressMs": null,
-    "durationMs": 166493,
-    "playedAt": "2026-09-06T21:54:29.552Z"
+    "isPlaying": true,
+    "title": "18",
+    "artist": "One Direction",
+    "album": "FOUR (Deluxe)",
+    "art": "https://i.scdn.co/image/ab67616d00001e0234a29f220057810cce98e1b4",
+    "url": "https://open.spotify.com/track/3JjnGLK8IxkNLvo8Lb3KOM",
+    "progressMs": 98738,
+    "durationMs": 248357,
+    "playedAt": "2026-09-07T01:09:36.150Z"
   },
   "topArtists": [
     {
@@ -45,16 +45,16 @@
   ],
   "topTracks": [
     {
-      "name": "That's The Way It Is",
-      "sub": "Daniel Lanois",
-      "art": "https://i.scdn.co/image/ab67616d00004851f337a21d945f44e802a1eb1d",
-      "url": "https://open.spotify.com/track/5ui44u6tEnipuke1eKYpMI"
-    },
-    {
       "name": "Far from Any Road",
       "sub": "The Handsome Family",
       "art": "https://i.scdn.co/image/ab67616d00004851851dd0306e2c810a5cf0d81d",
       "url": "https://open.spotify.com/track/5tWPG0AU9LVjONRofHcLD0"
+    },
+    {
+      "name": "That's The Way It Is",
+      "sub": "Daniel Lanois",
+      "art": "https://i.scdn.co/image/ab67616d00004851f337a21d945f44e802a1eb1d",
+      "url": "https://open.spotify.com/track/5ui44u6tEnipuke1eKYpMI"
     },
     {
       "name": "Professor X",
