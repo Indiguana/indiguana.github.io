@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-07T06:18:57.501Z",
+  "fetchedAt": "2026-09-07T12:50:55.958Z",
   "nowPlaying": {
-    "isPlaying": true,
-    "title": "Gone, Gone, Gone",
-    "artist": "Phillip Phillips",
-    "album": "The World From The Side Of The Moon",
-    "art": "https://i.scdn.co/image/ab67616d00001e025c75f5e02580f4c0c3e80e8e",
-    "url": "https://open.spotify.com/track/56sxN1yKg1dgOZXBcAHkJG",
-    "progressMs": 41159,
-    "durationMs": 209693,
-    "playedAt": "2026-09-07T06:18:57.501Z"
+    "isPlaying": false,
+    "title": "Perfect",
+    "artist": "Ed Sheeran",
+    "album": "÷ (Deluxe)",
+    "art": "https://i.scdn.co/image/ab67616d00001e02ba5db46f4b838ef6027e6f96",
+    "url": "https://open.spotify.com/track/0tgVpDi06FyKpA1z0VMD4v",
+    "progressMs": null,
+    "durationMs": 263400,
+    "playedAt": "2026-09-07T07:28:31.401Z"
   },
   "topArtists": [
     {
@@ -37,10 +37,10 @@
       "url": "https://open.spotify.com/artist/04gDigrS5kc9YWfZHwBETP"
     },
     {
-      "name": "The Weeknd",
+      "name": "One Direction",
       "sub": "",
-      "art": "https://i.scdn.co/image/ab6761610000f178c1719ac9e6a75c1c25835018",
-      "url": "https://open.spotify.com/artist/1Xyo4u8uXC1ZmMpatF05PJ"
+      "art": "https://i.scdn.co/image/6c89c662ad0ab75bc2af9a3ae2b16f811daced50",
+      "url": "https://open.spotify.com/artist/4AK6F7OLvEQ5QYCBNiQWHq"
     }
   ],
   "topTracks": [
