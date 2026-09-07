@@ -1,38 +1,38 @@
 {
-  "fetchedAt": "2026-09-07T21:38:43.950Z",
+  "fetchedAt": "2026-09-07T23:52:51.261Z",
   "nowPlaying": {
     "isPlaying": true,
-    "title": "Galway Girl",
-    "artist": "Ed Sheeran",
-    "album": "÷ (Deluxe)",
-    "art": "https://i.scdn.co/image/ab67616d00001e02ba5db46f4b838ef6027e6f96",
-    "url": "https://open.spotify.com/track/0afhq8XCExXpqazXczTSve",
-    "progressMs": 122160,
-    "durationMs": 170826,
-    "playedAt": "2026-09-07T21:38:43.950Z"
+    "title": "Chicago",
+    "artist": "Michael Jackson",
+    "album": "XSCAPE",
+    "art": "https://i.scdn.co/image/ab67616d00001e0235f36cb686b0d5a12ab3a9f0",
+    "url": "https://open.spotify.com/track/5BKKy9fIJL5uM9fz1SnqyP",
+    "progressMs": 8527,
+    "durationMs": 245565,
+    "playedAt": "2026-09-07T23:52:51.261Z"
   },
   "topArtists": [
     {
       "name": "Dave",
-      "sub": "",
+      "sub": "Grime",
       "art": "https://i.scdn.co/image/ab6761610000f1782f23c7e361cef62490f44057",
       "url": "https://open.spotify.com/artist/6Ip8FS7vWT1uKkJSweANQK"
     },
     {
       "name": "Central Cee",
-      "sub": "",
+      "sub": "Uk Drill",
       "art": "https://i.scdn.co/image/ab6761610000f1786ce131983245fc2e6940f6c2",
       "url": "https://open.spotify.com/artist/5H4yInM5zmHqpKIoMNAx4r"
     },
     {
       "name": "Ed Sheeran",
-      "sub": "",
+      "sub": "Soft Pop",
       "art": "https://i.scdn.co/image/ab6761610000f178d55c95ad400aed87da52daec",
       "url": "https://open.spotify.com/artist/6eUKZXaKkcviH0Ku9w2n3V"
     },
     {
       "name": "Maroon 5",
-      "sub": "",
+      "sub": "Pop",
       "art": "https://i.scdn.co/image/ab6761610000f178f8349dfb619a7f842242de77",
       "url": "https://open.spotify.com/artist/04gDigrS5kc9YWfZHwBETP"
     },
