@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-08T02:21:54.571Z",
+  "fetchedAt": "2026-09-08T07:20:26.154Z",
   "nowPlaying": {
-    "isPlaying": true,
-    "title": "Africa",
-    "artist": "TOTO",
-    "album": "Toto IV",
-    "art": "https://i.scdn.co/image/ab67616d00001e02ebd6d20c0082524244ef83df",
-    "url": "https://open.spotify.com/track/2374M0fQpWi3dLnB54qaLX",
-    "progressMs": 94785,
-    "durationMs": 295282,
-    "playedAt": "2026-09-08T02:21:54.571Z"
+    "isPlaying": false,
+    "title": "Roll with the Changes",
+    "artist": "REO Speedwagon",
+    "album": "You Can Tune a Piano, But You Can't Tuna Fish",
+    "art": "https://i.scdn.co/image/ab67616d00001e0240c8a6ff21a1d52575185f38",
+    "url": "https://open.spotify.com/track/16x9viSmRS3PII71Pdeowc",
+    "progressMs": null,
+    "durationMs": 335826,
+    "playedAt": "2026-09-08T05:14:36.606Z"
   },
   "topArtists": [
     {
