@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-08T19:40:59.673Z",
+  "fetchedAt": "2026-09-08T22:13:48.664Z",
   "nowPlaying": {
     "isPlaying": false,
-    "title": "Must Be",
-    "artist": "Central Cee",
+    "title": "Truth In The Lies (feat. Lil Durk)",
+    "artist": "Central Cee, Lil Durk",
     "album": "CAN'T RUSH GREATNESS",
     "art": "https://i.scdn.co/image/ab67616d00001e0258513cbc1bba4cd4c5f472ce",
-    "url": "https://open.spotify.com/track/47a0VtquI7xeShHOYJpzXZ",
-    "progressMs": null,
-    "durationMs": 165893,
-    "playedAt": "2026-09-08T19:18:25.130Z"
+    "url": "https://open.spotify.com/track/6jx0JZB3f0Cc2jjdldYaDb",
+    "progressMs": 109248,
+    "durationMs": 142786,
+    "playedAt": "2026-09-08T22:13:48.664Z"
   },
   "topArtists": [
     {
