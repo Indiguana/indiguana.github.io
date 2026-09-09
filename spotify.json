@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-09T13:48:27.060Z",
+  "fetchedAt": "2026-09-09T17:27:18.129Z",
   "nowPlaying": {
     "isPlaying": false,
-    "title": "Happier",
-    "artist": "Ed Sheeran",
-    "album": "÷ (Deluxe)",
-    "art": "https://i.scdn.co/image/ab67616d00001e02ba5db46f4b838ef6027e6f96",
-    "url": "https://open.spotify.com/track/2RttW7RAu5nOAfq6YFvApB",
-    "progressMs": null,
-    "durationMs": 207520,
-    "playedAt": "2026-09-09T05:38:38.237Z"
+    "title": "Dinner Guest (feat. MoStack)",
+    "artist": "AJ Tracey, MoStack",
+    "album": "Flu Game",
+    "art": "https://i.scdn.co/image/ab67616d00001e025d480f31d47376166961da55",
+    "url": "https://open.spotify.com/track/0pMt7yNoZTu1gQByxkXaMu",
+    "progressMs": 28415,
+    "durationMs": 198000,
+    "playedAt": "2026-09-09T17:27:18.129Z"
   },
   "topArtists": [
     {
