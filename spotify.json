@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-09T04:56:58.887Z",
+  "fetchedAt": "2026-09-09T09:23:15.796Z",
   "nowPlaying": {
-    "isPlaying": true,
-    "title": "One Thing",
-    "artist": "One Direction",
-    "album": "Up All Night",
-    "art": "https://i.scdn.co/image/ab67616d00001e024a5584795dc73860653a9a3e",
-    "url": "https://open.spotify.com/track/5G2c6FsfTzgYUzageCmfXY",
-    "progressMs": 142695,
-    "durationMs": 197600,
-    "playedAt": "2026-09-09T04:56:58.887Z"
+    "isPlaying": false,
+    "title": "Happier",
+    "artist": "Ed Sheeran",
+    "album": "÷ (Deluxe)",
+    "art": "https://i.scdn.co/image/ab67616d00001e02ba5db46f4b838ef6027e6f96",
+    "url": "https://open.spotify.com/track/2RttW7RAu5nOAfq6YFvApB",
+    "progressMs": null,
+    "durationMs": 207520,
+    "playedAt": "2026-09-09T05:38:38.237Z"
   },
   "topArtists": [
     {
