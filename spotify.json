@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-09T00:23:43.482Z",
+  "fetchedAt": "2026-09-09T04:56:58.887Z",
   "nowPlaying": {
     "isPlaying": true,
-    "title": "Sprinter",
-    "artist": "Dave, Central Cee",
-    "album": "Sprinter",
-    "art": "https://i.scdn.co/image/ab67616d00001e02dd9f1f94f2f9a10310a3d525",
-    "url": "https://open.spotify.com/track/6NYbDTmstd7JSUWl2hVBqR",
-    "progressMs": 125007,
-    "durationMs": 229133,
-    "playedAt": "2026-09-09T00:23:43.482Z"
+    "title": "One Thing",
+    "artist": "One Direction",
+    "album": "Up All Night",
+    "art": "https://i.scdn.co/image/ab67616d00001e024a5584795dc73860653a9a3e",
+    "url": "https://open.spotify.com/track/5G2c6FsfTzgYUzageCmfXY",
+    "progressMs": 142695,
+    "durationMs": 197600,
+    "playedAt": "2026-09-09T04:56:58.887Z"
   },
   "topArtists": [
     {
