@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-09-09T09:23:15.796Z",
+  "fetchedAt": "2026-09-09T13:48:27.060Z",
   "nowPlaying": {
     "isPlaying": false,
     "title": "Happier",
@@ -14,25 +14,25 @@
   "topArtists": [
     {
       "name": "Dave",
-      "sub": "",
+      "sub": "Grime",
       "art": "https://i.scdn.co/image/ab6761610000f1782f23c7e361cef62490f44057",
       "url": "https://open.spotify.com/artist/6Ip8FS7vWT1uKkJSweANQK"
     },
     {
       "name": "Central Cee",
-      "sub": "",
+      "sub": "Uk Drill",
       "art": "https://i.scdn.co/image/ab6761610000f1786ce131983245fc2e6940f6c2",
       "url": "https://open.spotify.com/artist/5H4yInM5zmHqpKIoMNAx4r"
     },
     {
       "name": "Ed Sheeran",
-      "sub": "",
+      "sub": "Soft Pop",
       "art": "https://i.scdn.co/image/ab6761610000f178d55c95ad400aed87da52daec",
       "url": "https://open.spotify.com/artist/6eUKZXaKkcviH0Ku9w2n3V"
     },
     {
       "name": "Maroon 5",
-      "sub": "",
+      "sub": "Pop",
       "art": "https://i.scdn.co/image/ab6761610000f178f8349dfb619a7f842242de77",
       "url": "https://open.spotify.com/artist/04gDigrS5kc9YWfZHwBETP"
     },
