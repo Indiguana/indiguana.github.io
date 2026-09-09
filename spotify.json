@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-09T19:56:19.475Z",
+  "fetchedAt": "2026-09-09T22:13:14.537Z",
   "nowPlaying": {
-    "isPlaying": true,
-    "title": "Streatham",
-    "artist": "Dave",
-    "album": "PSYCHODRAMA",
-    "art": "https://i.scdn.co/image/ab67616d00001e02c1c8d2889455db6d03d309ed",
-    "url": "https://open.spotify.com/track/59PUOc7B0WCNNx8Nr4qaA4",
-    "progressMs": 162107,
-    "durationMs": 205720,
-    "playedAt": "2026-09-09T19:56:19.475Z"
+    "isPlaying": false,
+    "title": "Born To Be My Baby",
+    "artist": "Bon Jovi",
+    "album": "Bon Jovi Greatest Hits - The Ultimate Collection (Deluxe)",
+    "art": "https://i.scdn.co/image/ab67616d00001e0225860d98cf205d6f383f7163",
+    "url": "https://open.spotify.com/track/2IMbFMZusNwGHqF6pATrkV",
+    "progressMs": null,
+    "durationMs": 280453,
+    "playedAt": "2026-09-09T21:52:12.470Z"
   },
   "topArtists": [
     {
@@ -45,22 +45,16 @@
   ],
   "topTracks": [
     {
-      "name": "Far from Any Road",
-      "sub": "The Handsome Family",
-      "art": "https://i.scdn.co/image/ab67616d00004851851dd0306e2c810a5cf0d81d",
-      "url": "https://open.spotify.com/track/5tWPG0AU9LVjONRofHcLD0"
-    },
-    {
-      "name": "That's The Way It Is",
-      "sub": "Daniel Lanois",
-      "art": "https://i.scdn.co/image/ab67616d00004851f337a21d945f44e802a1eb1d",
-      "url": "https://open.spotify.com/track/5ui44u6tEnipuke1eKYpMI"
-    },
-    {
       "name": "Professor X",
       "sub": "Dave",
       "art": "https://i.scdn.co/image/ab67616d00004851cae5b7c28e0d94221745ed68",
       "url": "https://open.spotify.com/track/47lPVbZUh9547oTjx6J4ZV"
+    },
+    {
+      "name": "Far from Any Road",
+      "sub": "The Handsome Family",
+      "art": "https://i.scdn.co/image/ab67616d00004851851dd0306e2c810a5cf0d81d",
+      "url": "https://open.spotify.com/track/5tWPG0AU9LVjONRofHcLD0"
     },
     {
       "name": "Love Me Not",
@@ -69,10 +63,16 @@
       "url": "https://open.spotify.com/track/4WFgvKVfEhb3IUAFGrutTR"
     },
     {
-      "name": "Feels (feat. Pharrell Williams, Katy Perry & Big Sean)",
-      "sub": "Calvin Harris, Pharrell Williams, Katy Perry, Big Sean, Funk Wav",
-      "art": "https://i.scdn.co/image/ab67616d000048514d3fa5ce7ba599f4fd7803ef",
-      "url": "https://open.spotify.com/track/5bcTCxgc7xVfSaMV3RuVke"
+      "name": "That's The Way It Is",
+      "sub": "Daniel Lanois",
+      "art": "https://i.scdn.co/image/ab67616d00004851f337a21d945f44e802a1eb1d",
+      "url": "https://open.spotify.com/track/5ui44u6tEnipuke1eKYpMI"
+    },
+    {
+      "name": "Funky Friday",
+      "sub": "Dave, Fredo",
+      "art": "https://i.scdn.co/image/ab67616d000048515a0c97dad7ffeba533299e46",
+      "url": "https://open.spotify.com/track/7qVMGBe36nf1IpbsyQf1MR"
     }
   ]
 }
