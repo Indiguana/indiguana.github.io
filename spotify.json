@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-08T22:13:48.664Z",
+  "fetchedAt": "2026-09-09T00:23:43.482Z",
   "nowPlaying": {
-    "isPlaying": false,
-    "title": "Truth In The Lies (feat. Lil Durk)",
-    "artist": "Central Cee, Lil Durk",
-    "album": "CAN'T RUSH GREATNESS",
-    "art": "https://i.scdn.co/image/ab67616d00001e0258513cbc1bba4cd4c5f472ce",
-    "url": "https://open.spotify.com/track/6jx0JZB3f0Cc2jjdldYaDb",
-    "progressMs": 109248,
-    "durationMs": 142786,
-    "playedAt": "2026-09-08T22:13:48.664Z"
+    "isPlaying": true,
+    "title": "Sprinter",
+    "artist": "Dave, Central Cee",
+    "album": "Sprinter",
+    "art": "https://i.scdn.co/image/ab67616d00001e02dd9f1f94f2f9a10310a3d525",
+    "url": "https://open.spotify.com/track/6NYbDTmstd7JSUWl2hVBqR",
+    "progressMs": 125007,
+    "durationMs": 229133,
+    "playedAt": "2026-09-09T00:23:43.482Z"
   },
   "topArtists": [
     {
