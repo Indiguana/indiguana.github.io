@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-10T09:25:35.490Z",
+  "fetchedAt": "2026-09-10T13:43:36.820Z",
   "nowPlaying": {
     "isPlaying": false,
-    "title": "How Long",
-    "artist": "Charlie Puth",
-    "album": "Voicenotes",
-    "art": "https://i.scdn.co/image/ab67616d00001e02897f73256b9128a9d70eaf66",
-    "url": "https://open.spotify.com/track/6wmAHw1szh5RCKSRjiXhPe",
+    "title": "Bad Medicine",
+    "artist": "Bon Jovi",
+    "album": "New Jersey (Deluxe Edition)",
+    "art": "https://i.scdn.co/image/ab67616d00001e02901d0116a03d30a5c45bb99c",
+    "url": "https://open.spotify.com/track/72hcFp4tYkd3dbNA9dZ3Pv",
     "progressMs": null,
-    "durationMs": 200853,
-    "playedAt": "2026-09-10T06:53:31.379Z"
+    "durationMs": 316706,
+    "playedAt": "2026-09-10T13:37:21.095Z"
   },
   "topArtists": [
     {
