@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-10T17:25:15.252Z",
+  "fetchedAt": "2026-09-10T19:54:24.556Z",
   "nowPlaying": {
     "isPlaying": false,
-    "title": "Minimum ça",
-    "artist": "Dr. Yaro",
-    "album": "Minimum ça",
-    "art": "https://i.scdn.co/image/ab67616d00001e02e2b4a9e1813e0ed20ca0e145",
-    "url": "https://open.spotify.com/track/4mNttG8qiVh4BKrMUrUhCI",
+    "title": "Money Talks - feat. Dave",
+    "artist": "Fredo, Dave",
+    "album": "Money Talks (feat. Dave)",
+    "art": "https://i.scdn.co/image/ab67616d00001e02cb95ac6567558bd53d847296",
+    "url": "https://open.spotify.com/track/6nvbfM5pVDXHNEHiZwpjkl",
     "progressMs": null,
-    "durationMs": 149812,
-    "playedAt": "2026-09-10T17:17:47.687Z"
+    "durationMs": 273666,
+    "playedAt": "2026-09-10T19:15:29.917Z"
   },
   "topArtists": [
     {
@@ -51,16 +51,16 @@
       "url": "https://open.spotify.com/track/47lPVbZUh9547oTjx6J4ZV"
     },
     {
-      "name": "That's The Way It Is",
-      "sub": "Daniel Lanois",
-      "art": "https://i.scdn.co/image/ab67616d00004851f337a21d945f44e802a1eb1d",
-      "url": "https://open.spotify.com/track/5ui44u6tEnipuke1eKYpMI"
-    },
-    {
       "name": "Far from Any Road",
       "sub": "The Handsome Family",
       "art": "https://i.scdn.co/image/ab67616d00004851851dd0306e2c810a5cf0d81d",
       "url": "https://open.spotify.com/track/5tWPG0AU9LVjONRofHcLD0"
+    },
+    {
+      "name": "That's The Way It Is",
+      "sub": "Daniel Lanois",
+      "art": "https://i.scdn.co/image/ab67616d00004851f337a21d945f44e802a1eb1d",
+      "url": "https://open.spotify.com/track/5ui44u6tEnipuke1eKYpMI"
     },
     {
       "name": "Love Me Not",
@@ -69,10 +69,10 @@
       "url": "https://open.spotify.com/track/4WFgvKVfEhb3IUAFGrutTR"
     },
     {
-      "name": "Feels (feat. Pharrell Williams, Katy Perry & Big Sean)",
-      "sub": "Calvin Harris, Pharrell Williams, Katy Perry, Big Sean, Funk Wav",
-      "art": "https://i.scdn.co/image/ab67616d000048514d3fa5ce7ba599f4fd7803ef",
-      "url": "https://open.spotify.com/track/5bcTCxgc7xVfSaMV3RuVke"
+      "name": "Funky Friday",
+      "sub": "Dave, Fredo",
+      "art": "https://i.scdn.co/image/ab67616d000048515a0c97dad7ffeba533299e46",
+      "url": "https://open.spotify.com/track/7qVMGBe36nf1IpbsyQf1MR"
     }
   ]
 }
