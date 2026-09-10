@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-10T19:54:24.556Z",
+  "fetchedAt": "2026-09-10T22:08:51.995Z",
   "nowPlaying": {
-    "isPlaying": false,
-    "title": "Money Talks - feat. Dave",
-    "artist": "Fredo, Dave",
-    "album": "Money Talks (feat. Dave)",
-    "art": "https://i.scdn.co/image/ab67616d00001e02cb95ac6567558bd53d847296",
-    "url": "https://open.spotify.com/track/6nvbfM5pVDXHNEHiZwpjkl",
-    "progressMs": null,
-    "durationMs": 273666,
-    "playedAt": "2026-09-10T19:15:29.917Z"
+    "isPlaying": true,
+    "title": "Photograph",
+    "artist": "Ed Sheeran",
+    "album": "x (Wembley Edition)",
+    "art": "https://i.scdn.co/image/ab67616d00001e02d08209944468440145f01524",
+    "url": "https://open.spotify.com/track/6fxVffaTuwjgEk5h9QyRjy",
+    "progressMs": 214516,
+    "durationMs": 258986,
+    "playedAt": "2026-09-10T22:08:51.995Z"
   },
   "topArtists": [
     {
@@ -45,6 +45,12 @@
   ],
   "topTracks": [
     {
+      "name": "That's The Way It Is",
+      "sub": "Daniel Lanois",
+      "art": "https://i.scdn.co/image/ab67616d00004851f337a21d945f44e802a1eb1d",
+      "url": "https://open.spotify.com/track/5ui44u6tEnipuke1eKYpMI"
+    },
+    {
       "name": "Professor X",
       "sub": "Dave",
       "art": "https://i.scdn.co/image/ab67616d00004851cae5b7c28e0d94221745ed68",
@@ -55,12 +61,6 @@
       "sub": "The Handsome Family",
       "art": "https://i.scdn.co/image/ab67616d00004851851dd0306e2c810a5cf0d81d",
       "url": "https://open.spotify.com/track/5tWPG0AU9LVjONRofHcLD0"
-    },
-    {
-      "name": "That's The Way It Is",
-      "sub": "Daniel Lanois",
-      "art": "https://i.scdn.co/image/ab67616d00004851f337a21d945f44e802a1eb1d",
-      "url": "https://open.spotify.com/track/5ui44u6tEnipuke1eKYpMI"
     },
     {
       "name": "Love Me Not",
