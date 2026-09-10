@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-09T22:13:14.537Z",
+  "fetchedAt": "2026-09-10T04:58:44.145Z",
   "nowPlaying": {
-    "isPlaying": false,
-    "title": "Born To Be My Baby",
-    "artist": "Bon Jovi",
-    "album": "Bon Jovi Greatest Hits - The Ultimate Collection (Deluxe)",
-    "art": "https://i.scdn.co/image/ab67616d00001e0225860d98cf205d6f383f7163",
-    "url": "https://open.spotify.com/track/2IMbFMZusNwGHqF6pATrkV",
-    "progressMs": null,
-    "durationMs": 280453,
-    "playedAt": "2026-09-09T21:52:12.470Z"
+    "isPlaying": true,
+    "title": "Midnight Memories",
+    "artist": "One Direction",
+    "album": "Midnight Memories (Deluxe)",
+    "art": "https://i.scdn.co/image/ab67616d00001e023cf0191cca87a4bc7e34bc4a",
+    "url": "https://open.spotify.com/track/5wjmqUGN7vrAqFqDWrywlZ",
+    "progressMs": 19963,
+    "durationMs": 176314,
+    "playedAt": "2026-09-10T04:58:44.145Z"
   },
   "topArtists": [
     {
@@ -51,6 +51,12 @@
       "url": "https://open.spotify.com/track/47lPVbZUh9547oTjx6J4ZV"
     },
     {
+      "name": "That's The Way It Is",
+      "sub": "Daniel Lanois",
+      "art": "https://i.scdn.co/image/ab67616d00004851f337a21d945f44e802a1eb1d",
+      "url": "https://open.spotify.com/track/5ui44u6tEnipuke1eKYpMI"
+    },
+    {
       "name": "Far from Any Road",
       "sub": "The Handsome Family",
       "art": "https://i.scdn.co/image/ab67616d00004851851dd0306e2c810a5cf0d81d",
@@ -63,16 +69,10 @@
       "url": "https://open.spotify.com/track/4WFgvKVfEhb3IUAFGrutTR"
     },
     {
-      "name": "That's The Way It Is",
-      "sub": "Daniel Lanois",
-      "art": "https://i.scdn.co/image/ab67616d00004851f337a21d945f44e802a1eb1d",
-      "url": "https://open.spotify.com/track/5ui44u6tEnipuke1eKYpMI"
-    },
-    {
-      "name": "Funky Friday",
-      "sub": "Dave, Fredo",
-      "art": "https://i.scdn.co/image/ab67616d000048515a0c97dad7ffeba533299e46",
-      "url": "https://open.spotify.com/track/7qVMGBe36nf1IpbsyQf1MR"
+      "name": "Feels (feat. Pharrell Williams, Katy Perry & Big Sean)",
+      "sub": "Calvin Harris, Pharrell Williams, Katy Perry, Big Sean, Funk Wav",
+      "art": "https://i.scdn.co/image/ab67616d000048514d3fa5ce7ba599f4fd7803ef",
+      "url": "https://open.spotify.com/track/5bcTCxgc7xVfSaMV3RuVke"
     }
   ]
 }
