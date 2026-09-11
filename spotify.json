@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-11T00:18:26.332Z",
+  "fetchedAt": "2026-09-11T04:56:23.952Z",
   "nowPlaying": {
-    "isPlaying": false,
-    "title": "Funky Friday",
-    "artist": "Dave, Fredo",
-    "album": "Funky Friday",
-    "art": "https://i.scdn.co/image/ab67616d00001e025a0c97dad7ffeba533299e46",
-    "url": "https://open.spotify.com/track/7qVMGBe36nf1IpbsyQf1MR",
-    "progressMs": null,
-    "durationMs": 182741,
-    "playedAt": "2026-09-10T23:05:30.020Z"
+    "isPlaying": true,
+    "title": "West Ten (with Mabel)",
+    "artist": "AJ Tracey, Mabel",
+    "album": "Flu Game",
+    "art": "https://i.scdn.co/image/ab67616d00001e025d480f31d47376166961da55",
+    "url": "https://open.spotify.com/track/1kNUlYIquh3WpllRoTCRJR",
+    "progressMs": 97328,
+    "durationMs": 214500,
+    "playedAt": "2026-09-11T04:56:23.952Z"
   },
   "topArtists": [
     {
