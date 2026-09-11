@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-11T09:19:47.863Z",
+  "fetchedAt": "2026-09-11T17:26:40.320Z",
   "nowPlaying": {
-    "isPlaying": false,
-    "title": "Perfect",
-    "artist": "One Direction",
-    "album": "Made In The A.M. (Deluxe Edition)",
-    "art": "https://i.scdn.co/image/ab67616d00001e024a075ca70ae4143a37eb4fbe",
-    "url": "https://open.spotify.com/track/3NLnwwAQbbFKcEcV8hDItk",
-    "progressMs": null,
-    "durationMs": 230341,
-    "playedAt": "2026-09-11T06:46:09.143Z"
+    "isPlaying": true,
+    "title": "Hayya Hayya (Better Together) - Music from the FIFA World Cup Qatar 2022 Official Soundtrack",
+    "artist": "Trinidad Cardona, Davido, Aisha, FIFA Sound",
+    "album": "Hayya Hayya (Better Together) [Music from FIFA World Cup Qatar 2022 Soundtrack]",
+    "art": "https://i.scdn.co/image/ab67616d00001e0251f2cf37e1ce1fe25ec927df",
+    "url": "https://open.spotify.com/track/7vAJiDFrFtMYVOrZbOw7jj",
+    "progressMs": 122961,
+    "durationMs": 206069,
+    "playedAt": "2026-09-11T17:26:40.320Z"
   },
   "topArtists": [
     {
@@ -51,16 +51,16 @@
       "url": "https://open.spotify.com/track/5tWPG0AU9LVjONRofHcLD0"
     },
     {
-      "name": "That's The Way It Is",
-      "sub": "Daniel Lanois",
-      "art": "https://i.scdn.co/image/ab67616d00004851f337a21d945f44e802a1eb1d",
-      "url": "https://open.spotify.com/track/5ui44u6tEnipuke1eKYpMI"
-    },
-    {
       "name": "Professor X",
       "sub": "Dave",
       "art": "https://i.scdn.co/image/ab67616d00004851cae5b7c28e0d94221745ed68",
       "url": "https://open.spotify.com/track/47lPVbZUh9547oTjx6J4ZV"
+    },
+    {
+      "name": "That's The Way It Is",
+      "sub": "Daniel Lanois",
+      "art": "https://i.scdn.co/image/ab67616d00004851f337a21d945f44e802a1eb1d",
+      "url": "https://open.spotify.com/track/5ui44u6tEnipuke1eKYpMI"
     },
     {
       "name": "Love Me Not",
