@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-11T04:56:23.952Z",
+  "fetchedAt": "2026-09-11T09:19:47.863Z",
   "nowPlaying": {
-    "isPlaying": true,
-    "title": "West Ten (with Mabel)",
-    "artist": "AJ Tracey, Mabel",
-    "album": "Flu Game",
-    "art": "https://i.scdn.co/image/ab67616d00001e025d480f31d47376166961da55",
-    "url": "https://open.spotify.com/track/1kNUlYIquh3WpllRoTCRJR",
-    "progressMs": 97328,
-    "durationMs": 214500,
-    "playedAt": "2026-09-11T04:56:23.952Z"
+    "isPlaying": false,
+    "title": "Perfect",
+    "artist": "One Direction",
+    "album": "Made In The A.M. (Deluxe Edition)",
+    "art": "https://i.scdn.co/image/ab67616d00001e024a075ca70ae4143a37eb4fbe",
+    "url": "https://open.spotify.com/track/3NLnwwAQbbFKcEcV8hDItk",
+    "progressMs": null,
+    "durationMs": 230341,
+    "playedAt": "2026-09-11T06:46:09.143Z"
   },
   "topArtists": [
     {
@@ -31,30 +31,30 @@
       "url": "https://open.spotify.com/artist/6eUKZXaKkcviH0Ku9w2n3V"
     },
     {
-      "name": "Maroon 5",
-      "sub": "",
-      "art": "https://i.scdn.co/image/ab6761610000f178f8349dfb619a7f842242de77",
-      "url": "https://open.spotify.com/artist/04gDigrS5kc9YWfZHwBETP"
-    },
-    {
       "name": "One Direction",
       "sub": "",
       "art": "https://i.scdn.co/image/6c89c662ad0ab75bc2af9a3ae2b16f811daced50",
       "url": "https://open.spotify.com/artist/4AK6F7OLvEQ5QYCBNiQWHq"
+    },
+    {
+      "name": "Maroon 5",
+      "sub": "",
+      "art": "https://i.scdn.co/image/ab6761610000f178f8349dfb619a7f842242de77",
+      "url": "https://open.spotify.com/artist/04gDigrS5kc9YWfZHwBETP"
     }
   ],
   "topTracks": [
-    {
-      "name": "That's The Way It Is",
-      "sub": "Daniel Lanois",
-      "art": "https://i.scdn.co/image/ab67616d00004851f337a21d945f44e802a1eb1d",
-      "url": "https://open.spotify.com/track/5ui44u6tEnipuke1eKYpMI"
-    },
     {
       "name": "Far from Any Road",
       "sub": "The Handsome Family",
       "art": "https://i.scdn.co/image/ab67616d00004851851dd0306e2c810a5cf0d81d",
       "url": "https://open.spotify.com/track/5tWPG0AU9LVjONRofHcLD0"
+    },
+    {
+      "name": "That's The Way It Is",
+      "sub": "Daniel Lanois",
+      "art": "https://i.scdn.co/image/ab67616d00004851f337a21d945f44e802a1eb1d",
+      "url": "https://open.spotify.com/track/5ui44u6tEnipuke1eKYpMI"
     },
     {
       "name": "Professor X",
