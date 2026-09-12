@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-12T04:49:14.823Z",
+  "fetchedAt": "2026-09-12T08:57:48.028Z",
   "nowPlaying": {
-    "isPlaying": true,
-    "title": "Joga Bonito",
-    "artist": "AJ Tracey",
-    "album": "Don't Die Before You're Dead",
-    "art": "https://i.scdn.co/image/ab67616d00001e026eb0e0692d98696d69b2e272",
-    "url": "https://open.spotify.com/track/7o371IOQNPlaByVM0vKbgf",
-    "progressMs": 95727,
-    "durationMs": 124471,
-    "playedAt": "2026-09-12T04:49:14.823Z"
+    "isPlaying": false,
+    "title": "One More Night",
+    "artist": "Maroon 5",
+    "album": "Overexposed (Deluxe)",
+    "art": "https://i.scdn.co/image/ab67616d00001e02ce7d499847da02a9cbd1c084",
+    "url": "https://open.spotify.com/track/4XNrMwGx1SqP01sqkGTDmo",
+    "progressMs": null,
+    "durationMs": 219466,
+    "playedAt": "2026-09-12T08:18:40.194Z"
   },
   "topArtists": [
     {
@@ -31,16 +31,16 @@
       "url": "https://open.spotify.com/artist/6eUKZXaKkcviH0Ku9w2n3V"
     },
     {
-      "name": "One Direction",
-      "sub": "",
-      "art": "https://i.scdn.co/image/6c89c662ad0ab75bc2af9a3ae2b16f811daced50",
-      "url": "https://open.spotify.com/artist/4AK6F7OLvEQ5QYCBNiQWHq"
-    },
-    {
       "name": "Maroon 5",
       "sub": "",
       "art": "https://i.scdn.co/image/ab6761610000f178f8349dfb619a7f842242de77",
       "url": "https://open.spotify.com/artist/04gDigrS5kc9YWfZHwBETP"
+    },
+    {
+      "name": "One Direction",
+      "sub": "",
+      "art": "https://i.scdn.co/image/6c89c662ad0ab75bc2af9a3ae2b16f811daced50",
+      "url": "https://open.spotify.com/artist/4AK6F7OLvEQ5QYCBNiQWHq"
     }
   ],
   "topTracks": [
@@ -49,6 +49,12 @@
       "sub": "The Handsome Family",
       "art": "https://i.scdn.co/image/ab67616d00004851851dd0306e2c810a5cf0d81d",
       "url": "https://open.spotify.com/track/5tWPG0AU9LVjONRofHcLD0"
+    },
+    {
+      "name": "That's The Way It Is",
+      "sub": "Daniel Lanois",
+      "art": "https://i.scdn.co/image/ab67616d00004851f337a21d945f44e802a1eb1d",
+      "url": "https://open.spotify.com/track/5ui44u6tEnipuke1eKYpMI"
     },
     {
       "name": "Professor X",
@@ -61,12 +67,6 @@
       "sub": "Ravyn Lenae",
       "art": "https://i.scdn.co/image/ab67616d000048510e62daaea2c7b94053e1c142",
       "url": "https://open.spotify.com/track/4WFgvKVfEhb3IUAFGrutTR"
-    },
-    {
-      "name": "That's The Way It Is",
-      "sub": "Daniel Lanois",
-      "art": "https://i.scdn.co/image/ab67616d00004851f337a21d945f44e802a1eb1d",
-      "url": "https://open.spotify.com/track/5ui44u6tEnipuke1eKYpMI"
     },
     {
       "name": "Funky Friday",
