@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-11T22:07:55.916Z",
+  "fetchedAt": "2026-09-12T00:25:30.006Z",
   "nowPlaying": {
     "isPlaying": false,
-    "title": "Dai Dai",
-    "artist": "Shakira, Burna Boy",
-    "album": "Dai Dai",
-    "art": "https://i.scdn.co/image/ab67616d00001e0203cadf1b3fe324c1dc710ed4",
-    "url": "https://open.spotify.com/track/0kosUz0jePvjiz4ctmR6wL",
+    "title": "Far From Any Road",
+    "artist": "The Handsome Family",
+    "album": "Singing Bones",
+    "art": "https://i.scdn.co/image/ab67616d00001e0243bf72818b91c6803029dbbe",
+    "url": "https://open.spotify.com/track/3LDkLpuxQlEuEiZmkxpr8S",
     "progressMs": null,
-    "durationMs": 223448,
-    "playedAt": "2026-09-11T21:55:32.271Z"
+    "durationMs": 166493,
+    "playedAt": "2026-09-11T23:45:07.582Z"
   },
   "topArtists": [
     {
