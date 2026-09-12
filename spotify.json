@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-12T00:25:30.006Z",
+  "fetchedAt": "2026-09-12T04:49:14.823Z",
   "nowPlaying": {
-    "isPlaying": false,
-    "title": "Far From Any Road",
-    "artist": "The Handsome Family",
-    "album": "Singing Bones",
-    "art": "https://i.scdn.co/image/ab67616d00001e0243bf72818b91c6803029dbbe",
-    "url": "https://open.spotify.com/track/3LDkLpuxQlEuEiZmkxpr8S",
-    "progressMs": null,
-    "durationMs": 166493,
-    "playedAt": "2026-09-11T23:45:07.582Z"
+    "isPlaying": true,
+    "title": "Joga Bonito",
+    "artist": "AJ Tracey",
+    "album": "Don't Die Before You're Dead",
+    "art": "https://i.scdn.co/image/ab67616d00001e026eb0e0692d98696d69b2e272",
+    "url": "https://open.spotify.com/track/7o371IOQNPlaByVM0vKbgf",
+    "progressMs": 95727,
+    "durationMs": 124471,
+    "playedAt": "2026-09-12T04:49:14.823Z"
   },
   "topArtists": [
     {
@@ -57,16 +57,16 @@
       "url": "https://open.spotify.com/track/47lPVbZUh9547oTjx6J4ZV"
     },
     {
-      "name": "That's The Way It Is",
-      "sub": "Daniel Lanois",
-      "art": "https://i.scdn.co/image/ab67616d00004851f337a21d945f44e802a1eb1d",
-      "url": "https://open.spotify.com/track/5ui44u6tEnipuke1eKYpMI"
-    },
-    {
       "name": "Love Me Not",
       "sub": "Ravyn Lenae",
       "art": "https://i.scdn.co/image/ab67616d000048510e62daaea2c7b94053e1c142",
       "url": "https://open.spotify.com/track/4WFgvKVfEhb3IUAFGrutTR"
+    },
+    {
+      "name": "That's The Way It Is",
+      "sub": "Daniel Lanois",
+      "art": "https://i.scdn.co/image/ab67616d00004851f337a21d945f44e802a1eb1d",
+      "url": "https://open.spotify.com/track/5ui44u6tEnipuke1eKYpMI"
     },
     {
       "name": "Funky Friday",
