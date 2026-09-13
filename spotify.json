@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-13T00:30:49.615Z",
+  "fetchedAt": "2026-09-13T05:31:54.498Z",
   "nowPlaying": {
     "isPlaying": true,
-    "title": "Save Your Tears",
-    "artist": "The Weeknd",
-    "album": "After Hours",
-    "art": "https://i.scdn.co/image/ab67616d00001e028863bc11d2aa12b54f5aeb36",
-    "url": "https://open.spotify.com/track/5QO79kh1waicV47BqGRL3g",
-    "progressMs": 25689,
-    "durationMs": 215626,
-    "playedAt": "2026-09-13T00:30:49.615Z"
+    "title": "Save Your Tears (with Ariana Grande) (Remix)",
+    "artist": "The Weeknd, Ariana Grande",
+    "album": "Save Your Tears (Remix)",
+    "art": "https://i.scdn.co/image/ab67616d00001e02c6af5ffa661a365b77df6ef6",
+    "url": "https://open.spotify.com/track/37BZB0z9T8Xu7U3e65qxFy",
+    "progressMs": 44235,
+    "durationMs": 191013,
+    "playedAt": "2026-09-13T05:31:54.498Z"
   },
   "topArtists": [
     {
