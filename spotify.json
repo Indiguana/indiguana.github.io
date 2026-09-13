@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-12T22:44:02.152Z",
+  "fetchedAt": "2026-09-13T00:30:49.615Z",
   "nowPlaying": {
     "isPlaying": true,
-    "title": "Doja",
-    "artist": "Central Cee",
-    "album": "Doja",
-    "art": "https://i.scdn.co/image/ab67616d00001e0291de4cb28d9066225b55e603",
-    "url": "https://open.spotify.com/track/3LtpKP5abr2qqjunvjlX5i",
-    "progressMs": 50364,
-    "durationMs": 97392,
-    "playedAt": "2026-09-12T22:44:02.152Z"
+    "title": "Save Your Tears",
+    "artist": "The Weeknd",
+    "album": "After Hours",
+    "art": "https://i.scdn.co/image/ab67616d00001e028863bc11d2aa12b54f5aeb36",
+    "url": "https://open.spotify.com/track/5QO79kh1waicV47BqGRL3g",
+    "progressMs": 25689,
+    "durationMs": 215626,
+    "playedAt": "2026-09-13T00:30:49.615Z"
   },
   "topArtists": [
     {
@@ -69,10 +69,10 @@
       "url": "https://open.spotify.com/track/4WFgvKVfEhb3IUAFGrutTR"
     },
     {
-      "name": "Funky Friday",
-      "sub": "Dave, Fredo",
-      "art": "https://i.scdn.co/image/ab67616d000048515a0c97dad7ffeba533299e46",
-      "url": "https://open.spotify.com/track/7qVMGBe36nf1IpbsyQf1MR"
+      "name": "Sprinter",
+      "sub": "Dave, Central Cee",
+      "art": "https://i.scdn.co/image/ab67616d00004851dd9f1f94f2f9a10310a3d525",
+      "url": "https://open.spotify.com/track/6NYbDTmstd7JSUWl2hVBqR"
     }
   ]
 }
