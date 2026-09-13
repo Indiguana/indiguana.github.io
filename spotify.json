@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-13T05:31:54.498Z",
+  "fetchedAt": "2026-09-13T10:51:54.479Z",
   "nowPlaying": {
-    "isPlaying": true,
-    "title": "Save Your Tears (with Ariana Grande) (Remix)",
-    "artist": "The Weeknd, Ariana Grande",
-    "album": "Save Your Tears (Remix)",
-    "art": "https://i.scdn.co/image/ab67616d00001e02c6af5ffa661a365b77df6ef6",
-    "url": "https://open.spotify.com/track/37BZB0z9T8Xu7U3e65qxFy",
-    "progressMs": 44235,
-    "durationMs": 191013,
-    "playedAt": "2026-09-13T05:31:54.498Z"
+    "isPlaying": false,
+    "title": "This Is Me",
+    "artist": "Keala Settle, The Greatest Showman Ensemble",
+    "album": "The Greatest Showman (Original Motion Picture Soundtrack)",
+    "art": "https://i.scdn.co/image/ab67616d00001e02128057b40732c042c86de1dd",
+    "url": "https://open.spotify.com/track/45aBsnKRWUzhwbcqOJLwfe",
+    "progressMs": null,
+    "durationMs": 234706,
+    "playedAt": "2026-09-13T06:22:58.497Z"
   },
   "topArtists": [
     {
