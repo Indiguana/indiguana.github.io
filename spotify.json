@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-13T10:51:54.479Z",
+  "fetchedAt": "2026-09-13T17:48:38.979Z",
   "nowPlaying": {
-    "isPlaying": false,
-    "title": "This Is Me",
-    "artist": "Keala Settle, The Greatest Showman Ensemble",
-    "album": "The Greatest Showman (Original Motion Picture Soundtrack)",
-    "art": "https://i.scdn.co/image/ab67616d00001e02128057b40732c042c86de1dd",
-    "url": "https://open.spotify.com/track/45aBsnKRWUzhwbcqOJLwfe",
-    "progressMs": null,
-    "durationMs": 234706,
-    "playedAt": "2026-09-13T06:22:58.497Z"
+    "isPlaying": true,
+    "title": "Superhero (Heroes & Villains) [with Future & Chris Brown]",
+    "artist": "Metro Boomin, Future, Chris Brown",
+    "album": "HEROES & VILLAINS",
+    "art": "https://i.scdn.co/image/ab67616d00001e02c4fee55d7b51479627c31f89",
+    "url": "https://open.spotify.com/track/0vjeOZ3Ft5jvAi9SBFJm1j",
+    "progressMs": 62838,
+    "durationMs": 182666,
+    "playedAt": "2026-09-13T17:48:38.979Z"
   },
   "topArtists": [
     {
