@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-13T20:03:41.989Z",
+  "fetchedAt": "2026-09-13T22:30:10.141Z",
   "nowPlaying": {
-    "isPlaying": true,
-    "title": "Burning Heart - From \"Rocky IV\" Soundtrack",
-    "artist": "Survivor",
-    "album": "Rocky IV",
-    "art": "https://i.scdn.co/image/ab67616d00001e02f4a2ccbe20d6d52f16816812",
-    "url": "https://open.spotify.com/track/2avaSeKHI5l4sLruVfLdi2",
-    "progressMs": 21225,
-    "durationMs": 230720,
-    "playedAt": "2026-09-13T20:03:41.989Z"
+    "isPlaying": false,
+    "title": "Thunderstruck",
+    "artist": "AC/DC",
+    "album": "The Razors Edge",
+    "art": "https://i.scdn.co/image/ab67616d00001e029a9b1cc067e4460da04adce2",
+    "url": "https://open.spotify.com/track/57bgtoPSgt236HzfBOd8kj",
+    "progressMs": null,
+    "durationMs": 292333,
+    "playedAt": "2026-09-13T21:56:49.791Z"
   },
   "topArtists": [
     {
