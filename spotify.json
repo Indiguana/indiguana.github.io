@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-14T16:43:59.394Z",
+  "fetchedAt": "2026-09-14T20:41:47.750Z",
   "nowPlaying": {
     "isPlaying": false,
-    "title": "Shape of You",
-    "artist": "Ed Sheeran",
-    "album": "÷ (Deluxe)",
-    "art": "https://i.scdn.co/image/ab67616d00001e02ba5db46f4b838ef6027e6f96",
-    "url": "https://open.spotify.com/track/7qiZfU4dY1lWllzX7mPBI3",
+    "title": "It Wasn't Me",
+    "artist": "Shaggy, Rik Rok",
+    "album": "Hot Shot",
+    "art": "https://i.scdn.co/image/ab67616d00001e029449f9491c364d28a9668e17",
+    "url": "https://open.spotify.com/track/3WkibOpDF7cQ5xntM1epyf",
     "progressMs": null,
-    "durationMs": 233712,
-    "playedAt": "2026-09-14T15:36:47.892Z"
+    "durationMs": 227600,
+    "playedAt": "2026-09-14T20:19:25.906Z"
   },
   "topArtists": [
     {
@@ -51,16 +51,16 @@
       "url": "https://open.spotify.com/track/5tWPG0AU9LVjONRofHcLD0"
     },
     {
-      "name": "Love Me Not",
-      "sub": "Ravyn Lenae",
-      "art": "https://i.scdn.co/image/ab67616d000048510e62daaea2c7b94053e1c142",
-      "url": "https://open.spotify.com/track/4WFgvKVfEhb3IUAFGrutTR"
-    },
-    {
       "name": "That's The Way It Is",
       "sub": "Daniel Lanois",
       "art": "https://i.scdn.co/image/ab67616d00004851f337a21d945f44e802a1eb1d",
       "url": "https://open.spotify.com/track/5ui44u6tEnipuke1eKYpMI"
+    },
+    {
+      "name": "Love Me Not",
+      "sub": "Ravyn Lenae",
+      "art": "https://i.scdn.co/image/ab67616d000048510e62daaea2c7b94053e1c142",
+      "url": "https://open.spotify.com/track/4WFgvKVfEhb3IUAFGrutTR"
     },
     {
       "name": "Professor X",
