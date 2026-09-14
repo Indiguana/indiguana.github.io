@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-13T22:30:10.141Z",
+  "fetchedAt": "2026-09-14T00:21:31.332Z",
   "nowPlaying": {
-    "isPlaying": false,
-    "title": "Thunderstruck",
-    "artist": "AC/DC",
-    "album": "The Razors Edge",
-    "art": "https://i.scdn.co/image/ab67616d00001e029a9b1cc067e4460da04adce2",
-    "url": "https://open.spotify.com/track/57bgtoPSgt236HzfBOd8kj",
-    "progressMs": null,
-    "durationMs": 292333,
-    "playedAt": "2026-09-13T21:56:49.791Z"
+    "isPlaying": true,
+    "title": "Africa",
+    "artist": "TOTO",
+    "album": "Toto IV",
+    "art": "https://i.scdn.co/image/ab67616d00001e02ebd6d20c0082524244ef83df",
+    "url": "https://open.spotify.com/track/2374M0fQpWi3dLnB54qaLX",
+    "progressMs": 64770,
+    "durationMs": 295282,
+    "playedAt": "2026-09-14T00:21:31.332Z"
   },
   "topArtists": [
     {
