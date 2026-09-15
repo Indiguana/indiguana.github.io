@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-15T17:51:15.359Z",
+  "fetchedAt": "2026-09-15T20:42:33.609Z",
   "nowPlaying": {
     "isPlaying": true,
-    "title": "Gone, Gone, Gone",
-    "artist": "Phillip Phillips",
-    "album": "The World From The Side Of The Moon",
-    "art": "https://i.scdn.co/image/ab67616d00001e025c75f5e02580f4c0c3e80e8e",
-    "url": "https://open.spotify.com/track/56sxN1yKg1dgOZXBcAHkJG",
-    "progressMs": 68178,
-    "durationMs": 209693,
-    "playedAt": "2026-09-15T17:51:15.359Z"
+    "title": "Budapest",
+    "artist": "George Ezra",
+    "album": "Wanted on Voyage (Expanded Edition)",
+    "art": "https://i.scdn.co/image/ab67616d00001e023a60095e50104070cc89ed9f",
+    "url": "https://open.spotify.com/track/2ixsaeFioXJmMgkkbd4uj1",
+    "progressMs": 23852,
+    "durationMs": 200573,
+    "playedAt": "2026-09-15T20:42:33.609Z"
   },
   "topArtists": [
     {
