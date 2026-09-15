@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-15T02:45:17.870Z",
+  "fetchedAt": "2026-09-15T08:15:21.664Z",
   "nowPlaying": {
-    "isPlaying": true,
-    "title": "Happier",
-    "artist": "Marshmello, Bastille",
-    "album": "Happier",
-    "art": "https://i.scdn.co/image/ab67616d00001e02dd0a40eecd4b13e4c59988da",
-    "url": "https://open.spotify.com/track/7BqHUALzNBTanL6OvsqmC1",
-    "progressMs": 194054,
-    "durationMs": 214289,
-    "playedAt": "2026-09-15T02:45:17.870Z"
+    "isPlaying": false,
+    "title": "Centuries",
+    "artist": "Fall Out Boy",
+    "album": "Believers Never Die - Greatest Hits (Volume Two)",
+    "art": "https://i.scdn.co/image/ab67616d00001e023be928a586b2dc1ba2190148",
+    "url": "https://open.spotify.com/track/1fsXI6na0RSHMqubY5imZJ",
+    "progressMs": null,
+    "durationMs": 228760,
+    "playedAt": "2026-09-15T06:28:33.424Z"
   },
   "topArtists": [
     {
@@ -63,16 +63,16 @@
       "url": "https://open.spotify.com/track/4WFgvKVfEhb3IUAFGrutTR"
     },
     {
-      "name": "Professor X",
-      "sub": "Dave",
-      "art": "https://i.scdn.co/image/ab67616d00004851cae5b7c28e0d94221745ed68",
-      "url": "https://open.spotify.com/track/47lPVbZUh9547oTjx6J4ZV"
-    },
-    {
       "name": "Sprinter",
       "sub": "Dave, Central Cee",
       "art": "https://i.scdn.co/image/ab67616d00004851dd9f1f94f2f9a10310a3d525",
       "url": "https://open.spotify.com/track/6NYbDTmstd7JSUWl2hVBqR"
+    },
+    {
+      "name": "Professor X",
+      "sub": "Dave",
+      "art": "https://i.scdn.co/image/ab67616d00004851cae5b7c28e0d94221745ed68",
+      "url": "https://open.spotify.com/track/47lPVbZUh9547oTjx6J4ZV"
     }
   ]
 }
