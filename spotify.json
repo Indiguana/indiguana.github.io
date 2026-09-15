@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-15T13:43:43.559Z",
+  "fetchedAt": "2026-09-15T17:51:15.359Z",
   "nowPlaying": {
-    "isPlaying": false,
-    "title": "Thiago Silva",
-    "artist": "Dave, AJ Tracey",
-    "album": "Thiago Silva",
-    "art": "https://i.scdn.co/image/ab67616d00001e02d62b2ae12715851c28bebaa4",
-    "url": "https://open.spotify.com/track/3DKCTIiJ97bS9TGiqcABjo",
-    "progressMs": null,
-    "durationMs": 201967,
-    "playedAt": "2026-09-15T13:41:04.640Z"
+    "isPlaying": true,
+    "title": "Gone, Gone, Gone",
+    "artist": "Phillip Phillips",
+    "album": "The World From The Side Of The Moon",
+    "art": "https://i.scdn.co/image/ab67616d00001e025c75f5e02580f4c0c3e80e8e",
+    "url": "https://open.spotify.com/track/56sxN1yKg1dgOZXBcAHkJG",
+    "progressMs": 68178,
+    "durationMs": 209693,
+    "playedAt": "2026-09-15T17:51:15.359Z"
   },
   "topArtists": [
     {
