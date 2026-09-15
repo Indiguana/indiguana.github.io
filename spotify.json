@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-15T20:42:33.609Z",
+  "fetchedAt": "2026-09-15T23:20:28.087Z",
   "nowPlaying": {
-    "isPlaying": true,
-    "title": "Budapest",
-    "artist": "George Ezra",
-    "album": "Wanted on Voyage (Expanded Edition)",
-    "art": "https://i.scdn.co/image/ab67616d00001e023a60095e50104070cc89ed9f",
-    "url": "https://open.spotify.com/track/2ixsaeFioXJmMgkkbd4uj1",
-    "progressMs": 23852,
-    "durationMs": 200573,
-    "playedAt": "2026-09-15T20:42:33.609Z"
+    "isPlaying": false,
+    "title": "Shape of You",
+    "artist": "Ed Sheeran",
+    "album": "÷ (Deluxe)",
+    "art": "https://i.scdn.co/image/ab67616d00001e02ba5db46f4b838ef6027e6f96",
+    "url": "https://open.spotify.com/track/7qiZfU4dY1lWllzX7mPBI3",
+    "progressMs": null,
+    "durationMs": 233712,
+    "playedAt": "2026-09-15T23:05:33.331Z"
   },
   "topArtists": [
     {
@@ -63,16 +63,16 @@
       "url": "https://open.spotify.com/track/4WFgvKVfEhb3IUAFGrutTR"
     },
     {
+      "name": "Funky Friday",
+      "sub": "Dave, Fredo",
+      "art": "https://i.scdn.co/image/ab67616d000048515a0c97dad7ffeba533299e46",
+      "url": "https://open.spotify.com/track/7qVMGBe36nf1IpbsyQf1MR"
+    },
+    {
       "name": "Sprinter",
       "sub": "Dave, Central Cee",
       "art": "https://i.scdn.co/image/ab67616d00004851dd9f1f94f2f9a10310a3d525",
       "url": "https://open.spotify.com/track/6NYbDTmstd7JSUWl2hVBqR"
-    },
-    {
-      "name": "Professor X",
-      "sub": "Dave",
-      "art": "https://i.scdn.co/image/ab67616d00004851cae5b7c28e0d94221745ed68",
-      "url": "https://open.spotify.com/track/47lPVbZUh9547oTjx6J4ZV"
     }
   ]
 }
