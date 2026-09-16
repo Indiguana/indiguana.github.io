@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-16T17:11:01.242Z",
+  "fetchedAt": "2026-09-16T20:18:04.181Z",
   "nowPlaying": {
-    "isPlaying": false,
-    "title": "Imbattables",
-    "artist": "Crystalo",
-    "album": "Imbattables",
-    "art": "https://i.scdn.co/image/ab67616d00001e02574f7b8bdd1c1559d13f49ed",
-    "url": "https://open.spotify.com/track/5fmdalUGJyROuuysWqVE2C",
-    "progressMs": null,
-    "durationMs": 188199,
-    "playedAt": "2026-09-16T16:56:57.113Z"
+    "isPlaying": true,
+    "title": "Funky Friday",
+    "artist": "Dave, Fredo",
+    "album": "Funky Friday",
+    "art": "https://i.scdn.co/image/ab67616d00001e025a0c97dad7ffeba533299e46",
+    "url": "https://open.spotify.com/track/7qVMGBe36nf1IpbsyQf1MR",
+    "progressMs": 96294,
+    "durationMs": 182741,
+    "playedAt": "2026-09-16T20:18:04.181Z"
   },
   "topArtists": [
     {
