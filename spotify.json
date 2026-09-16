@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-16T01:29:56.548Z",
+  "fetchedAt": "2026-09-16T06:33:27.146Z",
   "nowPlaying": {
-    "isPlaying": true,
-    "title": "World Champion",
-    "artist": "Leo Birenberg & Zach Robinson",
-    "album": "Cobra Kai: Season 6, Part 3 (Soundtrack from the Netflix Original Series)",
-    "art": "https://i.scdn.co/image/ab67616d00001e02db17f27ab99bcefed0a6992e",
-    "url": "https://open.spotify.com/track/7MpsZSZ2xojkTojIT9kugJ",
-    "progressMs": 119183,
-    "durationMs": 138597,
-    "playedAt": "2026-09-16T01:29:56.548Z"
+    "isPlaying": false,
+    "title": "Part Of Me",
+    "artist": "Katy Perry",
+    "album": "Teenage Dream: The Complete Confection",
+    "art": "https://i.scdn.co/image/ab67616d00001e02937af329667311f4b2831616",
+    "url": "https://open.spotify.com/track/1nZzRJbFvCEct3uzu04ZoL",
+    "progressMs": null,
+    "durationMs": 216160,
+    "playedAt": "2026-09-16T01:45:52.454Z"
   },
   "topArtists": [
     {
@@ -37,10 +37,10 @@
       "url": "https://open.spotify.com/artist/4AK6F7OLvEQ5QYCBNiQWHq"
     },
     {
-      "name": "Drake",
+      "name": "Michael Jackson",
       "sub": "",
-      "art": "https://i.scdn.co/image/ab6761610000f1784293385d324db8558179afd9",
-      "url": "https://open.spotify.com/artist/3TVXtAsR1Inumwj472S9r4"
+      "art": "https://i.scdn.co/image/ab6761610000f178997cc9a4aec335d46c9481fd",
+      "url": "https://open.spotify.com/artist/3fMbdgg4jU18AjLCKBhRSm"
     }
   ],
   "topTracks": [
