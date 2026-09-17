@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-17T17:11:26.458Z",
+  "fetchedAt": "2026-09-17T20:26:34.492Z",
   "nowPlaying": {
-    "isPlaying": false,
-    "title": "Breakin' Outta Hell",
-    "artist": "Airbourne",
-    "album": "Breakin' Outta Hell",
-    "art": "https://i.scdn.co/image/ab67616d00001e022718617115a5ef709df6df50",
-    "url": "https://open.spotify.com/track/08irH52vpSQqYM8ckrsZqg",
-    "progressMs": null,
-    "durationMs": 232425,
-    "playedAt": "2026-09-17T13:43:27.222Z"
+    "isPlaying": true,
+    "title": "Leave Her Johnny (Woodkid Resynced)",
+    "artist": "Woodkid, Assassin's Creed",
+    "album": "Leave Her Johnny (Woodkid Resynced)",
+    "art": "https://i.scdn.co/image/ab67616d00001e021094c0e7f1085a121014885f",
+    "url": "https://open.spotify.com/track/3XX7WV822XVxLrnhZ1lhB4",
+    "progressMs": 2427,
+    "durationMs": 205835,
+    "playedAt": "2026-09-17T20:26:34.492Z"
   },
   "topArtists": [
     {
