@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-16T23:05:23.983Z",
+  "fetchedAt": "2026-09-17T06:58:32.169Z",
   "nowPlaying": {
     "isPlaying": false,
-    "title": "Budapest",
-    "artist": "George Ezra",
-    "album": "Wanted on Voyage (Expanded Edition)",
-    "art": "https://i.scdn.co/image/ab67616d00001e023a60095e50104070cc89ed9f",
-    "url": "https://open.spotify.com/track/2ixsaeFioXJmMgkkbd4uj1",
+    "title": "Man's Not Hot",
+    "artist": "Big Shaq",
+    "album": "Man's Not Hot",
+    "art": "https://i.scdn.co/image/ab67616d00001e029ff9c34dc9dbfd3b9163934a",
+    "url": "https://open.spotify.com/track/6X5OFBbrsHRsyO1zP7udgr",
     "progressMs": null,
-    "durationMs": 200573,
-    "playedAt": "2026-09-16T21:16:17.105Z"
+    "durationMs": 186026,
+    "playedAt": "2026-09-17T06:20:29.488Z"
   },
   "topArtists": [
     {
