@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-18T15:33:04.292Z",
+  "fetchedAt": "2026-09-18T18:46:05.809Z",
   "nowPlaying": {
     "isPlaying": false,
-    "title": "Teeth",
-    "artist": "5 Seconds of Summer",
-    "album": "CALM",
-    "art": "https://i.scdn.co/image/ab67616d00001e02726005f0f81903e157d9dbc7",
-    "url": "https://open.spotify.com/track/3NxWJWftvkstyxvb1pZlFo",
+    "title": "Soleil",
+    "artist": "GIMS",
+    "album": "Soleil",
+    "art": "https://i.scdn.co/image/ab67616d00001e02da7027e8cccc2cc011fdd078",
+    "url": "https://open.spotify.com/track/2QfcxxXiORn553zXq7qrFG",
     "progressMs": null,
-    "durationMs": 205502,
-    "playedAt": "2026-09-18T15:28:36.237Z"
+    "durationMs": 131563,
+    "playedAt": "2026-09-18T17:48:34.686Z"
   },
   "topArtists": [
     {
@@ -31,16 +31,16 @@
       "url": "https://open.spotify.com/artist/6eUKZXaKkcviH0Ku9w2n3V"
     },
     {
-      "name": "One Direction",
-      "sub": "",
-      "art": "https://i.scdn.co/image/6c89c662ad0ab75bc2af9a3ae2b16f811daced50",
-      "url": "https://open.spotify.com/artist/4AK6F7OLvEQ5QYCBNiQWHq"
-    },
-    {
       "name": "Michael Jackson",
       "sub": "",
       "art": "https://i.scdn.co/image/ab6761610000f178997cc9a4aec335d46c9481fd",
       "url": "https://open.spotify.com/artist/3fMbdgg4jU18AjLCKBhRSm"
+    },
+    {
+      "name": "One Direction",
+      "sub": "",
+      "art": "https://i.scdn.co/image/6c89c662ad0ab75bc2af9a3ae2b16f811daced50",
+      "url": "https://open.spotify.com/artist/4AK6F7OLvEQ5QYCBNiQWHq"
     }
   ],
   "topTracks": [
