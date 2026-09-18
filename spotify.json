@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-18T06:10:59.812Z",
+  "fetchedAt": "2026-09-18T15:33:04.292Z",
   "nowPlaying": {
     "isPlaying": false,
-    "title": "Thiago Silva",
-    "artist": "Dave, AJ Tracey",
-    "album": "Thiago Silva",
-    "art": "https://i.scdn.co/image/ab67616d00001e02d62b2ae12715851c28bebaa4",
-    "url": "https://open.spotify.com/track/3DKCTIiJ97bS9TGiqcABjo",
+    "title": "Teeth",
+    "artist": "5 Seconds of Summer",
+    "album": "CALM",
+    "art": "https://i.scdn.co/image/ab67616d00001e02726005f0f81903e157d9dbc7",
+    "url": "https://open.spotify.com/track/3NxWJWftvkstyxvb1pZlFo",
     "progressMs": null,
-    "durationMs": 201967,
-    "playedAt": "2026-09-18T05:25:56.715Z"
+    "durationMs": 205502,
+    "playedAt": "2026-09-18T15:28:36.237Z"
   },
   "topArtists": [
     {
@@ -57,16 +57,16 @@
       "url": "https://open.spotify.com/track/5ui44u6tEnipuke1eKYpMI"
     },
     {
-      "name": "Love Me Not",
-      "sub": "Ravyn Lenae",
-      "art": "https://i.scdn.co/image/ab67616d000048510e62daaea2c7b94053e1c142",
-      "url": "https://open.spotify.com/track/4WFgvKVfEhb3IUAFGrutTR"
-    },
-    {
       "name": "Funky Friday",
       "sub": "Dave, Fredo",
       "art": "https://i.scdn.co/image/ab67616d000048515a0c97dad7ffeba533299e46",
       "url": "https://open.spotify.com/track/7qVMGBe36nf1IpbsyQf1MR"
+    },
+    {
+      "name": "Love Me Not",
+      "sub": "Ravyn Lenae",
+      "art": "https://i.scdn.co/image/ab67616d000048510e62daaea2c7b94053e1c142",
+      "url": "https://open.spotify.com/track/4WFgvKVfEhb3IUAFGrutTR"
     },
     {
       "name": "Sprinter",
