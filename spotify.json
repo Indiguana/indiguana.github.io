@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-18T21:22:09.030Z",
+  "fetchedAt": "2026-09-18T23:25:28.910Z",
   "nowPlaying": {
-    "isPlaying": false,
-    "title": "Leave Her Johnny (Woodkid Resynced)",
-    "artist": "Woodkid, Assassin's Creed",
-    "album": "Leave Her Johnny (Woodkid Resynced)",
-    "art": "https://i.scdn.co/image/ab67616d00001e021094c0e7f1085a121014885f",
-    "url": "https://open.spotify.com/track/3XX7WV822XVxLrnhZ1lhB4",
-    "progressMs": null,
-    "durationMs": 205835,
-    "playedAt": "2026-09-18T21:17:10.635Z"
+    "isPlaying": true,
+    "title": "All 4 Nothing (I'm So In Love)",
+    "artist": "Lauv",
+    "album": "All 4 Nothing",
+    "art": "https://i.scdn.co/image/ab67616d00001e0237a04015658168ca6e6e604a",
+    "url": "https://open.spotify.com/track/7I5WT7DtpwSAhEeDLpZEfm",
+    "progressMs": 5823,
+    "durationMs": 183014,
+    "playedAt": "2026-09-18T23:25:28.910Z"
   },
   "topArtists": [
     {
