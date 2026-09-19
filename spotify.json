@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-18T23:25:28.910Z",
+  "fetchedAt": "2026-09-19T01:21:10.957Z",
   "nowPlaying": {
-    "isPlaying": true,
-    "title": "All 4 Nothing (I'm So In Love)",
-    "artist": "Lauv",
-    "album": "All 4 Nothing",
-    "art": "https://i.scdn.co/image/ab67616d00001e0237a04015658168ca6e6e604a",
-    "url": "https://open.spotify.com/track/7I5WT7DtpwSAhEeDLpZEfm",
-    "progressMs": 5823,
-    "durationMs": 183014,
-    "playedAt": "2026-09-18T23:25:28.910Z"
+    "isPlaying": false,
+    "title": "Save Your Tears (with Ariana Grande) (Remix)",
+    "artist": "The Weeknd, Ariana Grande",
+    "album": "Save Your Tears (Remix)",
+    "art": "https://i.scdn.co/image/ab67616d00001e02c6af5ffa661a365b77df6ef6",
+    "url": "https://open.spotify.com/track/37BZB0z9T8Xu7U3e65qxFy",
+    "progressMs": null,
+    "durationMs": 191013,
+    "playedAt": "2026-09-19T00:19:38.202Z"
   },
   "topArtists": [
     {
