@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-19T19:50:04.234Z",
+  "fetchedAt": "2026-09-19T21:59:06.449Z",
   "nowPlaying": {
-    "isPlaying": false,
-    "title": "History (feat. James Blake)",
-    "artist": "Dave, James Blake",
-    "album": "The Boy Who Played the Harp",
-    "art": "https://i.scdn.co/image/ab67616d00001e02fecaa7826bb0cbe139a8cb83",
-    "url": "https://open.spotify.com/track/6OakIaj4T039vJ8V2AJiWa",
-    "progressMs": null,
-    "durationMs": 246960,
-    "playedAt": "2026-09-19T18:36:31.271Z"
+    "isPlaying": true,
+    "title": "Love Me Harder",
+    "artist": "Ariana Grande, The Weeknd",
+    "album": "My Everything (Deluxe)",
+    "art": "https://i.scdn.co/image/ab67616d00001e02deec12a28d1e336c5052e9aa",
+    "url": "https://open.spotify.com/track/5J4ZkQpzMUFojo1CtAZYpn",
+    "progressMs": 54940,
+    "durationMs": 236133,
+    "playedAt": "2026-09-19T21:59:06.449Z"
   },
   "topArtists": [
     {
