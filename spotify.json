@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-19T17:38:08.149Z",
+  "fetchedAt": "2026-09-19T19:50:04.234Z",
   "nowPlaying": {
-    "isPlaying": true,
-    "title": "Funky Friday",
-    "artist": "Dave, Fredo",
-    "album": "Funky Friday",
-    "art": "https://i.scdn.co/image/ab67616d00001e025a0c97dad7ffeba533299e46",
-    "url": "https://open.spotify.com/track/7qVMGBe36nf1IpbsyQf1MR",
-    "progressMs": 150069,
-    "durationMs": 182741,
-    "playedAt": "2026-09-19T17:38:08.149Z"
+    "isPlaying": false,
+    "title": "History (feat. James Blake)",
+    "artist": "Dave, James Blake",
+    "album": "The Boy Who Played the Harp",
+    "art": "https://i.scdn.co/image/ab67616d00001e02fecaa7826bb0cbe139a8cb83",
+    "url": "https://open.spotify.com/track/6OakIaj4T039vJ8V2AJiWa",
+    "progressMs": null,
+    "durationMs": 246960,
+    "playedAt": "2026-09-19T18:36:31.271Z"
   },
   "topArtists": [
     {
