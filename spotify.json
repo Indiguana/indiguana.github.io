@@ -1,16 +1,6 @@
 {
-  "fetchedAt": "2026-09-19T06:09:59.063Z",
-  "nowPlaying": {
-    "isPlaying": false,
-    "title": "Every Breath You Take",
-    "artist": "The Police",
-    "album": "Synchronicity (Remastered 2003)",
-    "art": "https://i.scdn.co/image/ab67616d00001e02c8e97cafeb2acb85b21a777e",
-    "url": "https://open.spotify.com/track/1JSTJqkT5qHq8MDJnJbRE1",
-    "progressMs": null,
-    "durationMs": 253920,
-    "playedAt": "2026-09-19T05:52:22.019Z"
-  },
+  "fetchedAt": "2026-09-19T14:34:51.248Z",
+  "nowPlaying": null,
   "topArtists": [
     {
       "name": "Dave",
