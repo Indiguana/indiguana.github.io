@@ -1,6 +1,16 @@
 {
-  "fetchedAt": "2026-09-19T14:34:51.248Z",
-  "nowPlaying": null,
+  "fetchedAt": "2026-09-19T17:38:08.149Z",
+  "nowPlaying": {
+    "isPlaying": true,
+    "title": "Funky Friday",
+    "artist": "Dave, Fredo",
+    "album": "Funky Friday",
+    "art": "https://i.scdn.co/image/ab67616d00001e025a0c97dad7ffeba533299e46",
+    "url": "https://open.spotify.com/track/7qVMGBe36nf1IpbsyQf1MR",
+    "progressMs": 150069,
+    "durationMs": 182741,
+    "playedAt": "2026-09-19T17:38:08.149Z"
+  },
   "topArtists": [
     {
       "name": "Dave",
@@ -53,16 +63,16 @@
       "url": "https://open.spotify.com/track/7qVMGBe36nf1IpbsyQf1MR"
     },
     {
-      "name": "Love Me Not",
-      "sub": "Ravyn Lenae",
-      "art": "https://i.scdn.co/image/ab67616d000048510e62daaea2c7b94053e1c142",
-      "url": "https://open.spotify.com/track/4WFgvKVfEhb3IUAFGrutTR"
-    },
-    {
       "name": "Sprinter",
       "sub": "Dave, Central Cee",
       "art": "https://i.scdn.co/image/ab67616d00004851dd9f1f94f2f9a10310a3d525",
       "url": "https://open.spotify.com/track/6NYbDTmstd7JSUWl2hVBqR"
+    },
+    {
+      "name": "Budapest",
+      "sub": "George Ezra",
+      "art": "https://i.scdn.co/image/ab67616d000048513a60095e50104070cc89ed9f",
+      "url": "https://open.spotify.com/track/2ixsaeFioXJmMgkkbd4uj1"
     }
   ]
 }
