@@ -8,7 +8,8 @@ export interface ResearchProject {
 	poster: string | null;
 	// True if there's a matching entry in src/content/writeups/<slug>.md.
 	writeup?: boolean;
-	// External writeup (e.g. arXiv) to link instead of an on-site page.
+	// External publication (e.g. arXiv) to link instead of an on-site page.
+	// Entries with this render a "View publication" link, not "View writeup".
 	writeupLink?: string;
 	// Shown in place of a GitHub link when the code isn't public.
 	repoNote?: string;
