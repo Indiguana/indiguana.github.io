@@ -37,10 +37,10 @@ jobs:
           SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
           SPOTIFY_REFRESH_TOKEN: ${{ secrets.SPOTIFY_REFRESH_TOKEN }}
         run: |
-          node scripts/fetch-spotify.mjs "${RUNNER_TEMP}/spotify.json"
+          node website/scripts/fetch-spotify.mjs "${RUNNER_TEMP}/spotify.json"
           # Stash the comparison script too: switching to the data branch below
           # removes it from the working tree.
-          cp scripts/spotify-changed.mjs "${RUNNER_TEMP}/"
+          cp website/scripts/spotify-changed.mjs "${RUNNER_TEMP}/"
 
       - name: Publish to the spotify-data branch
         run: |

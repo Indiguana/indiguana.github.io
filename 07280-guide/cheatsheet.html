@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Formula Cheat Sheet · 07-280 Field Guide</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<link rel="stylesheet" href="assets/style.css">
+<style>
+/* print-only rules — the one place this page adds CSS */
+@media print {
+  .topbar, .sidebar, .pagenav, #menuToggle, #themeToggle { display: none !important; }
+  .shell { display: block !important; }
+  main { max-width: none !important; padding: 0 !important; }
+  body { font-size: 10.5px; line-height: 1.45; }
+  h1 { font-size: 20px; }
+  h2 { font-size: 14px; margin: 14px 0 6px; break-after: avoid; page-break-after: avoid; }
+  h3 { font-size: 12px; margin: 10px 0 4px; break-after: avoid; page-break-after: avoid; }
+  table { font-size: 9.5px; margin: 6px 0; }
+  th, td { padding: 2px 4px; }
+  .box, table, .toc, pre { break-inside: avoid; page-break-inside: avoid; }
+  .box { box-shadow: none; margin: 8px 0; padding: 6px 10px; }
+  a { color: inherit; text-decoration: none; }
+}
+</style>
+</head>
+<body data-page="cheatsheet">
+<main>
+
+  <div class="eyebrow">Reference</div>
+  <h1>Formula cheat sheet</h1>
+  <p class="subtitle">Every definition, formula and complexity bound in 07-280, in course order, in the form the course states them. Built for the night before — not for learning from. Print it: the sidebar and top bar drop out automatically.</p>
+
+  <div data-toc></div>
+
+  <div class="box key"><span class="label">How to use this</span>
+    <p style="margin-bottom:0">Each heading links back to the chapter that <em>teaches</em> the thing. If a line here looks like magic, follow the link. The <a href="#traps">traps section</a> at the bottom is the highest-value 90 seconds on the page.</p>
+  </div>
+
+  <h2 id="notation">0. Notation you must not fumble</h2>
+
+  <div class="scroll-x">
+  <table class="tight">
+    <thead><tr><th>Symbol</th><th>Reads as</th><th>Careful</th></tr></thead>
+    <tbody>
+      <tr><td>$\X$, $\Y$</td><td>input space, output space</td><td>classification: $\Y$ finite &amp; unordered. Regression: $\Y$ continuous &amp; ordered</td></tr>
+      <tr><td>$\H$</td><td>hypothesis class — the set of $h$ you are allowed to pick from</td><td>ERM minimises over $\H$, not over all functions</td></tr>
+      <tr><td>$\D = \{(x^{(i)}, y^{(i)})\}_{i=1}^{N}$</td><td>training set</td><td>$x^{(i)}$ is the <strong>$i$-th sample</strong>, not $x$ raised to $i$</td></tr>
+      <tr><td>$N$, $d$ (or $K$, $M$)</td><td>sample size, number of features</td><td>$X \in \R^{N\times d}$: rows are samples, columns are features</td></tr>
+      <tr><td>$\theta$, $w$, $b$</td><td>parameters; weights and bias</td><td>with $x_1 = 1$ fixed, $\theta = \begin{bmatrix} b \\ w\end{bmatrix}$ absorbs $b$</td></tr>
+      <tr><td>$\hat y = h(x)$</td><td>prediction</td><td>$\hat y$ vs $y$ argument order — see the <a href="#traps">traps</a></td></tr>
+      <tr><td>$b,\ d,\ m$</td><td>branching factor, depth of shallowest goal, max depth of tree</td><td>search-side $d$ $\ne$ ML-side $d$</td></tr>
+      <tr><td>$C^{*},\ \varepsilon$</td><td>optimal solution cost, smallest step cost</td><td>UCS bounds are stated in $C^{*}/\varepsilon$, not $d$</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2 id="search-problems">1. Search problems &amp; the node record</h2>
+  <p class="tiny muted">→ <a href="search-foundations.html">Ch. 1 · Search problems, BFS/DFS/UCS</a></p>
+
+  <div class="box defn"><span class="label">A search problem is six things</span>
+    <ol style="margin-bottom:0">
+      <li>A <strong>state space</strong></li>
+      <li>A set of allowable actions <strong>$\mathrm{Actions}(s)$</strong> for each state $s$</li>
+      <li>A transition model <strong>$\mathrm{Result}(s,a)$</strong></li>
+      <li>A step-cost function <strong>$c(s,a,s')$</strong></li>
+      <li>A <strong>start state</strong></li>
+      <li>A <strong>goal test</strong></li>
+    </ol>
+  </div>
+
+  <p>A <strong>solution</strong> is a sequence of actions (a plan) transforming the start state into a goal state. A <strong>state-space graph</strong> has one vertex per state (each state occurs <em>once</em>); edges are action transitions; the goal test picks out a set of goal vertices. Search <em>trees</em> can repeat states; state-space graphs cannot.</p>
+
+  <h3>Node record</h3>
+  <p>Nodes carry <code>state</code>, <code>parent</code>, <code>action</code>, <code>path-cost</code>. A child of <code>parent_node</code> via action $a$:</p>
+
+<pre><code>state     = result(parent_node.state, a)
+parent    = parent_node
+action    = a
+path-cost = parent_node.path_cost
+            + step_cost(parent_node.state, a, self.state)</code></pre>
+
+  <p>Extract the solution by <strong>tracing back parent pointers</strong> and collecting actions (then reverse).</p>
+
+  <div class="box warn"><span class="label">Tree search vs graph search</span>
+    <p><strong>Tree search:</strong> frontier only. A state can be generated and expanded many times; infinite loops are possible on a cyclic graph.</p>
+    <p style="margin-bottom:0"><strong>Graph search:</strong> keep an <em>explored/reached</em> set; never expand the same state twice. Cheaper, but it can lock in a bad first path — which is exactly why A* graph search needs <strong>consistency</strong>, not merely admissibility.</p>
+  </div>
+
+  <h2 id="algorithm-table">2. BFS / DFS / UCS / Greedy / A* at a glance</h2>
+  <p class="tiny muted">→ <a href="search-foundations.html">Ch. 1</a> · <a href="informed-search.html">Ch. 2</a></p>
+
+  <div class="scroll-x">
+  <table class="center">
+    <thead><tr><th>Algorithm</th><th>Frontier / priority</th><th>Complete?</th><th>Optimal?</th><th>Time</th><th>Space</th></tr></thead>
+    <tbody>
+      <tr>
+        <td style="text-align:left"><strong>BFS</strong></td><td>FIFO queue</td>
+        <td>Yes ($b$ finite)</td><td>Only if all step costs equal</td>
+        <td>$O(b^{d})$</td><td>$O(b^{d})$</td>
+      </tr>
+      <tr>
+        <td style="text-align:left"><strong>DFS</strong></td><td>LIFO stack</td>
+        <td>No (infinite depth / cycles)</td><td>No</td>
+        <td>$O(b^{m})$</td><td>$O(bm)$</td>
+      </tr>
+      <tr>
+        <td style="text-align:left"><strong>IDS</strong></td><td>LIFO stack, depth limit $0,1,2,\dots$</td>
+        <td>Yes</td><td>Only if all step costs equal</td>
+        <td>$O(b^{d})$</td><td>$O(bd)$</td>
+      </tr>
+      <tr>
+        <td style="text-align:left"><strong>UCS</strong></td><td>priority queue on $g(n)$</td>
+        <td>Yes (step costs $\ge \varepsilon &gt; 0$)</td><td><strong>Yes</strong></td>
+        <td>$O\!\left(b^{\,1+\lfloor C^{*}/\varepsilon\rfloor}\right)$</td><td>$O\!\left(b^{\,1+\lfloor C^{*}/\varepsilon\rfloor}\right)$</td>
+      </tr>
+      <tr>
+        <td style="text-align:left"><strong>Greedy</strong></td><td>priority queue on $h(n)$</td>
+        <td>No for tree search; yes for graph search on a finite space</td><td>No</td>
+        <td>$O(b^{m})$ worst case</td><td>$O(b^{m})$ worst case</td>
+      </tr>
+      <tr>
+        <td style="text-align:left"><strong>A*</strong></td><td>priority queue on $f(n)=g(n)+h(n)$</td>
+        <td>Yes (step costs $\ge \varepsilon &gt; 0$)</td><td><strong>Yes</strong> — admissible $h$ (tree), consistent $h$ (graph)</td>
+        <td>$O(b^{m})$ worst case; $\to$ UCS bound as $h \to 0$</td><td>$O(b^{m})$ worst case (keeps all generated nodes)</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p class="tiny muted">$b$ = branching factor · $d$ = depth of the shallowest goal · $m$ = maximum depth of the tree · $C^{*}$ = optimal solution cost · $\varepsilon$ = smallest step cost. Greedy and A* worst cases assume a useless heuristic; a good $h$ shrinks the effective branching factor but the worst case stays exponential.</p>
+
+  <div class="box key"><span class="label">Two questions generate the whole table</span>
+    <p><em>What sits on the frontier at its worst moment?</em> A whole tier $\Rightarrow b^{d}$ space. One path plus siblings $\Rightarrow bm$ space.</p>
+    <p style="margin-bottom:0"><em>What must be examined before stopping?</em> Everything shallower than the goal $\Rightarrow b^{d}$ time. Everything <em>cheaper</em> than the goal $\Rightarrow b^{C^{*}/\varepsilon}$ time. Optimality falls out of the second question.</p>
+  </div>
+
+  <p><strong>Special cases worth memorising:</strong> UCS is A* with $h = 0$. BFS is UCS when every step costs the same. Greedy is "A* with $g = 0$".</p>
+
+  <h2 id="heuristics">3. Heuristics, admissibility, consistency</h2>
+  <p class="tiny muted">→ <a href="informed-search.html">Ch. 2 · Heuristics, Greedy &amp; A*</a></p>
+
+  $$f(n) = g(n) + h(n)$$
+  <p class="tiny muted">$g(n)$ = cost of the path from the start to $n$ (backward cost, known) · $h(n)$ = estimate of the cheapest cost from $n$ to a goal (forward cost, guessed) · $h^{*}(n)$ = the <em>true</em> cheapest cost from $n$ to a nearest goal.</p>
+
+  <div class="scroll-x">
+  <table>
+    <thead><tr><th>Property</th><th>Statement</th><th>Slogan</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Admissible</strong></td><td>$0 \le h(n) \le h^{*}(n)$ for all $n$</td><td>never overestimates — optimistic</td></tr>
+      <tr><td><strong>Consistent</strong></td><td>$h(n) \le c(n,a,n') + h(n')$ for every edge $n \to n'$ &nbsp;(equivalently $h(n)-h(n') \le c(n,n')$)</td><td>"heuristic step cost" $\le$ actual step cost — a triangle inequality</td></tr>
+      <tr><td><strong>Goal condition</strong></td><td>$h(\text{goal}) = 0$</td><td>required for both</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="box key"><span class="label">The three facts they test</span>
+    <ol style="margin-bottom:0">
+      <li><strong>Consistency $\Rightarrow$ admissibility.</strong> (Telescope the consistency inequality along an optimal path to the goal; the costs sum to $h^{*}(n)$ and $h(\text{goal})=0$.) The converse is <em>false</em>.</li>
+      <li>Under a consistent $h$, <strong>$f$ never decreases along any path</strong>: $f(n') = g(n)+c+h(n') \ge g(n)+h(n) = f(n)$.</li>
+      <li>Optimality: <strong>tree search needs admissible</strong>; <strong>graph search needs consistent</strong>. UCS is the special case $h=0$, which is consistent, so UCS is optimal in both.</li>
+    </ol>
+  </div>
+
+  <h3>A* tree-search optimality proof, in five lines</h3>
+  <p>Let $A$ be an optimal goal node and $B$ a suboptimal goal node, both on the frontier, and let $n$ be an ancestor of $A$ on the frontier (possibly the start, possibly $A$ itself).</p>
+  <div class="box proof"><span class="label">Proof</span>
+    <table class="tight" style="margin:0">
+      <tbody>
+        <tr><td>$f(n) = g(n) + h(n)$</td><td class="muted tiny">definition of $f$-cost</td></tr>
+        <tr><td>$f(n) \le g(n) + h^{*}(n)$</td><td class="muted tiny">admissibility of $h$</td></tr>
+        <tr><td>$g(n) + h^{*}(n) = g(A) = f(A)$</td><td class="muted tiny">$n$ on an optimal path to $A$; $h(A) = 0$</td></tr>
+        <tr><td>$f(A) &lt; f(B)$</td><td class="muted tiny">$B$ is suboptimal and $h(B) = 0$, so $f(B) = g(B) &gt; g(A)$</td></tr>
+        <tr><td>$\therefore f(n) &lt; f(B)$</td><td class="muted tiny">every ancestor of $A$ is expanded before $B$, so $A$ is popped before $B$ $\;\blacksquare$</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Comparing and building heuristics</h3>
+  <div class="scroll-x">
+  <table>
+    <thead><tr><th>Idea</th><th>Statement</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Dominance</strong></td><td>$h_a \ge h_c$ iff $\forall n:\ h_a(n) \ge h_c(n)$. Larger is better <em>as long as both are admissible</em> — a dominant heuristic expands no more nodes.</td></tr>
+      <tr><td><strong>Extremes</strong></td><td>$h = 0$ is admissible but useless (A* degenerates to UCS). $h = h^{*}$ is perfect but usually as expensive as solving the problem.</td></tr>
+      <tr><td><strong>Max of two</strong></td><td>If $h_a, h_c$ are both admissible and neither dominates, $h(n) = \max\{h_a(n), h_c(n)\}$ is admissible and dominates both. (It is $\le h^{*}$ since each term is, and $\ge$ each term by definition of max.)</td></tr>
+      <tr><td><strong>Where heuristics come from</strong></td><td><strong>Relaxed problems</strong>: delete constraints so <em>new actions</em> become available; the exact cost of the relaxed problem is an admissible heuristic for the original, because every real solution is also a relaxed solution. Most natural admissible heuristics — especially relaxed-problem ones — are also consistent.</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="box example"><span class="label">8-puzzle, the canonical numbers</span>
+    <p>$h_{\text{TILES}}$ = number of misplaced tiles (relax: a tile may teleport anywhere). $h_{\text{start}} = 8$.<br>
+    $h_{\text{MANHATTAN}}$ = total Manhattan distance (relax: a tile may move onto an occupied square). $h_{\text{start}} = 3+1+2+\dots = 18$.</p>
+    <table class="tight center" style="margin-bottom:0">
+      <thead><tr><th>Avg nodes expanded</th><th>4 steps</th><th>8 steps</th><th>12 steps</th></tr></thead>
+      <tbody>
+        <tr><td>UCS</td><td>112</td><td>6,300</td><td>$3.6\times10^{6}$</td></tr>
+        <tr><td>A*, TILES</td><td>13</td><td>39</td><td>227</td></tr>
+        <tr><td>A*, MANHATTAN</td><td>12</td><td>25</td><td>73</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="games">4. Games: minimax and expectimax</h2>
+  <p class="tiny muted">→ <a href="adversarial-search.html">Ch. 3 · Minimax, α-β, Expectimax</a></p>
+
+  <div class="box defn"><span class="label">A game is six things</span>
+    <ol style="margin-bottom:0">
+      <li><strong>Initial state</strong> $s_0$</li>
+      <li><strong>$\mathrm{Player}(s)$</strong> — whose move it is</li>
+      <li><strong>$\mathrm{Actions}(s)$</strong> — legal moves for the player on move</li>
+      <li><strong>$\mathrm{Result}(s,a)$</strong> — transition model</li>
+      <li><strong>$\text{Terminal-Test}(s)$</strong></li>
+      <li><strong>$\mathrm{Utility}(s,p)$</strong> — terminal value for player $p$ (or just $\mathrm{Utility}(s)$ for the player deciding at the root)</li>
+    </ol>
+  </div>
+  <p class="tiny muted">"Standard" games are deterministic, observable, two-player, turn-taking and zero-sum. Zero-sum = opposite utilities, pure competition. General games = independent utilities, allowing cooperation, indifference, shifting alliances.</p>
+
+  <h3>The one recursion that covers all three node types</h3>
+<pre><code>function value(state)
+    if state.is_leaf:        return state.value
+    if state.player is MAX:  return max  over a in state.actions of value(state.result(a))
+    if state.player is MIN:  return min  over a in state.actions of value(state.result(a))
+    if state.player is CHANCE: return sum over s' in state.next_states of P(s') * value(s')</code></pre>
+
+  <div class="scroll-x">
+  <table class="center">
+    <thead><tr><th>Node</th><th>Value rule</th></tr></thead>
+    <tbody>
+      <tr><td><strong>MAX</strong></td><td>$V(s) = \max_{a} V(s'),\quad s' = \mathrm{Result}(s,a)$</td></tr>
+      <tr><td><strong>MIN</strong></td><td>$V(s) = \min_{a} V(s'),\quad s' = \mathrm{Result}(s,a)$</td></tr>
+      <tr><td><strong>CHANCE</strong></td><td>$V(s) = \sum_{s'} P(s')\, V(s')$ &nbsp;(more fully $\sum_{s'} P(s' \mid s,a) V(s')$)</td></tr>
+      <tr><td><strong>Terminal</strong></td><td>$V(s) = \mathrm{Utility}(s)$</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p><strong>The answer at the root is an action:</strong></p>
+  $$\hat a = \argmax_{a} V(s'), \qquad s' = \mathrm{Result}(s,a)$$
+
+  <p><strong>Cost.</strong> Minimax is exhaustive DFS: <strong>time $O(b^{m})$, space $O(bm)$</strong>. Chess has $b \approx 35$, $m \approx 100$ — exact solution completely infeasible, hence bounded lookahead ("bounded rationality", Herbert Simon).</p>
+
+  <h3>Evaluation functions (depth-limited search)</h3>
+  $$\mathrm{EVAL}(s) = w_1 f_1(s) + w_2 f_2(s) + \dots + w_n f_n(s) = \sum_i w_i f_i(s)$$
+  <p class="tiny muted">$f_i$ = a feature of the position, $w_i$ = its weight. Chess example: $w_1 = 9$, $f_1(s) = (\#\text{white queens} - \#\text{black queens})$. The ideal evaluation function returns the true minimax value; in practice it is a weighted linear sum of features. Deeper search generally means better play — or the same quality of play from a less accurate evaluation function.</p>
+
+  <h3>Generalized minimax</h3>
+  <p>For non-zero-sum or multi-player games: <strong>terminals carry utility <em>tuples</em></strong>, node values are also tuples, and <strong>each player maximises its own component</strong>. E.g. with three players and terminal tuples $(0,0,7), (8,8,1), (7,7,2), (0,0,8)$, the player at each node picks the child whose tuple has the largest value in <em>that player's</em> slot. Cooperation and competition then emerge dynamically rather than being assumed.</p>
+
+  <h2 id="alpha-beta">5. α-β pruning</h2>
+  <p class="tiny muted">→ <a href="adversarial-search.html">Ch. 3</a></p>
+
+  <div class="box key"><span class="label">What α and β mean</span>
+    <p><strong>$\alpha$ = MAX's best option on the path to the root.</strong> (Best option so far from any MAX node on this path.)</p>
+    <p style="margin-bottom:0"><strong>$\beta$ = MIN's best option on the path to the root.</strong></p>
+  </div>
+
+  <div class="grid2">
+    <div>
+<pre><code>def max-value(state, α, β):
+    initialize v = -∞
+    for each successor of state:
+        v = max(v, value(successor, α, β))
+        if v ≥ β
+              return v
+        α = max(α, v)
+    return v</code></pre>
+    </div>
+    <div>
+<pre><code>def min-value(state, α, β):
+    initialize v = +∞
+    for each successor of state:
+        v = min(v, value(successor, α, β))
+        if v ≤ α
+              return v
+        β = min(β, v)
+    return v</code></pre>
+    </div>
+  </div>
+
+  <p class="tiny muted">Order matters inside the loop: <em>test the cutoff first, update the bound second</em>. In max-value you cut on $v \ge \beta$ and then raise $\alpha$; in min-value you cut on $v \le \alpha$ and then lower $\beta$.</p>
+
+  <div class="scroll-x">
+  <table>
+    <thead><tr><th>Property</th><th>Statement</th></tr></thead>
+    <tbody>
+      <tr><td>Correctness</td><td><strong>Theorem:</strong> pruning has <em>no effect on the minimax value computed for the root</em>.</td></tr>
+      <tr><td>Interior nodes</td><td>Values of intermediate nodes may be <strong>wrong</strong> (they are bounds returned early, not true minimax values).</td></tr>
+      <tr><td>Ordering</td><td>Good child ordering improves pruning a lot; iterative deepening helps produce it.</td></tr>
+      <tr><td>Best case</td><td>With <strong>perfect ordering</strong>, time drops to $O(b^{m/2})$ — it <em>doubles the solvable depth</em>. At 1M nodes/move that is depth $\approx 8$.</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2 id="csps">6. Constraint satisfaction problems</h2>
+  <p class="tiny muted">→ <a href="csps.html">Ch. 4 · Constraint Satisfaction</a></p>
+
+  <div class="box defn"><span class="label">A CSP is three things</span>
+    <p style="margin-bottom:0"><strong>Variables</strong> $X_1,\dots,X_n$ · <strong>domains</strong> $D_i$ (what each variable may take) · <strong>constraints</strong> (which combinations are legal). A <em>state</em> is a partial assignment; the <em>goal test</em> is "complete and all constraints satisfied". CSPs are <strong>identification</strong> problems: the assignment is the answer, the path to it is not.</p>
+  </div>
+
+  <p>With finite domains of size $d$ and $n$ variables there are <strong>$O(d^{n})$ complete assignments</strong>. A binary CSP has constraints over at most two variables; its <strong>constraint graph</strong> has variables as nodes and constraints as edges.</p>
+
+  <h3>Backtracking search</h3>
+  <p><strong>Backtracking search = DFS + two improvements.</strong></p>
+  <ul>
+    <li><strong>Idea 1 — one variable at a time.</strong> Variable assignments are commutative ([WA=red then NT=green] $\equiv$ [NT=green then WA=red]), so only ever assign a single variable per step. This cuts the branching factor from $nd$ to $d$.</li>
+    <li><strong>Idea 2 — check constraints as you go.</strong> Only consider values that do not conflict with previous assignments ("incremental goal test"). No need to check constraints for a complete assignment at the end.</li>
+  </ul>
+  <p class="tiny muted">Plain backtracking solves $n$-queens for $n \approx 25$; adding filtering + ordering makes 1000 queens feasible.</p>
+
+  <h3>Filtering</h3>
+  <div class="scroll-x">
+  <table>
+    <thead><tr><th>Technique</th><th>Rule</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Forward checking</strong></td><td>After assigning $Y$, cross off values in the domains of unassigned neighbours that conflict. Formally: enforce $X \to Y$ for all edges $(X,Y)$ where $Y$ was <em>newly assigned</em>. <strong>Remove values from the tail ($X$).</strong></td></tr>
+      <tr><td><strong>Arc consistency</strong></td><td>An arc $X \to Y$ is consistent <em>iff for every value $x$ in the <strong>tail</strong> $X$ there is some value $y$ in the <strong>head</strong> $Y$ that could be assigned without violating a constraint.</em> To enforce it: <strong>delete values from the domain of $X$ (the tail)</strong> that have no legal partner in $Y$.</td></tr>
+      <tr><td><strong>AC-3</strong></td><td>Maintain a queue of arcs. Pop an arc, enforce it; <em>if the tail's domain changed, re-enqueue all arcs pointing into that tail</em>. Skips constraints unmodified since last analysed (unlike the naive "cycle over all pairs until nothing changes"). A wiped-out domain means failure.</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="box key"><span class="label">AC-3 complexity — memorise the three sub-counts</span>
+    <ul style="margin-bottom:0">
+      <li>$n$ nodes, each with $\le d$ values $\Rightarrow$ total number of value removals is <strong>$O(nd)$</strong>.</li>
+      <li>After each removal, $\le n$ arcs are added back $\Rightarrow$ total arc insertions <strong>$O(n^{2}d)$</strong>.</li>
+      <li>Checking consistency of one arc costs <strong>$O(d^{2})$</strong> (each tail value against each head value).</li>
+      <li style="margin-top:6px">$\Rightarrow$ one run of AC-3 costs at most <strong>$O(n^{2}d^{3})$</strong>. <span class="pill">not required</span> Zhang &amp; Yap (2001) tighten this to $O(n^{2}d^{2})$.</li>
+    </ul>
+  </div>
+  <p class="tiny muted">Backtracking with AC-3 calls AC-3 many times — once per node of the backtracking tree — so this is the cost of <em>one</em> run.</p>
+
+  <h3>Ordering heuristics</h3>
+  <div class="scroll-x">
+  <table>
+    <thead><tr><th>Heuristic</th><th>Chooses</th><th>Why that direction</th></tr></thead>
+    <tbody>
+      <tr><td><strong>MRV</strong> — minimum remaining values (variable ordering)</td><td>the variable with the <em>fewest</em> legal values left in its domain</td><td>"Fail-fast": if a variable is going to fail, find out now, at the top of the tree, not after building a huge subtree. Also called the <em>most constrained variable</em>.</td></tr>
+      <tr><td><strong>LCV</strong> — least constraining value (value ordering)</td><td>the value that rules out the <em>fewest</em> values in the remaining variables</td><td>You only need <em>one</em> solution, so keep options open on the branch you are committing to. Determining LCV may take computation (e.g. re-running filtering).</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="tiny muted">Not a contradiction: MRV picks a <em>variable</em> and you must eventually assign all of them, so fail fast. LCV picks a <em>value</em> and you only need one to work, so fail slow.</p>
+
+  <h2 id="ml-formulation">7. ML problem formulation</h2>
+  <p class="tiny muted">→ <a href="ml-formulation.html">Ch. 5 · ML problem formulation</a></p>
+
+  <div class="scroll-x">
+  <table>
+    <thead><tr><th>Object</th><th>Definition</th></tr></thead>
+    <tbody>
+      <tr><td>Goal</td><td>find $h : \X \to \Y$ such that for a new input $x$ with true label $y$, $h(x) = y$</td></tr>
+      <tr><td>Data</td><td>$\D = \{(x^{(i)}, y^{(i)})\}_{i=1}^{N}$, with $x^{(i)} \in \X$, $y^{(i)} \in \Y$ for all $i$; $N$ = sample size</td></tr>
+      <tr><td>Task types</td><td><strong>Classification:</strong> $\Y$ finite, unordered ($|\Y| = 2$ is binary). <strong>Regression:</strong> $\Y$ continuous, ordered.</td></tr>
+      <tr><td>Loss</td><td>$\ell : \Y \times \Y \to \R$, usually $\ge 0$, lower is better. In the lecture notes: <strong>first argument = your guess, second = the truth</strong>.</td></tr>
+      <tr><td>Zero-one loss</td><td>$\ell(\hat y, y) = \1\{\hat y \ne y\}$, where $\1\{\cdot\}$ is 1 if true and 0 if false</td></tr>
+      <tr><td>Squared loss</td><td>$\ell(\hat y, y) = (\hat y - y)^{2}$</td></tr>
+      <tr><td>Inference</td><td>applying $h$ to $x^{(\mathrm{new})}$ to predict its label</td></tr>
+      <tr><td>Generalization</td><td>performance on unseen data — "generalization error" / "test error"</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p><strong>The i.i.d. assumption:</strong> all datapoints, training <em>and</em> test, are drawn independently and identically distributed from one unknown distribution on $\X \times \Y$. Without it, training tells you nothing about test.</p>
+
+  $$\text{Risk: } \quad R(h) = \E_{(X,Y)}\big[\ell(h(X), Y)\big] \qquad \text{“risk = expected loss”}$$
+  $$\text{Empirical risk: } \quad \hat R(h) = \frac{1}{N}\sum_{i=1}^{N} \ell\big(h(x^{(i)}), y^{(i)}\big)$$
+  $$\text{ERM: } \quad h^{*} = \argmin_{h \in \H} \hat R(h)$$
+
+  <p class="tiny muted">We want to minimise $R(h)$ but we know neither $y^{(\mathrm{new})}$ nor the distribution — so we minimise the training average $\hat R(h)$ instead. That substitution is only defensible <em>because</em> of the i.i.d. assumption: $\hat R$ is an unbiased estimate of $R$.</p>
+
+  <p><strong>Unsupervised learning</strong> (only $x^{(1)},\dots,x^{(N)}$, no labels): clustering; dimensionality reduction $\R^{d} \to \R^{\tilde d}$ with $\tilde d \ll d$ preserving $x^{(i)} \approx x^{(j)} \Rightarrow \tilde x^{(i)} \approx \tilde x^{(j)}$; representation learning and generation. <strong>Self-supervised learning</strong> converts unsupervised into supervised (hide a word, let it be $y$, the preceding text be $x$ — the basis of LLMs).</p>
+
+  <h2 id="decision-trees">8. Decision trees</h2>
+  <p class="tiny muted">→ <a href="decision-trees.html">Ch. 6 · Decision trees</a></p>
+
+  <p>Internal nodes split on an attribute; leaves carry output labels. Major benefit: <strong>human interpretable</strong>. Setting: $\X = \{0,1\}^{d}$ ($d$ attributes), $\Y = \{0,1\}$.</p>
+
+  <p><strong>Decision stump</strong> = split just once, then output a chosen label at each of the two leaves.</p>
+
+  <h3>Construction (recursive)</h3>
+<pre><code>function DT(dataset S, set of attributes A ⊆ {1,…,d}):
+    if A = ∅ or all examples in S have the same label:
+        return a leaf with value = majority vote of labels in S
+    b = BestAttribute(S, A)                 ∈ A
+    LeftNode  = DT({(x,y) ∈ S | x_b = 1}, A \ {b})
+    RightNode = DT({(x,y) ∈ S | x_b = 0}, A \ {b})
+    return tree  "Is the b-th attribute equal to 1?"  → Y: LeftNode,  N: RightNode</code></pre>
+  <p class="tiny muted">Called initially with $S = \{(x^{(i)}, y^{(i)})\}_{i=1}^{N}$ and $A = \{1,2,\dots,d\}$.</p>
+
+  <p><strong>Majority vote at a leaf:</strong></p>
+  $$\hat y = \argmax_{k \in \Y} \ \sum_{i \,:\, (x^{(i)},y^{(i)}) \in S} \1\big(y^{(i)} = k\big)$$
+  <p class="tiny muted">Count how many samples in this leaf carry each label $k$; output the most common. Ties: break arbitrarily but consistently.</p>
+
+  <p><strong>Classification error rate</strong> of a node/tree $= \dfrac{\#\text{misclassified}}{\#\text{samples}}$ — i.e. the empirical risk under zero-one loss.</p>
+
+  <div class="scroll-x">
+  <table>
+    <thead><tr><th>$\mathrm{BestAttribute}(S,A)$ criterion</th><th>Pick the attribute that…</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Training error</strong></td><td>minimises the training error of the resulting stump (the original criterion; later called "problematic")</td></tr>
+      <tr><td><strong>Gini impurity</strong></td><td>minimises Gini impurity <span class="pill">stated, not developed in this course</span></td></tr>
+      <tr><td><strong>Mutual information</strong></td><td>maximises $I(Y;W)$ — equivalently <em>minimises the conditional entropy $H(Y \mid W)$</em>, since $H(Y)$ is fixed at the node</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="box warn"><span class="label">Greedy, not optimal</span>
+    <p style="margin-bottom:0">The algorithm picks the attribute that would be best <em>if allowed only one split</em>, then recurses. This is a <strong>greedy approach towards ERM: greediness is suboptimal, but it buys computational efficiency</strong>. A globally optimal tree may require a first split that looks bad in isolation.</p>
+  </div>
+
+  <h3>Stopping criteria &amp; extensions</h3>
+  <ul>
+    <li>Stop when $A = \emptyset$ (no attributes left) or all examples in $S$ share a label (homogeneous leaf).</li>
+    <li>Stop when the split doesn't reduce training error by much.</li>
+    <li>Attributes with more than $\{0,1\}$ values; real-valued attributes give threshold tests ("Is $x_2 \ge 4.5$?") and axis-aligned <strong>decision boundaries</strong> — the set of lines separating the class-0 from the class-1 regions.</li>
+    <li>You need <em>not</em> remove the chosen attribute from $A$ in the recursive call (necessary once thresholds are allowed, since the same feature can be split again at a different threshold).</li>
+  </ul>
+
+  <h2 id="information-theory">9. Information theory</h2>
+  <p class="tiny muted">→ <a href="information-theory.html">Ch. 7 · Entropy &amp; mutual information</a></p>
+
+  $$H(Y) = \sum_{y \in \Y} P(Y = y)\,\log \frac{1}{P(Y=y)}$$
+  $$H(Y \mid W = \omega) = \sum_{y \in \Y} P(Y = y \mid W = \omega)\,\log \frac{1}{P(Y = y \mid W = \omega)}$$
+  $$H(Y \mid W) = \sum_{\omega \in W} P(W = \omega)\; H(Y \mid W = \omega)$$
+  $$I(Y;W) = H(Y) - H(Y \mid W)$$
+
+  <div class="scroll-x">
+  <table>
+    <thead><tr><th>Quantity</th><th>In tree language</th></tr></thead>
+    <tbody>
+      <tr><td>$H(Y)$</td><td>label impurity at the <em>current</em> node. Units: bits when $\log = \log_2$.</td></tr>
+      <tr><td>$H(Y \mid W = \omega)$</td><td><strong>Specific</strong> conditional entropy: the entropy of <em>one child</em>. The conditioning $\mid W=\omega$ selects the left or right child; $P(Y \mid W=\omega)$ is the label distribution of that subset of $S$.</td></tr>
+      <tr><td>$H(Y \mid W)$</td><td>the <strong>average</strong> entropy across the child nodes, weighted by the fraction of samples going each way.</td></tr>
+      <tr><td>$I(Y;W)$</td><td>information gain = reduction in entropy, before vs. after splitting. $I \ge 0$ always; $I = 0$ iff the split tells you nothing.</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="box key"><span class="label">Conventions and anchors</span>
+    <ul style="margin-bottom:0">
+      <li><strong>$0 \cdot \log\frac{1}{0} := 0$</strong> by definition. A label that never occurs contributes nothing.</li>
+      <li>Twenty questions: 128 equally likely students needs $7 = \log_2 128 = \log_2 \frac{1}{1/128}$ questions, so $\log_2 \frac{1}{p}$ is the "surprise" of an outcome of probability $p$, and $H$ is its average.</li>
+      <li>Course's worked non-uniform case: $p_1 = \tfrac14$, $p_2 = \dots = p_7 = \tfrac18$, rest 0 $\Rightarrow H = \tfrac14\cdot 2 + 6\cdot\tfrac18\cdot 3 = \tfrac{11}{4} = 2.75$ bits.</li>
+      <li>$H$ is maximised by the uniform distribution ($\log_2 k$ bits over $k$ outcomes) and is 0 for a pure node.</li>
+    </ul>
+  </div>
+
+  <h3>Hand-computation lookup table</h3>
+  <p class="tiny muted">Everything below is $\log_2$, to 3 decimals. These nine numbers cover essentially every entropy an exam can ask you to compute by hand.</p>
+
+  <div class="grid2">
+    <div>
+    <table class="center tight">
+      <thead><tr><th>$n$</th><th>$\log_2 n$</th></tr></thead>
+      <tbody>
+        <tr><td>2</td><td>1.000</td></tr>
+        <tr><td>3</td><td>1.585</td></tr>
+        <tr><td>4</td><td>2.000</td></tr>
+        <tr><td>5</td><td>2.322</td></tr>
+        <tr><td>6</td><td>2.585</td></tr>
+        <tr><td>7</td><td>2.807</td></tr>
+        <tr><td>8</td><td>3.000</td></tr>
+        <tr><td>9</td><td>3.170</td></tr>
+        <tr><td>10</td><td>3.322</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <div>
+    <table class="center tight">
+      <thead><tr><th>$p$</th><th>$H(p)$ bits</th></tr></thead>
+      <tbody>
+        <tr><td>$1/2 = 0.500$</td><td>1.000</td></tr>
+        <tr><td>$1/3 \approx 0.333$</td><td>0.918</td></tr>
+        <tr><td>$1/4 = 0.250$</td><td>0.811</td></tr>
+        <tr><td>$1/5 = 0.200$</td><td>0.722</td></tr>
+        <tr><td>$2/5 = 0.400$</td><td>0.971</td></tr>
+        <tr><td>$3/8 = 0.375$</td><td>0.954</td></tr>
+        <tr><td>$1/8 = 0.125$</td><td>0.544</td></tr>
+        <tr><td>$3/10 = 0.300$</td><td>0.881</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+  <p class="tiny muted">$H(p) = p\log_2\frac{1}{p} + (1-p)\log_2\frac{1}{1-p}$ is the binary entropy of a node that is a fraction $p$ one class and $1-p$ the other. It is <strong>symmetric</strong>: $H(p) = H(1-p)$, so $H(3/4) = H(1/4) = 0.811$, $H(7/8) = H(1/8) = 0.544$, $H(3/5) = H(2/5) = 0.971$, $H(5/8) = H(3/8) = 0.954$, $H(7/10)=H(3/10)=0.881$, $H(2/3)=H(1/3)=0.918$. Useful decompositions: $\log_2 6 = 1 + \log_2 3$, $\log_2 9 = 2\log_2 3$, $\log_2 10 = 1 + \log_2 5$, $\log_2 5 = \log_2 10 - 1 = 3.322 - 1$.</p>
+
+  <h2 id="linear-regression">10. Linear regression</h2>
+  <p class="tiny muted">→ <a href="linear-regression.html">Ch. 8 · Linear regression</a></p>
+
+  <p><strong>Model.</strong> With $\X = \R$: $h_{w,b}(x) = x\cdot w + b$. With $\X = \R^{d}$, fix the first coordinate $x_1 = 1$ and let $\theta = \begin{bmatrix} b \\ w \end{bmatrix}$ so that the bias is absorbed:</p>
+  $$h_\theta(x) = x^{\top}\theta$$
+
+  <p><strong>ERM under squared loss</strong> (squared loss because $\Y$ is real-valued):</p>
+  $$\argmin_{\theta} \ \frac{1}{N}\sum_{i=1}^{N}\Big(y^{(i)} - {x^{(i)}}^{\top}\theta\Big)^{2} \;=\; \argmin_{\theta}\ \frac{1}{N}\big\|y - X\theta\big\|_2^{2}$$
+
+  <h3>Closed forms</h3>
+  <div class="scroll-x">
+  <table>
+    <thead><tr><th>Case</th><th>Solution</th></tr></thead>
+    <tbody>
+      <tr><td>Scalar, no intercept ($b = 0$, so $h(0)=0$)</td><td>$\displaystyle w^{*} = \frac{\sum_{i=1}^{N} x^{(i)}y^{(i)}}{\sum_{i=1}^{N} {x^{(i)}}^{2}}$</td></tr>
+      <tr><td>Scalar, with intercept</td><td>$\displaystyle w = \frac{\sum_{i}(x_i - \bar x)(y_i - \bar y)}{\sum_i (x_i - \bar x)^{2}}, \qquad b = \bar y - w\,\bar x$</td></tr>
+      <tr><td>Vector — the <strong>normal equations</strong></td><td>$\displaystyle \theta^{*} = (X^{\top}X)^{-1}X^{\top}y$</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="tiny muted">$\bar x = \frac1N\sum_i x_i$, $\bar y = \frac1N\sum_i y_i$. The with-intercept formula is the no-intercept formula applied to <em>centred</em> data — which is why $b = \bar y - w\bar x$ simply puts the line back through $(\bar x, \bar y)$.</p>
+
+  <h3>Derivation of the normal equations (completing the square)</h3>
+  <div class="box proof"><span class="label">Proof</span>
+    $$\argmin_\theta (y - X\theta)^{\top}(y - X\theta) = \argmin_\theta\ y^{\top}y - \theta^{\top}X^{\top}y - y^{\top}X\theta + \theta^{\top}X^{\top}X\theta$$
+    $$= \argmin_\theta\ -2\theta^{\top}X^{\top}y + \theta^{\top}X^{\top}X\theta \qquad \text{($y^\top y$ is constant; the two cross terms are equal scalars)}$$
+    <p>Let $A = X^{\top}X$ and $b = X^{\top}y$ (in the scalar case $X^{\top}X$ plays the role of $\sum x_i^{2}$ and $X^{\top}y$ of $\sum x_i y_i$). Assume $A$ invertible. Add and subtract the constant $b^{\top}A^{-1}b$:</p>
+    $$= \argmin_\theta\ -2\theta^{\top}b + \theta^{\top}A\theta + b^{\top}A^{-1}b - b^{\top}A^{-1}b = \argmin_\theta\ (\theta - A^{-1}b)^{\top}A(\theta - A^{-1}b) - b^{\top}A^{-1}b$$
+    $$= \argmin_\theta\ \big\|X\big(\theta - (X^{\top}X)^{-1}X^{\top}y\big)\big\|_2^{2}$$
+    <p style="margin-bottom:0">A squared norm is $\ge 0$, so it is minimised exactly when its argument is zero: $\theta^{*} = (X^{\top}X)^{-1}X^{\top}y$. $\;\blacksquare$</p>
+  </div>
+
+  <h3>Shapes and cost</h3>
+  <div class="scroll-x">
+  <table class="center">
+    <thead><tr><th>Object</th><th>Shape</th><th>Contents</th></tr></thead>
+    <tbody>
+      <tr><td>$X$ (design matrix)</td><td>$\R^{N\times d}$</td><td>row $i$ is ${x^{(i)}}^{\top}$; column 1 is all ones</td></tr>
+      <tr><td>$y$</td><td>$\R^{N}$</td><td>the labels $y^{(1)},\dots,y^{(N)}$</td></tr>
+      <tr><td>$\theta$</td><td>$\R^{d}$</td><td>$\theta_1 = b$, the rest are weights</td></tr>
+      <tr><td>$X^{\top}X$</td><td>$\R^{d\times d}$</td><td>$O(Nd^{2})$ to form</td></tr>
+      <tr><td>$X^{\top}y$</td><td>$\R^{d}$</td><td>$O(Nd)$ to form</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p><strong>Total cost of the closed form: $O(Nd^{2} + d^{3})$</strong> — $O(Nd^{2})$ to build $X^{\top}X$, $O(d^{3})$ to invert/solve it. This is why huge $d$ pushes you to <a href="optimization.html">gradient descent</a> instead.</p>
+
+  <div class="box warn"><span class="label">Corner cases the notes raise</span>
+    <p><strong>When is $\sum_i {x^{(i)}}^{2} = 0$?</strong> Only when <em>every</em> $x^{(i)} = 0$ — all training points sit on the $y$-axis in a vertical stack. There is then no slope information at all, and $w^{*}$ is $0/0$: undefined.</p>
+    <p><strong>Can you just set $\theta = X^{-1}y$?</strong> No — $X$ is $N \times d$, generally not square, so $X^{-1}$ does not exist.</p>
+    <p style="margin-bottom:0"><strong>What if $X^{\top}X$ is singular</strong> ($\det = 0$, e.g. duplicated/collinear features or $N &lt; d$)? Use the <strong>pseudo-inverse</strong> in place of the inverse. <span class="pill">beyond syllabus</span> details not required for this course.</p>
+  </div>
+
+  <h2 id="optimization">11. Optimization: GD, SGD, mini-batch</h2>
+  <p class="tiny muted">→ <a href="optimization.html">Ch. 9 · Optimization: GD &amp; SGD</a></p>
+
+  <p><strong>The idea.</strong> To the right of the minimum of a parabola the derivative is positive (move left); to the left it is negative (move right); the magnitude of the derivative is large when you are far away. So move <em>against</em> the gradient, proportionally to its magnitude.</p>
+
+  <div class="scroll-x">
+  <table>
+    <thead><tr><th>Algorithm</th><th>Update (repeat for $t = 1,2,\dots$ until a stopping criterion)</th><th>Cost per step</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Gradient descent</strong> (a.k.a. <em>batch</em> GD)</td><td>$\theta^{(t)} = \theta^{(t-1)} - \alpha\,\nabla_\theta J(\theta)\big|_{\theta = \theta^{(t-1)}}$</td><td>all $N$ samples</td></tr>
+      <tr><td><strong>SGD</strong></td><td>choose $j \sim \mathrm{Uniform}\{1,\dots,N\}$, then $\theta^{(t)} = \theta^{(t-1)} - \alpha\,\nabla_\theta\,\ell\big(h_\theta(x^{(j)}), y^{(j)}\big)$</td><td>1 sample — noisy but fast</td></tr>
+      <tr><td><strong>Mini-batch GD</strong></td><td>same, but average the gradient over $K$ samples chosen at random, $1 &lt; K &lt; N$</td><td>$K$ samples</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="tiny muted">$\alpha$ is the <strong>learning rate</strong> / step size. Simple choice: a constant such as 0.01. Another: decay it with $t$, e.g. $\alpha_t = 1/\sqrt{t}$. Initialise $\theta^{(0)}$ anywhere; return $\theta^{(t)}$.</p>
+
+  <div class="box key"><span class="label">Four stopping criteria</span>
+    <p style="margin-bottom:0">Stop when (1) performance isn't improving much, (2) the derivative/gradient isn't changing much, (3) the iterate isn't moving much, or (4) you run out of compute.</p>
+  </div>
+
+  <h3>Gradient identities (denominator layout)</h3>
+  <p>For $J : \R^{d} \to \R$, $\nabla_\theta J(\theta) = \frac{\partial J(\theta)}{\partial \theta} = \big[\frac{\partial J}{\partial\theta_1}, \dots, \frac{\partial J}{\partial\theta_d}\big]^{\top} \in \R^{d}$ — a column vector, the same shape as $\theta$. That shape convention is <strong>denominator layout</strong> (more popular in ML than numerator layout). Generally, $\partial J/\partial\theta$ is just the collection of scalar-by-scalar partial derivatives arranged into a suitable shape.</p>
+
+  <div class="scroll-x">
+  <table class="center">
+    <thead><tr><th>$J(\theta)$</th><th>$\nabla_\theta J(\theta)$</th></tr></thead>
+    <tbody>
+      <tr><td>$\theta^{\top}v$, &nbsp;$v \in \R^{d}$</td><td>$v$</td></tr>
+      <tr><td>$\theta^{\top}A\theta$, &nbsp;$A \in \R^{d\times d}$</td><td>$(A + A^{\top})\theta$ &nbsp;(so $2A\theta$ when $A$ is symmetric)</td></tr>
+      <tr><td>$\|y - X\theta\|_2^{2} = y^{\top}y - 2\theta^{\top}X^{\top}y + \theta^{\top}X^{\top}X\theta$</td><td>$-2X^{\top}y + 2X^{\top}X\theta$</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="tiny muted">Setting $-2X^{\top}y + 2X^{\top}X\theta = 0$ recovers $\theta^{*} = (X^{\top}X)^{-1}X^{\top}y$ — linear regression is the special setting where a closed form exists. Most problems have none, which is why GD matters.</p>
+
+  <h3>Learning rate and convergence</h3>
+  <p>For $J(w) = cw^{2}$ with $c &gt; 0$: $J'(w) = 2cw$, so one GD step is $w^{(t)} = w^{(t-1)} - \alpha\,2cw^{(t-1)} = (1 - 2\alpha c)\,w^{(t-1)}$, i.e. $w^{(t)} = (1-2\alpha c)^{t} w^{(0)}$. This converges iff $|1 - 2\alpha c| &lt; 1$:</p>
+  $$\boxed{\;0 &lt; \alpha &lt; \tfrac{1}{c}\;} \qquad \text{and for } J(w) = w^{2}\ (c=1):\quad 0 &lt; \alpha &lt; 1$$
+  <p class="tiny muted">$\alpha = \frac{1}{2c}$ jumps to the minimum in one step. $\alpha = 1/c$ oscillates forever between $\pm w^{(0)}$. $\alpha &gt; 1/c$ diverges.</p>
+
+  <div class="box example"><span class="label">The course's worked example: $J(w) = w^2$, $w^{(0)} = 1$, 3 iterations</span>
+    <table class="tight center" style="margin-bottom:0">
+      <thead><tr><th>$\alpha$</th><th>factor $1-2\alpha$</th><th>$w^{(1)}$</th><th>$w^{(2)}$</th><th>$w^{(3)}$</th><th>verdict</th></tr></thead>
+      <tbody>
+        <tr><td>0.25</td><td>$+0.5$</td><td>0.5</td><td>0.25</td><td><strong>0.125</strong></td><td>converging</td></tr>
+        <tr><td>0.5</td><td>$0$</td><td>0</td><td>0</td><td><strong>0</strong></td><td>exact in one step</td></tr>
+        <tr><td>1</td><td>$-1$</td><td>$-1$</td><td>$1$</td><td><strong>$-1$</strong></td><td>oscillates, never converges</td></tr>
+        <tr><td>2</td><td>$-3$</td><td>$-3$</td><td>$9$</td><td><strong>$-27$</strong></td><td>diverges</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="scroll-x">
+  <table>
+    <thead><tr><th>Term</th><th>Definition</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Local minimum</strong></td><td>a $\theta \in \R^{d}$ that is lowest <em>in its neighbourhood</em> — there may be $\theta'$ farther away that is lower</td></tr>
+      <tr><td><strong>Global minimum</strong></td><td>a $\theta$ with $J(\theta) \le J(\theta')$ for <em>every</em> $\theta' \in \R^{d}$</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="tiny muted">GD may get stuck in a local minimum unless $J$ has special structure (a parabola / convex function has only one). It is still the workhorse because it finds a good solution efficiently. Note $\frac1N\sum_i (y^{(i)} - x^{(i)}w)^2$ is a parabola too, so the single-sample intuition carries over.</p>
+
+  <h2 id="features">12. Feature engineering &amp; overfitting</h2>
+  <p class="tiny muted">→ <a href="feature-engineering.html">Ch. 10 · Feature engineering</a></p>
+
+  <p><strong>The move.</strong> A model can be non-linear in the <em>input</em> while remaining linear in the <em>parameters</em> — and linear-in-parameters is all that linear regression requires. So transform the data, not the model.</p>
+
+  $$h(x) = b + w_1x + w_2x^{2} \quad\text{is quadratic in } x \text{ but linear in } (b, w_1, w_2)$$
+
+  <div class="scroll-x">
+  <table>
+    <thead><tr><th>Object</th><th>Definition</th></tr></thead>
+    <tbody>
+      <tr><td>Feature transform</td><td>$\phi : \R^{K} \to \R^{M}$ — $K$ original features in, $M$ produced features out</td></tr>
+      <tr><td>Transformed design matrix</td><td>$\Phi \in \R^{N\times M}$, row $i$ being $\phi(x^{(i)})^{\top}$ (often just renamed $X$ afterwards)</td></tr>
+      <tr><td>Degree-$M$ polynomial transform</td><td>$\phi(x) = [1,\ x,\ x^{2},\ \dots,\ x^{M}]^{\top}$ — the leading 1 supplies the bias column</td></tr>
+      <tr><td>Other transforms</td><td>anything you like: $\sin(x)$, $\|x\|_2$, … — as long as you apply <strong>the same $\phi$ at training and at prediction time</strong></td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="box warn"><span class="label">Overfitting — the signature</span>
+    <p>Raise the polynomial degree on a simple dataset ($k = 1, 5, 11, 30$) and the curve starts matching the exact training points rather than the general trend.</p>
+    <p style="margin-bottom:0"><strong>The diagnostic:</strong> <em>training error keeps falling while test error starts rising.</em> Training error alone can never reveal overfitting — you need held-out data. More features $\Rightarrow$ a richer hypothesis class $\Rightarrow$ better fit <em>and</em> worse generalization past some point.</p>
+  </div>
+
+  <h2 id="logistic-regression">13. Logistic regression</h2>
+  <p class="tiny muted">→ <a href="logistic-regression.html">Ch. 11 · Logistic regression</a></p>
+
+  <p><strong>Why not thresholding.</strong> $\hat y = g_{\text{threshold}}(wx+b)$ produces valid class labels but is maximally over-confident right at the boundary, and it has <em>derivative zero essentially everywhere</em>, making it impossible to optimise by gradient methods. Replace the step with a smooth squash.</p>
+
+  $$\sigma(z) = \frac{1}{1 + e^{-z}} \qquad \sigma:(-\infty,\infty) \to (0,1),\qquad \sigma(0) = 0.5$$
+
+  <div class="scroll-x">
+  <table>
+    <thead><tr><th>Identity</th><th>Use</th></tr></thead>
+    <tbody>
+      <tr><td>$\sigma'(z) = \sigma(z)\,\big(1 - \sigma(z)\big)$</td><td>makes every gradient collapse neatly; note $\sigma' \le 1/4$, maximal at $z=0$</td></tr>
+      <tr><td>$\sigma(-z) = 1 - \sigma(z)$</td><td>symmetry about $(0, \tfrac12)$: $P(Y=0\mid x) = \sigma(-\theta^{\top}x)$</td></tr>
+      <tr><td>$\sigma(z) \ge \tfrac12 \iff z \ge 0$</td><td>turns a probability threshold into a linear test</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>The model</h3>
+  $$h(x) = \hat y = \sigma(\theta^{\top}x) = P(Y = 1 \mid x)$$
+  <p class="tiny muted">Bias assumed absorbed into $x$ (first coordinate 1). One-dimensional version: $h(x) = \sigma(wx + b)$. Binary classification, $y \in \{0,1\}$.</p>
+
+  <div class="scroll-x">
+  <table>
+    <thead><tr><th>Fact</th><th>Formula</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Decision boundary</strong></td><td>predict 1 iff $h(x) \ge \tfrac12$ iff $\;\theta^{\top}x = 0\;$ is crossed — a hyperplane, hence a <em>linear</em> classifier</td></tr>
+      <tr><td><strong>Log-odds (logit)</strong></td><td>$\displaystyle \log\frac{h(x)}{1 - h(x)} = \theta^{\top}x$ — logistic regression is <em>linear in the log-odds</em></td></tr>
+      <tr><td><strong>Loss: binary cross-entropy</strong></td><td>$\ell = -\big[\,y\log\hat y + (1-y)\log(1 - \hat y)\,\big]$ &nbsp;($= -\log\hat y$ when $y=1$, $=-\log(1-\hat y)$ when $y=0$)</td></tr>
+      <tr><td><strong>Objective</strong></td><td>$\displaystyle J(\theta) = -\frac1N\sum_{i=1}^{N}\Big[y^{(i)}\log \sigma(\theta^{\top}x^{(i)}) + (1-y^{(i)})\log\big(1 - \sigma(\theta^{\top}x^{(i)})\big)\Big]$</td></tr>
+      <tr><td><strong>Gradient</strong></td><td>$\displaystyle \nabla_\theta J(\theta) = \frac{1}{N}\sum_{i=1}^{N}\Big(\sigma(\theta^{\top}x^{(i)}) - y^{(i)}\Big)\,x^{(i)}$</td></tr>
+      <tr><td><strong>Fitting</strong></td><td>no closed form — run <a href="optimization.html">GD / SGD</a> with that gradient</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="tiny muted">The gradient is literally <em>(prediction − truth) × input, averaged</em> — structurally identical to the linear-regression gradient. That is the payoff of pairing the sigmoid with cross-entropy: the $\sigma'$ factor cancels.</p>
+
+  <h3>Multi-class: softmax</h3>
+  $$P(Y = k \mid x) = \mathrm{softmax}(z)_k = \frac{e^{z_k}}{\sum_{j=1}^{K} e^{z_j}}, \qquad z_k = \theta_k^{\top}x$$
+  <p class="tiny muted">One weight vector $\theta_k$ per class; outputs are positive and sum to 1. With $K = 2$ this reduces exactly to the sigmoid. Loss generalises to cross-entropy $-\sum_k \1(y = k)\log P(Y=k\mid x)$.</p>
+
+  <h2 id="traps">14. Traps — the ten mistakes most likely to cost marks</h2>
+
+  <div class="scroll-x">
+  <table>
+    <thead><tr><th>#</th><th>Trap</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td><strong>Arc consistency deletes from the TAIL.</strong> Enforcing $X \to Y$ removes values from $X$'s domain, never $Y$'s. → <a href="csps.html">CSPs</a></td></tr>
+      <tr><td>2</td><td><strong>α-β preserves the ROOT value only.</strong> Interior node values may be wrong — they are early-return bounds. Never quote a pruned node's number as "the minimax value". → <a href="adversarial-search.html">Adversarial search</a></td></tr>
+      <tr><td>3</td><td><strong>A <em>specific</em> conditional entropy $H(Y \mid W=\omega)$ CAN exceed $H(Y)$</strong> — one child can be more confused than the parent. The <em>average</em> $H(Y\mid W)$ cannot, which is why $I(Y;W) \ge 0$. → <a href="information-theory.html">Information theory</a></td></tr>
+      <tr><td>4</td><td><strong>$x^{(i)}$ is a sample index, not an exponent.</strong> $(x^{(1)})^{2}$ is the square of the first sample; $x^{(2)}$ is the second sample. → <a href="ml-formulation.html">ML formulation</a></td></tr>
+      <tr><td>5</td><td><strong>Admissible is enough for A* TREE search; you need CONSISTENT for GRAPH search.</strong> Graph search discards repeats, so a merely-admissible $h$ can lock in a worse first path to a state. → <a href="informed-search.html">Informed search</a></td></tr>
+      <tr><td>6</td><td><strong>Greedy tree splits are locally, not globally, optimal.</strong> The best single split need not begin the best tree; the algorithm is a greedy approximation to ERM, traded for efficiency. → <a href="decision-trees.html">Decision trees</a></td></tr>
+      <tr><td>7</td><td><strong>Logistic regression is CLASSIFICATION, not regression.</strong> The name comes from the logistic function and the linear log-odds, not from predicting a real-valued $y$. → <a href="logistic-regression.html">Logistic regression</a></td></tr>
+      <tr><td>8</td><td><strong>Argument order of the loss differs between sources.</strong> The lecture notes write $\ell(\hat y, y)$ — <em>guess first, truth second</em>. The pre-reading writes $\ell(y, \hat y)$. Squared and zero-one loss are symmetric so it never changes an answer, but it changes what a symbol means — read the header of the question. → <a href="ml-formulation.html">ML formulation</a></td></tr>
+      <tr><td>9</td><td><strong>UCS is A* with $h = 0$</strong> (and $h=0$ is consistent, hence UCS is optimal in both tree and graph search). Greedy is the mirror image, $g = 0$, and is optimal in neither. → <a href="search-foundations.html">Search foundations</a> · <a href="informed-search.html">Informed search</a></td></tr>
+      <tr><td>10</td><td><strong>The minimax answer is an ACTION, not just a value.</strong> $V(s)$ is the score; the deliverable at the root is $\hat a = \argmax_a V(\mathrm{Result}(s,a))$. Same for a search problem: the solution is the plan, recovered by tracing parent pointers. → <a href="adversarial-search.html">Adversarial search</a></td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="box key"><span class="label">One-line reminders for the last five minutes</span>
+    <ul style="margin-bottom:0">
+      <li>Consistency $\Rightarrow$ admissibility. Not the reverse.</li>
+      <li>Max of admissible heuristics: admissible, and dominates both.</li>
+      <li>$0\log\frac10 := 0$.</li>
+      <li>MRV takes the <em>fewest</em> remaining values; LCV takes the value ruling out the <em>fewest</em>.</li>
+      <li>$X \in \R^{N\times d}$: rows are samples. Closed form costs $O(Nd^{2}+d^{3})$.</li>
+      <li>GD on $J = cw^{2}$ converges iff $0 &lt; \alpha &lt; 1/c$.</li>
+      <li>Overfitting = training error $\downarrow$ while test error $\uparrow$.</li>
+      <li>Logistic gradient $= \frac1N\sum_i(\hat y^{(i)} - y^{(i)})x^{(i)}$.</li>
+    </ul>
+  </div>
+
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<script src="assets/site.js"></script>
+</body>
+</html>

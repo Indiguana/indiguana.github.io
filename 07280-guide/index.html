@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>07-280 Field Guide · Intro to AI &amp; ML, taught properly</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body data-page="index">
+<main>
+
+  <div class="eyebrow">Carnegie Mellon · 07-280</div>
+  <h1>Intro to AI &amp; ML, taught properly</h1>
+  <p class="subtitle">Every concept from the course slides and notes — rebuilt from the ground up with
+  intuition, analogies, full derivations, worked examples, interactive figures and guided problems.</p>
+
+  <div class="box key">
+    <span class="label">Why this exists</span>
+    <p>The slides <em>state</em> results. They rarely <em>teach</em> them: a definition appears, a
+    symbol is introduced without being named, a proof step says <em>TODO</em>, a poll asks a question
+    and the answer lives in a clicker app you can't go back to.</p>
+    <p style="margin-bottom:0">This guide works the other way round. Every idea starts from something
+    concrete, gets an analogy, then a definition with every symbol spelled out, then a numeric example
+    computed all the way through, then the full derivation, then problems you solve yourself with the
+    steps hidden until you want them. Nothing is left as an exercise to the reader.</p>
+  </div>
+
+  <h2 id="start">Where to start</h2>
+
+  <div class="grid2">
+    <a class="card" href="how-to-study.html">
+      <div class="kicker">Orientation</div>
+      <h3>How to use this guide</h3>
+      <p>The dependency map between chapters, what the callouts mean, what to memorise versus
+      re-derive, and which source documents each chapter came from.</p>
+    </a>
+    <a class="card" href="practice.html">
+      <div class="kicker">Practice</div>
+      <h3>Guided problems — Part I</h3>
+      <p>Twelve exam-shaped problems on search, A*, games and CSPs, each broken into steps you reveal
+      one at a time. Part II practice lives inside each ML chapter.</p>
+    </a>
+  </div>
+
+  <h2 id="part1">Part I — Search</h2>
+  <p class="muted">How an agent finds a plan: in a world that just sits there, in a world with an
+  opponent trying to beat you, and in a world where the answer isn't a path at all.</p>
+
+  <div class="grid2">
+    <a class="card" href="search-foundations.html">
+      <div class="kicker">Chapter 1</div>
+      <h3>Search problems, BFS, DFS &amp; UCS</h3>
+      <p>State spaces, search trees versus state-space graphs, the frontier, and the three
+      uninformed strategies with their completeness and complexity worked out rather than tabulated.</p>
+    </a>
+    <a class="card" href="informed-search.html">
+      <div class="kicker">Chapter 2</div>
+      <h3>Heuristics, Greedy search &amp; A*</h3>
+      <p>$f = g + h$, admissibility, consistency, the full A* optimality proof line by line, why
+      graph search needs more than admissibility, and how to invent heuristics by relaxation.</p>
+    </a>
+    <a class="card" href="adversarial-search.html">
+      <div class="kicker">Chapter 3</div>
+      <h3>Minimax, α-β pruning &amp; Expectimax</h3>
+      <p>Game trees, why the answer is a policy and not a plan, what the α-β cutoff test actually
+      means, evaluation functions under a horizon, and chance nodes.</p>
+    </a>
+    <a class="card" href="csps.html">
+      <div class="kicker">Chapter 4</div>
+      <h3>Constraint Satisfaction Problems</h3>
+      <p>Identification instead of planning: backtracking search, forward checking, arc consistency
+      and AC-3, and why MRV wants to fail fast while LCV wants to succeed fast.</p>
+    </a>
+  </div>
+
+  <h2 id="part2">Part II — Machine Learning</h2>
+  <p class="muted">How an agent learns a function from examples: the framework, then two model
+  families, then the optimization that makes either of them computable.</p>
+
+  <div class="grid2">
+    <a class="card" href="ml-formulation.html">
+      <div class="kicker">Chapter 5</div>
+      <h3>How an ML problem is set up</h3>
+      <p>$\mathcal{X}$, $\mathcal{Y}$, $h$, loss, risk, empirical risk, ERM, generalization and the
+      i.i.d. assumption — plus a notation table you can keep coming back to.</p>
+    </a>
+    <a class="card" href="decision-trees.html">
+      <div class="kicker">Chapter 6</div>
+      <h3>Decision trees</h3>
+      <p>Stumps, majority vote, the recursive construction, greedy splitting, axis-aligned decision
+      boundaries, and every extension the notes list.</p>
+    </a>
+    <a class="card" href="information-theory.html">
+      <div class="kicker">Chapter 7</div>
+      <h3>Entropy &amp; mutual information</h3>
+      <p>Twenty questions, why $\log_2 \tfrac1p$ is the fundamental quantity, conditional entropy,
+      information gain, and why it beats training error as a splitting criterion.</p>
+    </a>
+    <a class="card" href="linear-regression.html">
+      <div class="kicker">Chapter 8</div>
+      <h3>Linear regression</h3>
+      <p>Fitting a line by completing the square, the normal equations $\theta^\star =
+      (X^\top X)^{-1}X^\top y$ derived in full, and both corner cases answered.</p>
+    </a>
+    <a class="card" href="optimization.html">
+      <div class="kicker">Chapter 9</div>
+      <h3>Optimization: GD &amp; SGD</h3>
+      <p>Why the update rule looks the way it does, what the learning rate does to convergence,
+      gradients of vector functions, local minima, and stochastic and mini-batch descent.</p>
+    </a>
+    <a class="card" href="feature-engineering.html">
+      <div class="kicker">Chapter 10</div>
+      <h3>Feature engineering &amp; overfitting</h3>
+      <p>Linear in the <em>parameters</em>, not the input: polynomial and abstract transforms
+      $\phi$, and the price you pay in overfitting when you add too many.</p>
+    </a>
+    <a class="card" href="logistic-regression.html">
+      <div class="kicker">Chapter 11</div>
+      <h3>Logistic regression</h3>
+      <p>From thresholding to the sigmoid, probabilities instead of hard decisions,
+      $\sigma' = \sigma(1-\sigma)$, cross-entropy, and the surprisingly clean gradient.</p>
+    </a>
+    <a class="card" href="cheatsheet.html">
+      <div class="kicker">Reference</div>
+      <h3>Formula cheat sheet</h3>
+      <p>Every definition and formula in the course on one printable page, plus the ten traps most
+      likely to cost you marks.</p>
+    </a>
+  </div>
+
+  <h2 id="map">The shape of the course</h2>
+  <p>Two halves that look unrelated and aren't. Search asks <em>how do I find a good answer in a space
+  too large to enumerate?</em> Machine learning asks exactly the same question — the space is the set
+  of hypotheses, and gradient descent is the search algorithm.</p>
+
+  <div class="viz">
+    <div class="viz-title">Chapter dependencies</div>
+    <svg viewBox="0 0 760 340" role="img" aria-label="Dependency graph of the eleven chapters">
+      <defs>
+        <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--ink-mute)"/>
+        </marker>
+      </defs>
+      <g stroke="var(--ink-mute)" stroke-width="1.5" fill="none" marker-end="url(#ar)" opacity=".7">
+        <path d="M 138 62 H 214"/>
+        <path d="M 318 62 H 394"/>
+        <path d="M 86 84 V 128"/>
+        <path d="M 138 232 H 214"/>
+        <path d="M 318 232 H 394"/>
+        <path d="M 498 232 H 574"/>
+        <path d="M 266 254 V 292"/>
+        <path d="M 626 254 V 292"/>
+        <path d="M 86 190 V 210"/>
+      </g>
+
+      <g font-size="13" text-anchor="middle">
+        <a href="search-foundations.html">
+          <rect x="18" y="40" width="120" height="44" rx="8" fill="var(--panel)" stroke="var(--accent)" stroke-width="1.5"/>
+          <text x="78" y="58" fill="var(--ink)">1 · Search</text>
+          <text x="78" y="73" fill="var(--ink-mute)" font-size="11">BFS / DFS / UCS</text>
+        </a>
+        <a href="informed-search.html">
+          <rect x="214" y="40" width="120" height="44" rx="8" fill="var(--panel)" stroke="var(--line-2)"/>
+          <text x="274" y="58" fill="var(--ink)">2 · A*</text>
+          <text x="274" y="73" fill="var(--ink-mute)" font-size="11">heuristics</text>
+        </a>
+        <a href="adversarial-search.html">
+          <rect x="394" y="40" width="130" height="44" rx="8" fill="var(--panel)" stroke="var(--line-2)"/>
+          <text x="459" y="58" fill="var(--ink)">3 · Games</text>
+          <text x="459" y="73" fill="var(--ink-mute)" font-size="11">minimax, α-β</text>
+        </a>
+        <a href="csps.html">
+          <rect x="26" y="128" width="120" height="44" rx="8" fill="var(--panel)" stroke="var(--line-2)"/>
+          <text x="86" y="146" fill="var(--ink)">4 · CSPs</text>
+          <text x="86" y="161" fill="var(--ink-mute)" font-size="11">backtracking</text>
+        </a>
+
+        <a href="ml-formulation.html">
+          <rect x="18" y="210" width="120" height="44" rx="8" fill="var(--panel)" stroke="var(--accent-2)" stroke-width="1.5"/>
+          <text x="78" y="228" fill="var(--ink)">5 · ML setup</text>
+          <text x="78" y="243" fill="var(--ink-mute)" font-size="11">loss, risk, ERM</text>
+        </a>
+        <a href="decision-trees.html">
+          <rect x="214" y="210" width="120" height="44" rx="8" fill="var(--panel)" stroke="var(--line-2)"/>
+          <text x="274" y="228" fill="var(--ink)">6 · Trees</text>
+          <text x="274" y="243" fill="var(--ink-mute)" font-size="11">stumps, splits</text>
+        </a>
+        <a href="information-theory.html">
+          <rect x="206" y="292" width="136" height="40" rx="8" fill="var(--panel)" stroke="var(--line-2)"/>
+          <text x="274" y="317" fill="var(--ink)">7 · Entropy &amp; MI</text>
+        </a>
+        <a href="linear-regression.html">
+          <rect x="394" y="210" width="120" height="44" rx="8" fill="var(--panel)" stroke="var(--line-2)"/>
+          <text x="454" y="228" fill="var(--ink)">8 · Linear reg.</text>
+          <text x="454" y="243" fill="var(--ink-mute)" font-size="11">normal equations</text>
+        </a>
+        <a href="optimization.html">
+          <rect x="574" y="210" width="128" height="44" rx="8" fill="var(--panel)" stroke="var(--line-2)"/>
+          <text x="638" y="228" fill="var(--ink)">9 · GD &amp; SGD</text>
+          <text x="638" y="243" fill="var(--ink-mute)" font-size="11">learning rate</text>
+        </a>
+        <a href="feature-engineering.html">
+          <rect x="556" y="292" width="88" height="40" rx="8" fill="var(--panel)" stroke="var(--line-2)"/>
+          <text x="600" y="317" fill="var(--ink)">10 · Features</text>
+        </a>
+        <a href="logistic-regression.html">
+          <rect x="654" y="292" width="88" height="40" rx="8" fill="var(--panel)" stroke="var(--line-2)"/>
+          <text x="698" y="317" fill="var(--ink)">11 · Logistic</text>
+        </a>
+      </g>
+      <text x="18" y="24" font-size="11" fill="var(--accent)" letter-spacing="1.4">PART I · SEARCH</text>
+      <text x="18" y="196" font-size="11" fill="var(--accent-2)" letter-spacing="1.4">PART II · MACHINE LEARNING</text>
+    </svg>
+    <div class="caption">Arrows mean &ldquo;read this first&rdquo;. Chapters 10 and 11 both sit on top
+    of linear regression and gradient descent, so do those two properly and the rest is downhill.</div>
+  </div>
+
+  <h2 id="sources">Built from your course documents</h2>
+  <p>Everything here traces back to the professor's own notes and decks, so you can cross-check any
+  claim against the original:</p>
+  <div class="scroll-x">
+  <table>
+    <thead><tr><th>Source document</th><th>Becomes</th></tr></thead>
+    <tbody>
+      <tr><td><code>07280_F26_Lec2_Informed_Search(-runover)</code></td><td>Chapters 1–2</td></tr>
+      <tr><td><code>07280_F26_Lec3_Adversarial_Search</code>, <code>07280_S26_Notes_Adversarial_Search</code></td><td>Chapter 3</td></tr>
+      <tr><td><code>07280_F26_Lec4_CSPs</code></td><td>Chapter 4</td></tr>
+      <tr><td><code>07280_F26_ML_formulation</code>, <code>07280_F26_Notes_ML_Prob_Decision_Trees</code> §1</td><td>Chapter 5</td></tr>
+      <tr><td><code>07280_F26_Lecture_Notes_Decision_Trees</code>, <code>…ML_Prob_Decision_Trees</code> §2</td><td>Chapters 6–7</td></tr>
+      <tr><td><code>07280_F26_Lecture_Notes_Linear_Regression</code>, <code>07280_F26_Notes_Optimization_and_Linear_Regression</code></td><td>Chapter 8</td></tr>
+      <tr><td><code>07280_F26_Lecture_Notes_Optimization</code></td><td>Chapter 9</td></tr>
+      <tr><td><code>07280_F26_Notes_Feature_Eng_and_Logistic_Reg</code></td><td>Chapters 10–11</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="box warn" style="margin-top:2rem">
+    <span class="label">One honest caveat</span>
+    <p style="margin-bottom:0">Several figures in the source PDFs are images that don't survive text
+    extraction. Where a chapter needed one of those — the Iris comparison tables, the expectimax
+    numbers, the overfitting panels — it has been <em>reconstructed</em> so the idea still lands, and
+    the page says so at the point of use. Check those specific figures against your own copy of the
+    slides before you rely on exact numbers.</p>
+  </div>
+
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<script src="assets/site.js"></script>
+</body>
+</html>

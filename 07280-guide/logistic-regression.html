@@ -1,0 +1,1466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Logistic Regression · 07-280 Field Guide</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body data-page="logistic-regression">
+<main>
+
+  <div class="eyebrow">Part II · Chapter 11</div>
+  <h1>Logistic regression</h1>
+  <p class="subtitle">How to turn a straight line into a classifier that reports <em>how sure it is</em> — and why the sigmoid, not a threshold, is the only function that lets you train the thing.</p>
+
+  <div data-toc></div>
+
+  <h2 id="why-probabilities">1. Why a hard decision is not enough</h2>
+
+  <p>Every classifier you have met so far in this course answers a question of the form: <em>which class does this sample belong to?</em> <a href="decision-trees.html">Decision trees</a> walk you down to a leaf and hand you a label. The course notes put it exactly this way:</p>
+
+  <div class="box key"><span class="label">Key idea</span>
+    <p>Previously, we viewed classification as making an <strong>explicit decision</strong> on whether a given sample $x^{(i)}$ belongs to one of $K$ classes. But making a discrete decision on the class of $x^{(i)}$ doesn't tell us <strong>how strongly</strong> we believe $x^{(i)}$ belongs to that class.</p>
+    <p>That observation is what pushes us toward producing a <strong>probability distribution over classes</strong> at prediction time.</p>
+  </div>
+
+  <p>Notation first, as always: $x^{(i)}$ means <em>the $i$-th sample in the dataset</em>. The parenthesised superscript is an index, not an exponent. $x^{(3)}$ is the third data point; $x^3$ is $x$ cubed. The course notes flag this too, and this chapter will put both kinds of superscript on the same page, so keep checking for the parentheses.</p>
+
+  <h3>1.1 The concrete thing that goes wrong</h3>
+
+  <p>Suppose a model screens chest X-rays and outputs "tumour" or "no tumour". Two patients come back "tumour". One of them sat squarely in the middle of a cloud of obviously-cancerous scans. The other sat one pixel over the line, in a region where half the training scans went each way.</p>
+
+  <p>The model gave you the same word for both. You cannot:</p>
+
+  <ul>
+    <li><strong>Triage.</strong> If you have capacity to biopsy 20 patients today and 100 came back positive, which 20?</li>
+    <li><strong>Defer.</strong> You would like the model to say "I genuinely don't know, send this to a human." A label has no vocabulary for that.</li>
+    <li><strong>Re-tune the threshold.</strong> A false negative here costs a life; a false positive costs a biopsy. Those are not equally bad (this is the asymmetric-loss idea from <a href="ml-formulation.html">chapter 5</a>). To trade one against the other you need a dial, and a bare label has no dial.</li>
+    <li><strong>Combine models.</strong> Two labels cannot be averaged sensibly. Two probabilities can.</li>
+  </ul>
+
+  <div class="box analogy"><span class="label">Analogy</span>
+    <p>A weather forecaster who only ever says "rain" or "no rain" is much less useful than one who says "70% chance of rain" — even though on any single day they say the same thing. The percentage lets you decide whether to carry an umbrella, cancel the picnic, or close the airport, all from one forecast. The bare word forces the forecaster to make <em>your</em> decision for you, using <em>their</em> idea of what rain costs you.</p>
+    <p><strong>Where the analogy breaks:</strong> a forecaster's 70% is <em>calibrated</em> — over many such days it really does rain about 70% of the time. A model's output number is only a probability if you check that it behaves like one. We come back to this in the <a href="#mistakes">common mistakes</a>.</p>
+  </div>
+
+  <h3>1.2 Why <em>linear</em>, specifically</h3>
+
+  <p>The notes make a second observation right after the first, and it is the reason this chapter sits where it does in the course:</p>
+
+  <div class="box key"><span class="label">Key idea</span>
+    <p>Some classification models, such as decision trees, <strong>aren't linear functions of their input</strong> $x^{(i)}$ at all. They perform some non-linear function in order to decide their classes.</p>
+    <p>Logistic regression models are an <strong>intuitive extension of linear regression</strong> that let us perform classification <em>while still building on a linear model</em>.</p>
+  </div>
+
+  <p>Unpack "a decision tree isn't a linear function of its input". A tree that asks "is $x_1 &gt; 3$?" then "is $x_2 &gt; 7$?" carves feature space into axis-aligned boxes and assigns a label to each box. Its output as a function of $x$ is a staircase: piecewise constant, jumping at split points. There are no coefficients $w_j$ to read. You cannot say "increasing $x_1$ by one unit increases the score by $w_1$", because the tree's score doesn't move at all until you cross a split, and then it jumps.</p>
+
+  <p>Linear models give up that flexibility and get three things in return: <strong>interpretable coefficients</strong> (one number per feature, with a sign and a magnitude), <strong>easy optimisation</strong> (we will get a convex objective), and <strong>simplicity</strong> (a handful of parameters, so less to overfit — the lesson of <a href="feature-engineering.html">chapter 10</a>). Logistic regression is the model that keeps all three <em>and</em> outputs probabilities.</p>
+
+  <h2 id="four-stages">2. Four stages from a line to a classifier</h2>
+
+  <p>The notes build the model by failing three times in a row, on purpose. Each failure tells you exactly which property the next attempt must have. Here is the whole arc on one screen; the rest of this section walks through each panel slowly.</p>
+
+  <div class="viz">
+    <div class="viz-title">Figure A — the four stages, aligned on the same data</div>
+    <div class="grid2">
+      <svg id="prog1" role="img" aria-label="Stage 1: one-dimensional labelled data, class 0 points on the left at height zero and class 1 points on the right at height one, overlapping near x equals one"></svg>
+      <svg id="prog2" role="img" aria-label="Stage 2: a straight least-squares line through the labelled data, extending below zero and above one"></svg>
+      <svg id="prog3" role="img" aria-label="Stage 3: a step function that is zero left of the boundary and one right of it"></svg>
+      <svg id="prog4" role="img" aria-label="Stage 4: a smooth S-shaped logistic curve rising from zero to one through the overlap region"></svg>
+    </div>
+    <div class="caption"><strong>Reconstruction note.</strong> The professor's PDF contains Figures 5–9 as images, and those images did not survive text extraction. Every plot on this page is therefore a <em>reconstruction</em>: real data, real least-squares and maximum-likelihood fits, computed in your browser when the page loads. The dataset is mine, chosen to match the description in the notes (one-dimensional $x$, labels in $\{0,1\}$, a region of overlap around $x \approx 1$), so the numbers here will not match the professor's slides digit-for-digit — but every claim the notes make about the shapes is reproduced.</div>
+  </div>
+
+  <h3>2.1 Stage 1 — the dataset (Figure 5)</h3>
+
+  <p>The setup from the notes: a dataset</p>
+
+  $$ \D = \{(x^{(i)}, y^{(i)})\}_{i=1}^{N}, \qquad x^{(i)} \in \R, \qquad y^{(i)} \in \{0, 1\} $$
+
+  <p>where $N$ is the number of samples, each input $x^{(i)}$ is a single real number, and each label $y^{(i)}$ is either $0$ or $1$ (binary classification). We want a <strong>linear classifier</strong> — one whose decision boundary is linear. In one dimension a "linear decision boundary" is just a single point on the $x$-axis: everything left of it is one class, everything right is the other.</p>
+
+  <p>Here is the dataset this page uses throughout. Twelve points, six per class:</p>
+
+  <div class="scroll-x">
+  <table class="tight center">
+    <thead><tr><th>$y$</th><th colspan="6">$x$ values</th></tr></thead>
+    <tbody>
+      <tr><td>0</td><td>−1.4</td><td>−0.8</td><td>−0.3</td><td>0.2</td><td>0.7</td><td>1.2</td></tr>
+      <tr><td>1</td><td>1.0</td><td>1.3</td><td>1.6</td><td>2.1</td><td>2.7</td><td>3.3</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>Read the overlap off the table: the largest class-0 input is $x = 1.2$ and the smallest class-1 input is $x = 1.0$. They cross. In the strip $1.0 \le x \le 1.2$ the two classes are interleaved, so <strong>no</strong> threshold can classify all twelve points correctly. That is not a defect of the data — it is the whole point. Real data overlaps, and a model that is forced to be certain in the overlap is a model that is lying.</p>
+
+  <div class="viz">
+    <div class="viz-title">Figure 5 (reconstructed) — the dataset to train a classifier on</div>
+    <svg id="fig5" role="img" aria-label="One-dimensional dataset, class zero points plotted at height zero, class one points at height one, with the overlap region between x equals one and one point two shaded"></svg>
+    <div class="caption">The shaded band is the overlap region, $1.0 \le x \le 1.2$. Any vertical line you draw — any linear decision boundary in 1-D — gets at least one point wrong. What we would <em>like</em> a model to say near $x = 1$ is not "class 0" or "class 1" but "about fifty-fifty".</div>
+  </div>
+
+  <h3>2.2 Stage 2 — just use linear regression (Figure 6)</h3>
+
+  <p>The notes' first idea: the labels are numbers, $0$ and $1$. <a href="linear-regression.html">Linear regression</a> predicts numbers. So fit</p>
+
+  $$ \hat{y} = wx + b $$
+
+  <p>by least squares and see what happens. Here $w$ is the slope and $b$ the intercept, exactly as in chapter 8. Running the normal equations on the twelve points above gives</p>
+
+  $$ \hat{y} = 0.2184 + 0.2913\,x $$
+
+  <div class="viz">
+    <div class="viz-title">Figure 6 (reconstructed) — $\D$ trained on a linear regression model</div>
+    <svg id="fig6" role="img" aria-label="The labelled data with a straight least-squares line rising gently through it, crossing the horizontal line at height one half near x equals one, and leaving the zero to one band at both ends"></svg>
+    <div class="caption">The line crosses $\hat y = 0.5$ at $x = 0.967$ — right in the overlap, which is encouraging. But look at the ends: at $x = -1.4$ the model predicts $\hat y = -0.189$, and at $x = 3.3$ it predicts $\hat y = 1.180$. Both are outside $\{0,1\}$ and outside $[0,1]$.</div>
+  </div>
+
+  <p>What did we learn, and what went wrong? Quoting the notes: the model <em>"learns some relationship between the input $x$ and the class $y$, where the class will increase if the input increases."</em> The slope is positive, which is correct — larger $x$ really does mean more likely class 1. So the fit is not useless.</p>
+
+  <p>But: <em>"this doesn't necessarily constrain the output of a model to the appropriate class that we would like, either a 0 or a 1."</em> A linear function is unbounded. Push $x$ far enough left and you get $-0.4$; far enough right and you get $1.7$. On our data the extremes are $-0.189$ and $1.180$, and with a point at $x = 10$ the fit predicts $1.433$. <strong>"$\hat y = 1.433$" is not a class.</strong> It is not a probability either. It is a number with no interpretation at all.</p>
+
+  <h4>The failure mode the notes skip, and you should see</h4>
+
+  <p>There is a second, sneakier problem with using squared loss for classification, and it is worth a figure of its own because it explains a phenomenon you will otherwise find baffling.</p>
+
+  <p>Squared loss punishes the model for being <em>far from the target number</em>. A point sitting at $x = 10$ with label $1$ is, from a classification point of view, the easiest point in the world: it is miles inside class-1 territory and any sane boundary gets it right. But least squares looks at it and sees $\hat y = 0.2184 + 0.2913(10) = 3.13$, which is $2.13$ away from the target $1$, for a squared penalty of $4.5$ — larger than the penalty from <em>all twelve real points combined</em>. So the fit contorts itself to bring that one far-away point down toward $1$, and the only way to do that is to flatten the slope.</p>
+
+  <div class="viz">
+    <div class="viz-title">Figure B — one far-away, correctly-labelled point moves the boundary</div>
+    <svg id="fig6b" role="img" aria-label="The same data with an extra class one point far to the right; the refitted line is much flatter and its half-way crossing has moved right, newly misclassifying two class one points"></svg>
+    <div class="controls">
+      <button class="btn primary" id="outBtn">Add the point at x = 10</button>
+      <span class="val" id="outStat"></span>
+    </div>
+    <div class="caption">Watch the crossing point. <strong>Before:</strong> $\hat y = 0.2184 + 0.2913x$, boundary at $x = 0.967$, one point misclassified (the class-0 point at $x = 1.2$). <strong>After adding $(x{=}10,\ y{=}1)$:</strong> $\hat y = 0.3601 + 0.1073x$, boundary at $x = 1.303$, and now <em>two</em> points are wrong — the class-1 points at $x = 1.0$ and $x = 1.3$. The point at $x = 1.3$ was classified correctly before. We added a point the model already got right, and it made the model worse.</div>
+  </div>
+
+  <div class="box intuition"><span class="label">Intuition</span>
+    <p>Squared loss has <strong>unbounded appetite</strong>. There is no such thing as "right enough" — a prediction of $3.13$ when the target is $1$ is scored as a catastrophe, even though as a classification it is perfect. So a handful of easy, extreme points can outvote all your hard, informative points near the boundary.</p>
+    <p>The loss we build later in this chapter does not have this problem. Its per-point pressure <em>saturates</em>: once a point is confidently correct, its gradient contribution goes to zero and it stops voting. When I refit the logistic model of §7 with and without that same point at $x = 10$, the fitted parameters agree to four decimal places: $w = 5.5119$, $b = -5.8044$ both times. <strong>Identical.</strong> The far-away point contributes nothing because the model already assigns it probability $0.99999$ and there is nothing left to gain.</p>
+  </div>
+
+  <h3>2.3 Stage 3 — threshold the line (Figure 7)</h3>
+
+  <p>The outputs are invalid, so clamp them. Pick the natural cut at $0.5$: call it class $0$ if the linear regression is below $0.5$, class $1$ otherwise. The notes write this as a new model</p>
+
+  $$ \hat{y} = g_{\text{threshold}}(wx + b), \qquad g_{\text{threshold}}(z) = \begin{cases} 0 & z &lt; 0.5\\ 1 & z \ge 0.5\end{cases} $$
+
+  <p>(As written in the notes the threshold is applied at the value $0.5$ of the linear output; equivalently you can absorb the $0.5$ into $b$ and threshold at $0$. Nothing below depends on which convention you pick.)</p>
+
+  <div class="viz">
+    <div class="viz-title">Figure 7 (reconstructed) — $\D$ trained on a thresholding model</div>
+    <svg id="fig7" role="img" aria-label="A step function, flat at zero until x equals about one, then jumping vertically to one and staying flat, drawn over the labelled data"></svg>
+    <div class="caption">Now every output is a legal class. But the model's belief goes from "definitely 0" to "definitely 1" across an infinitesimal sliver of the $x$-axis, and its slope is exactly zero everywhere else.</div>
+  </div>
+
+  <p>The notes name both problems. Take them in order, because the second one is the argument that actually forces the design.</p>
+
+  <h4>Problem (a) — the model is absurdly certain</h4>
+
+  <p>In the notes' words: <em>"The model is extremely certain about its predictions! It transitions rapidly from one class to the other right around input values $x = 1$. However, looking at the overlap in our data, we probably want our model to state that for $x = 1$, $P(Y = 1 \mid x) \approx 0.5$."</em></p>
+
+  <p>That is precisely the overlap we read off the table in §2.1. At $x = 1.0$ we have a class-1 point; at $x = 1.2$ a class-0 point. The honest answer at $x = 1$ is "roughly a coin flip." The threshold model instead reports certainty $1$ for class 0 at $x = 0.9666$ and certainty $1$ for class 1 at $x = 0.9668$. It has thrown away every bit of information about <em>where</em> the sample sits relative to the boundary — which is exactly the information §1 said we wanted.</p>
+
+  <h4>Problem (b) — there is nothing for gradient descent to descend</h4>
+
+  <p>The notes: <em>"it has a derivative of zero essentially everywhere, making it very problematic to optimize over."</em> This sentence is the hinge of the whole chapter, so let us make it completely precise.</p>
+
+  <div class="box proof"><span class="label">Proof</span>
+    <p><strong>Claim.</strong> Gradient descent cannot train $\hat y = g_{\text{threshold}}(wx+b)$.</p>
+    <p>Recall from <a href="optimization.html">chapter 9</a> the update rule:</p>
+    $$ \theta \leftarrow \theta - \alpha \nabla_\theta J(\theta) $$
+    <p>where $J(\theta)$ is the training objective, $\alpha &gt; 0$ is the learning rate, and $\nabla_\theta J$ is the gradient — the vector of partial derivatives $\partial J / \partial \theta_j$. The rule has exactly one input: the gradient. If the gradient is the zero vector, the update does nothing, whatever $\alpha$ is.</p>
+    <p>Now compute that gradient. Whatever per-sample loss $\ell$ you use, the chain rule gives</p>
+    $$ \frac{\partial \ell}{\partial w} \;=\; \underbrace{\frac{\partial \ell}{\partial \hat y}}_{\text{depends on the loss}} \cdot \underbrace{g_{\text{threshold}}'(z)}_{\text{the model}} \cdot \underbrace{\frac{\partial z}{\partial w}}_{=\,x}, \qquad z = wx+b. $$
+    <p>The middle factor is the derivative of a step function. A step function is constant on $z &lt; 0.5$ and constant on $z &gt; 0.5$, so $g_{\text{threshold}}'(z) = 0$ at every $z \ne 0.5$. At $z = 0.5$ exactly, the function jumps, and the derivative does not exist (the left and right difference quotients blow up to $\pm\infty$).</p>
+    <p>So the middle factor is $0$ for almost every input, and undefined on a set of measure zero. Multiplying anything by that middle factor gives $0$. Therefore $\nabla_\theta J = \mathbf{0}$ almost everywhere, and</p>
+    $$ \theta \leftarrow \theta - \alpha \cdot \mathbf{0} = \theta. $$
+    <p>Gradient descent takes a step of length zero, forever. $\blacksquare$</p>
+  </div>
+
+  <p>Here is the same fact stated in terms of the landscape rather than the formula, because that is how to remember it. With a threshold model, changing $w$ by a tiny amount either changes no labels at all (the usual case) or flips one point's label (when the boundary sweeps past it). So the training loss, as a function of $\theta$, is a <strong>staircase</strong>: flat plateaus with sudden drops. Gradient descent on a staircase is a blindfolded person on a perfectly flat floor being told to walk downhill. The floor <em>is</em> lower somewhere — but not here, and the slope gives no hint which way to go.</p>
+
+  <div class="box key"><span class="label">Key idea</span>
+    <p>The requirement that kills the threshold is not "outputs must be probabilities". It is <strong>"the loss must have a usable slope with respect to the parameters."</strong> Everything in modern machine learning that is trained by gradient descent obeys this constraint, and it is the reason models are built out of smooth pieces. The sigmoid is not chosen because it is pretty. It is chosen because it is <em>differentiable and non-flat</em>.</p>
+  </div>
+
+  <h3>2.4 Stage 4 — replace the step with a smooth S (Figure 8)</h3>
+
+  <p>The notes draw the conclusion cleanly: to make a valid classifier we applied a function $g$ to the linear combination $wx + b$. Keep that structure, but choose a $g$ that <em>"smoothly maps all real input values $(-\infty, \infty)$ to the range $(0,1)$"</em> — i.e. to a probability for binary classification. The standard choice is a <strong>sigmoid</strong> ("s-shaped") function, specifically the <strong>logistic function</strong>, which is so common that "the sigmoid" almost always means this one, written $\sigma$:</p>
+
+  <div class="box defn"><span class="label">Definition</span>
+    $$ g_{\text{logistic}}(z) \;=\; \sigma(z) \;=\; \frac{1}{1 + e^{-z}} $$
+    <p>$z \in \R$ is any real number (in our model it will be $wx+b$), $e \approx 2.71828$ is Euler's number, and $\sigma(z)$ is the output, which we will prove lies strictly between $0$ and $1$.</p>
+  </div>
+
+  <p>The notes then say: <em>"Prove to yourself that this function outputs values in $[0,1]$ and outputs $0.5$ when the input is $0$."</em> That is an exercise left to the reader, so let us actually do it.</p>
+
+  <h2 id="the-logistic-function">3. The logistic function, proved and differentiated</h2>
+
+  <div class="box proof"><span class="label">Proof</span>
+    <p><strong>Claim 1: $0 &lt; \sigma(z) &lt; 1$ for every real $z$.</strong></p>
+    <p><em>Upper bound.</em> The exponential is strictly positive: $e^{-z} &gt; 0$ for every real $z$ (it never reaches zero, it only approaches it). Therefore</p>
+    $$ 1 + e^{-z} \;&gt;\; 1 \quad\Longrightarrow\quad \sigma(z) = \frac{1}{1+e^{-z}} \;&lt;\; \frac{1}{1} = 1. $$
+    <p>The implication is legal because $t \mapsto 1/t$ is strictly decreasing on $t &gt; 0$, and both $1+e^{-z}$ and $1$ are positive.</p>
+    <p><em>Lower bound.</em> For any fixed real $z$, $e^{-z}$ is a finite positive number, so $1 + e^{-z}$ is finite and positive, so its reciprocal is positive:</p>
+    $$ \sigma(z) = \frac{1}{1+e^{-z}} \;&gt;\; 0. $$
+    <p>Together: $\sigma(z) \in (0,1)$ for all $z \in \R$. $\blacksquare$</p>
+
+    <p><strong>Claim 2: $\sigma(0) = 0.5$.</strong> Substitute $z = 0$. Then $e^{-0} = e^{0} = 1$, so</p>
+    $$ \sigma(0) = \frac{1}{1+1} = \frac{1}{2}. \qquad \blacksquare $$
+
+    <p><strong>Claim 3: the asymptotes.</strong> As $z \to +\infty$, the exponent $-z \to -\infty$, so $e^{-z} \to 0$, so the denominator $\to 1$ and</p>
+    $$ \lim_{z\to+\infty}\sigma(z) = \frac{1}{1+0} = 1. $$
+    <p>As $z \to -\infty$, the exponent $-z \to +\infty$, so $e^{-z} \to +\infty$, the denominator grows without bound, and</p>
+    $$ \lim_{z\to-\infty}\sigma(z) = 0. \qquad \blacksquare $$
+  </div>
+
+  <div class="box warn"><span class="label">Common mistake</span>
+    <p>The notes write "outputs values in $[0,1]$" with <em>closed</em> brackets, which is the usual informal shorthand. Claim 1 shows the range is actually the <strong>open</strong> interval $(0,1)$: $\sigma$ gets arbitrarily close to $0$ and $1$ but never equals either. That matters twice later — once because it means logistic regression can never be <em>absolutely</em> certain (a feature, not a bug), and once because $\log \hat y$ is therefore always finite, which is what keeps the loss in §6 from returning $\infty$ on real data.</p>
+  </div>
+
+  <h3>3.1 The derivative — the identity that makes the model trainable</h3>
+
+  <p>Stage 3 died because its derivative was zero. So the very first thing to ask of $\sigma$ is: what is $\sigma'$? The answer is startlingly tidy, and every gradient in the rest of this chapter rests on it.</p>
+
+  <div class="box proof"><span class="label">Proof</span>
+    <p><strong>Claim: $\sigma'(z) = \sigma(z)\,\bigl(1 - \sigma(z)\bigr)$.</strong></p>
+    <p><em>Step 1 — rewrite as a power.</em> $\sigma(z) = \bigl(1 + e^{-z}\bigr)^{-1}$.</p>
+    <p><em>Step 2 — chain rule.</em> With $u(z) = 1 + e^{-z}$ we have $\sigma = u^{-1}$, so $\dfrac{d\sigma}{dz} = -u^{-2}\dfrac{du}{dz}$. This is legal because $u(z) &gt; 0$ everywhere, so $u^{-1}$ is differentiable.</p>
+    <p><em>Step 3 — the inner derivative.</em> $\dfrac{du}{dz} = \dfrac{d}{dz}\bigl(1 + e^{-z}\bigr) = 0 + e^{-z}\cdot(-1) = -e^{-z}$, using $\frac{d}{dz}e^{cz} = ce^{cz}$ with $c=-1$.</p>
+    <p><em>Step 4 — substitute.</em></p>
+    $$ \sigma'(z) \;=\; -\bigl(1+e^{-z}\bigr)^{-2}\cdot\bigl(-e^{-z}\bigr) \;=\; \frac{e^{-z}}{\bigl(1+e^{-z}\bigr)^{2}}. $$
+    <p><em>Step 5 — split the fraction.</em> This is the only clever step. Write the single fraction as a product of two:</p>
+    $$ \frac{e^{-z}}{\bigl(1+e^{-z}\bigr)^{2}} \;=\; \underbrace{\frac{1}{1+e^{-z}}}_{=\;\sigma(z)}\cdot\underbrace{\frac{e^{-z}}{1+e^{-z}}}_{=\;?} $$
+    <p><em>Step 6 — identify the second factor.</em> Add and subtract $1$ in the numerator:</p>
+    $$ \frac{e^{-z}}{1+e^{-z}} \;=\; \frac{\bigl(1+e^{-z}\bigr) - 1}{1+e^{-z}} \;=\; \frac{1+e^{-z}}{1+e^{-z}} - \frac{1}{1+e^{-z}} \;=\; 1 - \sigma(z). $$
+    <p><em>Conclusion.</em> $\sigma'(z) = \sigma(z)\bigl(1-\sigma(z)\bigr)$. $\blacksquare$</p>
+  </div>
+
+  <p>Three consequences, each of which you will use:</p>
+
+  <ol>
+    <li><strong>$\sigma' &gt; 0$ everywhere.</strong> Since $\sigma \in (0,1)$, both $\sigma$ and $1-\sigma$ are strictly positive, so their product is strictly positive. Hence <strong>$\sigma$ is strictly increasing</strong> — which is what lets us invert the inequality $\sigma(z) \ge 0.5 \iff z \ge 0$ in §5.</li>
+    <li><strong>The derivative is largest at the boundary.</strong> $\sigma(1-\sigma)$ is a downward parabola in $\sigma$, maximised at $\sigma = 1/2$, i.e. at $z = 0$, where $\sigma'(0) = \tfrac12\cdot\tfrac12 = 0.25$. The model is most sensitive exactly where it is most uncertain. That is the opposite of the threshold, whose derivative was zero everywhere <em>except</em> at the boundary.</li>
+    <li><strong>The derivative is expressed in terms of the function's own output.</strong> You never need to recompute $e^{-z}$: if you already have $\hat y = \sigma(z)$, then $\sigma'(z) = \hat y (1 - \hat y)$, one multiply. This is why neural-network backpropagation is cheap.</li>
+  </ol>
+
+  <h3>3.2 One more identity: $\sigma(-z) = 1 - \sigma(z)$</h3>
+
+  <div class="box proof"><span class="label">Proof</span>
+    $$ \sigma(-z) = \frac{1}{1+e^{-(-z)}} = \frac{1}{1+e^{z}}. $$
+    <p>Multiply numerator and denominator by $e^{-z}$ (legal: $e^{-z} \ne 0$):</p>
+    $$ \frac{1}{1+e^{z}} \cdot \frac{e^{-z}}{e^{-z}} = \frac{e^{-z}}{e^{-z} + e^{z}e^{-z}} = \frac{e^{-z}}{e^{-z} + 1} = 1 - \sigma(z), $$
+    <p>where the last equality is Step 6 of the previous proof. $\blacksquare$</p>
+  </div>
+
+  <p>In words: the sigmoid is <strong>antisymmetric about the point $(0, 0.5)$</strong>. Rotating the curve $180°$ about that point maps it onto itself. Practically, this says the model treats the two classes symmetrically — being $2$ units to the right of the boundary makes you class 1 with probability $0.8808$, and being $2$ units to the left makes you class 0 with exactly the same probability $0.8808$.</p>
+
+  <div class="viz">
+    <div class="viz-title">Figure 8 (reconstructed) — the logistic function and its derivative</div>
+    <svg id="fig8" role="img" aria-label="The logistic sigmoid curve rising from zero to one, with dashed asymptotes at zero and one and a marked point at z equals zero, sigma equals one half"></svg>
+    <svg id="fig8d" role="img" aria-label="The derivative of the sigmoid, a bell shaped bump peaking at 0.25 when z is zero and decaying to zero in both directions"></svg>
+    <div class="caption"><strong>Top:</strong> $\sigma(z) = 1/(1+e^{-z})$. The two dashed horizontal lines are the asymptotes $\sigma = 0$ and $\sigma = 1$ proved above; the curve approaches but never touches them. The dot marks $\sigma(0) = 0.5$. <strong>Bottom:</strong> $\sigma'(z) = \sigma(z)(1-\sigma(z))$, peaking at $0.25$ directly under the dot and decaying symmetrically. Compare this with the threshold model, whose derivative would be a flat zero line with a single infinite spike — the bottom panel is the entire reason we switched.</div>
+  </div>
+
+  <div class="scroll-x">
+  <table class="tight center">
+    <thead><tr><th>$z$</th><th>−4</th><th>−2</th><th>−1</th><th>0</th><th>1</th><th>2</th><th>4</th></tr></thead>
+    <tbody>
+      <tr><td>$\sigma(z)$</td><td>0.0180</td><td>0.1192</td><td>0.2689</td><td>0.5000</td><td>0.7311</td><td>0.8808</td><td>0.9820</td></tr>
+      <tr><td>$\sigma'(z)$</td><td>0.0177</td><td>0.1050</td><td>0.1966</td><td>0.2500</td><td>0.1966</td><td>0.1050</td><td>0.0177</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="tiny muted">Worth memorising three of these: $\sigma(0)=0.5$, $\sigma(2)\approx 0.88$, $\sigma(4)\approx 0.98$. They let you sanity-check any logistic model in your head. Note the columns confirm $\sigma(-z)=1-\sigma(z)$: $0.0180 + 0.9820 = 1$, $0.2689+0.7311 = 1$.</p>
+
+  <h2 id="the-model">4. The logistic regression model (Figure 9)</h2>
+
+  <p>Now assemble it. Apply $\sigma$ to the linear transformation of the input, exactly as we applied $g_{\text{threshold}}$ before:</p>
+
+  <div class="box defn"><span class="label">Definition</span>
+    <p><strong>One-dimensional input</strong> ($x \in \R$):</p>
+    $$ h(x) = \hat y = \sigma(wx + b) = \frac{1}{1 + e^{-(wx+b)}} $$
+    <p><strong>$M$-dimensional input</strong> ($x \in \R^M$, with the bias term folded in as a constant feature):</p>
+    $$ h(x) = \hat y = \sigma(\theta^\top x) = \frac{1}{1 + e^{-\theta^\top x}} $$
+    <p>Every symbol: $x \in \R^M$ is one sample's feature vector, $\theta \in \R^M$ is the parameter vector, $\theta^\top x = \sum_{j=1}^{M}\theta_j x_j$ is the dot product (a single real number, often called the <em>logit</em> or <em>score</em>), $\sigma$ is the logistic function, and $h$ is the hypothesis function.</p>
+  </div>
+
+  <p><strong>What "the bias term is included in this $x$" means.</strong> The notes fold $b$ into $\theta$ by the trick you already used in <a href="feature-engineering.html">chapter 10</a>: prepend a constant $1$ to every feature vector. If the raw input is $\tilde x = (x_1,\dots,x_{M-1})$, set $x = (1, x_1, \dots, x_{M-1})$ and $\theta = (\theta_0, \theta_1, \dots, \theta_{M-1})$. Then</p>
+
+  $$ \theta^\top x = \theta_0 \cdot 1 + \theta_1 x_1 + \cdots + \theta_{M-1}x_{M-1} $$
+
+  <p>and $\theta_0$ plays the role of $b$. One notation, no special cases. From here on, "$\theta^\top x$" always includes the bias.</p>
+
+  <h3>4.1 Reading the output as a probability</h3>
+
+  <p>This is the payoff of §1. Quoting the notes: <em>"Because the output of the model $h(x)$ is a value in $(0,1)$, we can re-think this value as a probability where $h(x) = P(Y = 1 \mid x)$."</em></p>
+
+  <div class="box key"><span class="label">Key idea</span>
+    $$ h(x) = P(Y = 1 \mid x), \qquad\text{and therefore}\qquad P(Y = 0 \mid x) = 1 - h(x). $$
+    <p>Read $P(Y=1 \mid x)$ as: "the probability that this sample's label is 1, given that we observed features $x$." The second equation is not an extra assumption — with only two classes, the probabilities must sum to $1$, so $P(Y=0\mid x)$ is forced.</p>
+  </div>
+
+  <p>So the model does not output a class. It outputs a <strong>full probability distribution over the two classes</strong>, $\bigl(1-h(x),\; h(x)\bigr)$. Every complaint in §1.1 is now answerable: you can rank patients by $h(x)$, you can flag $h(x) \in (0.4, 0.6)$ for human review, you can move the operating threshold up or down to trade false positives against false negatives, and you can average two models' probabilities.</p>
+
+  <p>Note the pleasing symmetry this gives with §3.2: since $P(Y=0\mid x) = 1 - \sigma(\theta^\top x) = \sigma(-\theta^\top x)$, the "probability of class 0" is the same model with the sign of $\theta$ flipped. Class 0 and class 1 are on an equal footing; nothing about the model prefers one.</p>
+
+  <div class="viz">
+    <div class="viz-title">Figure 9 (reconstructed) — $\D$ trained on a logistic regression model</div>
+    <svg id="fig9" role="img" aria-label="The labelled data with a fitted S-shaped logistic curve passing through the overlap region at about one half"></svg>
+    <div class="caption">The maximum-likelihood fit on our twelve points is $h(x) = \sigma(5.5119x - 5.8044)$. Its half-way point is $x = 5.8044/5.5119 = 1.053$, inside the overlap. At $x=1$ it reports $P(Y=1\mid x) = 0.427$ — close to the "$\approx 0.5$" the notes said we wanted, which is the whole objective of the exercise. Out at $x = 3.3$ it reports $0.99998$, and at $x=-1.4$ it reports $0.0000005$. The model is uncertain where the data is ambiguous and confident where the data is clean. <em>That</em> is the thing the threshold model could not do.</div>
+  </div>
+
+  <div class="box intuition"><span class="label">Intuition</span>
+    <p>Everything in a logistic regression happens in two separate steps, and keeping them separate makes the model much easier to think about.</p>
+    <p><strong>Step 1 (linear, learnable):</strong> $z = \theta^\top x$ collapses the whole feature vector down to one number — a <em>score</em> on a line. All the learning lives here.</p>
+    <p><strong>Step 2 (fixed, non-linear):</strong> $\sigma$ squashes that score into a probability. There are no parameters in $\sigma$; it is a fixed piece of plumbing.</p>
+    <p>So a logistic regression is a linear model wearing a probability-shaped hat. Honest caveat on the analogy: the hat is not <em>merely</em> cosmetic, because $\sigma$ changes what the loss surface looks like and therefore what fit you get. But it never changes <em>which</em> functions the model can express as a decision rule — as §5 proves.</p>
+  </div>
+
+  <div class="quiz" data-answer="2">
+    <div class="q">Our fitted model is $h(x) = \sigma(5.5119x - 5.8044)$. What is $P(Y = 0 \mid x = 1.053)$?</div>
+    <button class="opt">$0$ — that is exactly the decision boundary, so class 0 is impossible</button>
+    <button class="opt">$1$ — the boundary is where the model commits to class 0</button>
+    <button class="opt">$0.5$ — at the boundary the two classes are equally likely</button>
+    <button class="opt">Undefined — $\sigma$ has no value at its inflection point</button>
+    <div class="why"><strong>Why:</strong> $x=1.053$ makes the logit $z = 5.5119(1.053) - 5.8044 \approx 0$, and $\sigma(0)=0.5$, so $h(x)=0.5$ and $P(Y=0\mid x) = 1 - 0.5 = 0.5$. The decision boundary is exactly the set of points where the model is maximally <em>un</em>sure — not where it is certain. It is also where $\sigma' $ is largest ($0.25$), i.e. where the model is most responsive to a parameter change.</div>
+  </div>
+
+  <h2 id="decision-boundary">5. Why this is still a linear classifier</h2>
+
+  <p>Here is the apparent paradox. We just wrapped the linear score in $\sigma$, which is emphatically non-linear — it curves, it saturates, it has an inflection point. Yet the notes insist logistic regression is a <em>linear</em> model for classification. Both things are true, and the reason is worth a proof.</p>
+
+  <div class="box proof"><span class="label">Proof</span>
+    <p><strong>Claim.</strong> The rule "predict class 1 when $h(x) \ge 0.5$" is <em>identical</em> to the rule "predict class 1 when $\theta^\top x \ge 0$".</p>
+    <p>Start from the prediction rule and substitute the model:</p>
+    $$ h(x) \ge 0.5 \iff \sigma(\theta^\top x) \ge 0.5 . $$
+    <p>By Claim 2 of §3, $0.5 = \sigma(0)$, so this is</p>
+    $$ \sigma(\theta^\top x) \ge \sigma(0). $$
+    <p>By consequence 1 of §3.1, $\sigma' (z) = \sigma(1-\sigma) &gt; 0$ for all $z$, so $\sigma$ is <strong>strictly increasing</strong>, hence injective, hence it has a strictly increasing inverse. A strictly increasing function preserves $\ge$ in both directions:</p>
+    $$ \sigma(a) \ge \sigma(b) \iff a \ge b. $$
+    <p>Apply it with $a = \theta^\top x$ and $b = 0$:</p>
+    $$ \boxed{\;h(x) \ge 0.5 \iff \theta^\top x \ge 0\;} $$
+    <p>The set $\{x : \theta^\top x = 0\}$ is, by definition, a <strong>hyperplane</strong> through the origin of the augmented feature space — a point in 1-D, a line in 2-D, a plane in 3-D. The decision boundary is that hyperplane. $\blacksquare$</p>
+  </div>
+
+  <p>Concretely, in 1-D with $z = wx+b$, the boundary is the single point $x = -b/w$. In 2-D with $z = \theta_0 + \theta_1x_1 + \theta_2x_2$, the boundary is the straight line $\theta_0 + \theta_1x_1 + \theta_2x_2 = 0$.</p>
+
+  <div class="box key"><span class="label">Key idea</span>
+    <p>$\sigma$ is non-linear, but it is a <strong>monotone</strong> non-linearity applied <em>after</em> the linear part. Monotone functions cannot re-order their inputs, so they cannot change which side of the boundary a point falls on. All $\sigma$ does is relabel the score axis — it turns "score" into "probability" without moving anybody across the line.</p>
+    <p>That is why logistic regression inherits exactly the same expressive limits as a linear classifier: it cannot learn XOR, and it cannot carve out a circle. If you need curved boundaries, you do what <a href="feature-engineering.html">chapter 10</a> taught you — engineer features. Feed it $x_1^2, x_2^2, x_1x_2$ and the boundary becomes a conic section in the original space while staying a hyperplane in the engineered space.</p>
+  </div>
+
+  <h3>5.1 What $\|\theta\|$ does versus what the direction of $\theta$ does</h3>
+
+  <p>Split the parameter vector into the bias and the rest: $\theta = (\theta_0, w)$ with $w = (\theta_1,\dots,\theta_{M-1})$ acting on the real features $\tilde x$. Then $z = w^\top \tilde x + \theta_0$, and from geometry, the <strong>signed distance</strong> from a point $\tilde x$ to the boundary hyperplane is</p>
+
+  $$ d(\tilde x) = \frac{w^\top \tilde x + \theta_0}{\|w\|} \qquad\Longrightarrow\qquad z = \|w\|\,d(\tilde x). $$
+
+  <p>Substituting into the model:</p>
+
+  $$ h(x) = \sigma\bigl(\|w\|\; d(\tilde x)\bigr). $$
+
+  <p>Now everything separates cleanly:</p>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="kicker">Direction of $w$</div>
+      <h3>Where the line is, and which side is which</h3>
+      <p>The unit vector $w/\|w\|$ is the normal to the boundary — it sets the <strong>orientation</strong> of the hyperplane and points toward the class-1 side. The bias $\theta_0$ slides the boundary along that normal without rotating it. Change the direction and you rotate the decision line.</p>
+    </div>
+    <div class="card">
+      <div class="kicker">Magnitude $\|w\|$</div>
+      <h3>How fast belief changes as you cross</h3>
+      <p>$\|w\|$ multiplies the distance before it enters $\sigma$, so it controls the <strong>sharpness</strong> of the transition — the width of the fuzzy band. Doubling $\|w\|$ halves the band. As $\|w\| \to \infty$ the model degenerates back into the threshold of stage 3; as $\|w\| \to 0$ it says $0.5$ everywhere. <em>The boundary itself does not move.</em></p>
+    </div>
+  </div>
+
+  <p>The last italicised sentence is the one students trip over, so let us verify it: if you replace $\theta$ by $c\theta$ for any $c &gt; 0$, the boundary set is $\{x : (c\theta)^\top x = 0\} = \{x : c\,(\theta^\top x) = 0\} = \{x: \theta^\top x = 0\}$ — the same set. Scaling $\theta$ changes every probability but not a single predicted label.</p>
+
+  <div class="viz">
+    <div class="viz-title">Figure C — 2-D decision boundary with the probability field</div>
+    <canvas id="cv2d" style="width:100%;height:auto;display:block;border-radius:8px"></canvas>
+    <div class="controls">
+      <label>Direction of $w$ (angle)
+        <input type="range" id="ang" min="0" max="360" step="1" value="35" data-out="angv" data-fmt="int">
+        <span class="val" id="angv"></span>°</label>
+      <label>Magnitude $\|w\|$
+        <input type="range" id="mag" min="0.05" max="6" step="0.05" value="1.20" data-out="magv" data-dp="2">
+        <span class="val" id="magv"></span></label>
+      <label>Bias $\theta_0$
+        <input type="range" id="bia" min="-6" max="6" step="0.1" value="-1.0" data-out="biav" data-dp="1">
+        <span class="val" id="biav"></span></label>
+      <button class="btn primary" id="fit2d">Fit it for me</button>
+      <button class="btn" id="reset2d">Reset</button>
+    </div>
+    <div class="caption">The colour is $h(x) = P(Y=1\mid x)$, running from the class-0 colour to the class-1 colour. The white-ish ridge is the $h = 0.5$ contour: the decision boundary. The arrow is the direction of $w$. <strong>Things to do:</strong> (1) drag <em>magnitude</em> to its minimum — the whole plane goes to a flat $0.5$, the model has no opinion, but the boundary line has not moved; (2) drag it to the maximum — the gradient collapses into a knife edge, i.e. the threshold model of stage 3; (3) change <em>angle</em> — the line rotates while the sharpness stays put; (4) change <em>bias</em> — the line slides without rotating. Only the angle and bias change which points are misclassified.</div>
+  </div>
+
+  <div class="guided">
+    <div class="g-head"><span class="tag">Guided problem</span>Reading a 2-D logistic model off its parameters</div>
+    <div class="g-body">
+      <p>You are handed a trained model $h(x) = \sigma(\theta^\top x)$ with $\theta = [-3,\; 1,\; 2]^\top$, where the feature vector is $x = [1,\; x_1,\; x_2]^\top$ (the leading $1$ is the bias feature).</p>
+      <ol>
+        <li>Write down the equation of the decision boundary and sketch it.</li>
+        <li>Compute $h$ at the points $(x_1,x_2) = (2,1)$ and $(1, 0.5)$, and classify each.</li>
+        <li>Your colleague multiplies every parameter by $2$, giving $\theta' = [-6, 2, 4]^\top$. Which predictions change? Which probabilities change?</li>
+      </ol>
+    </div>
+    <details class="step"><summary>Step 1 — The boundary</summary>
+      <div>
+        <p>By §5, the boundary is the set where $\theta^\top x = 0$:</p>
+        $$ -3 + x_1 + 2x_2 = 0 \quad\Longleftrightarrow\quad x_2 = \frac{3 - x_1}{2} = 1.5 - 0.5\,x_1 . $$
+        <p>A straight line with intercept $1.5$ and slope $-0.5$. Class 1 is the side where $-3+x_1+2x_2 &gt; 0$, i.e. <em>above and to the right</em> of the line; the normal direction $w = (1,2)$ points that way.</p>
+      </div></details>
+    <details class="step"><summary>Step 2 — Evaluate the two points</summary>
+      <div>
+        <p>Always compute the logit $z = \theta^\top x$ first; it is a plain dot product.</p>
+        <p><strong>Point $(2,1)$:</strong> the augmented vector is $[1,2,1]^\top$, so</p>
+        $$ z = (-3)(1) + (1)(2) + (2)(1) = -3 + 2 + 2 = 1, \qquad h = \sigma(1) = \frac{1}{1+e^{-1}} = 0.7311. $$
+        <p>$z \ge 0$, so predict <strong>class 1</strong>, with $73.11\%$ confidence. Cross-check with the boundary: at $x_1 = 2$ the line sits at $x_2 = 0.5$, and our point has $x_2 = 1 &gt; 0.5$, so it is on the class-1 side. ✓</p>
+        <p><strong>Point $(1, 0.5)$:</strong> augmented $[1,1,0.5]^\top$, so</p>
+        $$ z = -3 + 1 + 1 = -1, \qquad h = \sigma(-1) = 0.2689. $$
+        <p>$z &lt; 0$, so predict <strong>class 0</strong>. Note $h = 0.2689$ means $P(Y=0\mid x) = 1 - 0.2689 = 0.7311$ — the same confidence as the first point, which is the antisymmetry $\sigma(-z) = 1-\sigma(z)$ from §3.2 showing up in practice.</p>
+      </div></details>
+    <details class="step"><summary>Step 3 — What doubling $\theta$ does</summary>
+      <div>
+        <p>The boundary equation becomes $-6 + 2x_1 + 4x_2 = 0$. Divide by $2$: $-3 + x_1 + 2x_2 = 0$. <strong>Identical line.</strong> So no prediction changes — every point is on the same side it was before.</p>
+        <p>The probabilities all change, though. The logits double:</p>
+        $$ (2,1):\ z = 2 \Rightarrow h = \sigma(2) = 0.8808, \qquad (1,0.5):\ z = -2 \Rightarrow h = \sigma(-2) = 0.1192. $$
+        <p>Both points moved further from $0.5$. The model became <em>more confident about exactly the same decisions</em>.</p>
+      </div></details>
+    <details class="step"><summary>Answer &amp; the takeaway</summary>
+      <div>
+        <p><strong>Answers.</strong> (1) $x_2 = 1.5 - 0.5x_1$. (2) $h(2,1) = 0.7311 \to$ class 1; $h(1,0.5) = 0.2689 \to$ class 0. (3) Predictions unchanged; probabilities move to $0.8808$ and $0.1192$.</p>
+        <p><strong>Takeaway.</strong> $\|\theta\|$ is a <em>confidence dial</em> that the decision rule cannot see. This has a sharp practical consequence: if your training data happens to be perfectly linearly separable, the likelihood can always be improved by scaling $\theta$ up, so the optimiser drives $\|\theta\| \to \infty$ and never converges. <span class="pill">beyond syllabus</span> The fix is regularisation — add a penalty $\lambda\|\theta\|^2$ to the objective, which gives $\|\theta\|$ a reason to stay finite. Our dataset has overlapping classes, so this does not bite here; it is the first thing to check when a logistic regression "won't converge".</p>
+      </div></details>
+  </div>
+
+  <h2 id="log-odds">6. Log-odds: why the coefficients mean something</h2>
+
+  <p>We have a probability. Can we get back to the linear part? Yes, and the inverse has a name you will meet constantly.</p>
+
+  <div class="box defn"><span class="label">Definition</span>
+    <p>For a probability $p \in (0,1)$, the <strong>odds</strong> are $\dfrac{p}{1-p}$ — "how many times more likely the event is than its complement". A probability of $0.75$ is odds of $3$, i.e. 3-to-1 on. The <strong>log-odds</strong> or <strong>logit</strong> is $\log\dfrac{p}{1-p}$, which maps $(0,1)$ onto all of $\R$.</p>
+  </div>
+
+  <div class="box proof"><span class="label">Proof</span>
+    <p><strong>Claim: $\displaystyle \log\frac{h(x)}{1-h(x)} = \theta^\top x$.</strong> Write $z = \theta^\top x$.</p>
+    <p><em>Numerator.</em> $h = \sigma(z) = \dfrac{1}{1+e^{-z}}$.</p>
+    <p><em>Denominator.</em> From Step 6 of §3.1, $1 - \sigma(z) = \dfrac{e^{-z}}{1+e^{-z}}$.</p>
+    <p><em>Divide.</em> The common denominator cancels:</p>
+    $$ \frac{h}{1-h} \;=\; \frac{\dfrac{1}{1+e^{-z}}}{\dfrac{e^{-z}}{1+e^{-z}}} \;=\; \frac{1}{1+e^{-z}}\cdot\frac{1+e^{-z}}{e^{-z}} \;=\; \frac{1}{e^{-z}} \;=\; e^{z}. $$
+    <p><em>Take logs.</em> $\log$ is the inverse of $\exp$, so</p>
+    $$ \log\frac{h(x)}{1-h(x)} = \log e^{z} = z = \theta^\top x. \qquad \blacksquare $$
+  </div>
+
+  <div class="box key"><span class="label">Key idea</span>
+    <p><strong>Logistic regression is ordinary linear regression performed on the log-odds scale.</strong> The quantity being modelled linearly is not the probability — it is $\log\frac{p}{1-p}$, which lives on all of $\R$ and so is a sensible thing for an unbounded linear function to predict. The sigmoid is nothing but the inverse of the logit, applied to convert back.</p>
+  </div>
+
+  <p>This is what makes the coefficients interpretable. Hold every feature fixed except $x_j$, and increase $x_j$ by one unit. Then $z$ increases by exactly $\theta_j$, so</p>
+
+  $$ \frac{\text{new odds}}{\text{old odds}} = \frac{e^{z + \theta_j}}{e^{z}} = e^{\theta_j}. $$
+
+  <div class="box example"><span class="label">Example</span>
+    <p>You fit a model predicting whether a student passes a course. The coefficient on <em>hours studied per week</em> comes out as $\theta_j = 0.7$.</p>
+    <p><strong>Interpretation:</strong> each extra hour per week multiplies the odds of passing by $e^{0.7} = 2.0138$ — it roughly <em>doubles the odds</em>. Not the probability: the odds.</p>
+    <p><strong>Worked numbers.</strong> Suppose a particular student currently has $P(\text{pass}) = 0.4$.</p>
+    <ul>
+      <li>Current odds: $\dfrac{0.4}{1-0.4} = \dfrac{0.4}{0.6} = 0.6667$.</li>
+      <li>Add one study hour: odds $\times\, 2.0138 = 0.6667 \times 2.0138 = 1.3425$.</li>
+      <li>Convert back to a probability with $p = \dfrac{\text{odds}}{1+\text{odds}} = \dfrac{1.3425}{2.3425} = 0.5731$.</li>
+    </ul>
+    <p>So the probability went from $0.400$ to $0.573$, a jump of $17.3$ percentage points. Now do the <em>same</em> hour for a student already at $P = 0.95$: odds $= 19$, new odds $= 38.26$, new $p = 38.26/39.26 = 0.9745$ — a jump of only $2.5$ points.</p>
+    <p><strong>The moral:</strong> the effect on the <em>odds</em> is a constant multiplier, the same for everybody. The effect on the <em>probability</em> depends on where you started, and is largest near $p = 0.5$. That is the sigmoid's saturation, restated. It is also why reporting logistic coefficients as "a one-hour increase raises the pass rate by 17 points" is wrong — it is only true for students near $40\%$.</p>
+  </div>
+
+  <div class="quiz" data-answer="1">
+    <div class="q">A logistic model of loan default has coefficient $\theta_j = -0.3$ on <em>years of credit history</em>. Which statement is correct?</div>
+    <button class="opt">Each extra year lowers the probability of default by $0.3$.</button>
+    <button class="opt">Each extra year multiplies the odds of default by $e^{-0.3} = 0.741$, i.e. cuts them by about 26%.</button>
+    <button class="opt">Each extra year multiplies the probability of default by $0.741$.</button>
+    <button class="opt">Nothing — the sign of a logistic coefficient carries no meaning.</button>
+    <div class="why"><strong>Why:</strong> the linear part models the log-odds, so adding $1$ to $x_j$ adds $\theta_j$ to the log-odds and therefore multiplies the <em>odds</em> by $e^{\theta_j} = e^{-0.3} = 0.7408$. Option A confuses odds with probability and also treats a multiplicative effect as additive. Option C multiplies the wrong quantity: odds and probability only agree when $p$ is tiny (then $p/(1-p)\approx p$), so C is a decent approximation for rare events and wrong otherwise. Option D is backwards — the sign is the most interpretable part of the whole model: negative coefficient, feature pushes toward class 0.</div>
+  </div>
+
+  <h2 id="loss">7. Next step: measuring the model's error</h2>
+
+  <p>The notes close by saying: <em>"In lecture, we will investigate this model further by looking at how we can estimate the error of this model on a dataset, how we can use that information to train our model, and how we can apply this model to multi-class classification problems."</em> The rest of this page is those three things. They are the natural next step, and you will need every one of them for the homework.</p>
+
+  <h3>7.1 Why not squared loss?</h3>
+
+  <p>The obvious move is to reuse the loss from <a href="linear-regression.html">chapter 8</a>:</p>
+
+  $$ J_{\text{sq}}(\theta) = \frac{1}{N}\sum_{i=1}^{N}\Bigl(y^{(i)} - \sigma\bigl(\theta^\top x^{(i)}\bigr)\Bigr)^{2}. $$
+
+  <p>It is not <em>absurd</em> — it is bounded, it is differentiable, it is minimised when $\hat y = y$. But it fails on two counts, and both matter.</p>
+
+  <h4>Failure 1: it is not convex in $\theta$</h4>
+
+  <p>For linear regression, squared loss gave a bowl: one global minimum, no local traps, and a closed-form solution. Wrap the prediction in $\sigma$ and the bowl buckles. Here is the smallest possible demonstration, which you can check by hand.</p>
+
+  <div class="box proof"><span class="label">Proof</span>
+    <p>Take a dataset of <em>one</em> point, $x = 1$ (no bias), $y = 0$. Then $\hat y = \sigma(w)$ and</p>
+    $$ J(w) = \bigl(0 - \sigma(w)\bigr)^2 = \sigma(w)^2 . $$
+    <p>Differentiate, using $\sigma' = \sigma(1-\sigma)$ from §3.1:</p>
+    $$ J'(w) = 2\sigma\,\sigma' = 2\sigma^{2}(1-\sigma). $$
+    <p>Differentiate again — product rule on $\sigma^2$ and $(1-\sigma)$, then factor out $\sigma' = \sigma(1-\sigma)$:</p>
+    $$ J''(w) = 2\Bigl[2\sigma\sigma'(1-\sigma) - \sigma^{2}\sigma'\Bigr] = 2\sigma'\sigma\Bigl[2(1-\sigma) - \sigma\Bigr] = 2\sigma'\sigma\,(2 - 3\sigma). $$
+    <p>Since $\sigma' &gt; 0$ and $\sigma &gt; 0$, the sign of $J''$ is the sign of $(2 - 3\sigma)$. So</p>
+    <ul>
+      <li>$\sigma &lt; 2/3$ (that is, $w &lt; \log 2 \approx 0.693$): $J'' &gt; 0$, convex;</li>
+      <li>$\sigma &gt; 2/3$ (that is, $w &gt; \log 2$): $J'' &lt; 0$, <strong>concave</strong>.</li>
+    </ul>
+    <p>Numerically: $J''(0) = +0.125$ and $J''(2) = -0.1188$. A convex function has $J'' \ge 0$ everywhere, so $J_{\text{sq}}$ is <strong>not convex</strong>. $\blacksquare$</p>
+  </div>
+
+  <p>With many points and many parameters this produces genuine local minima and flat plateaus, so gradient descent's answer depends on where you started. That is a bad property for a model whose selling point is simplicity.</p>
+
+  <h4>Failure 2: the gradient vanishes exactly when the model is most wrong</h4>
+
+  <p>Differentiate one term of $J_{\text{sq}}$ with respect to $\theta$, chain rule through $\sigma$:</p>
+
+  $$ \frac{\partial}{\partial\theta}\bigl(y - \sigma(z)\bigr)^2 = -2\bigl(y - \sigma(z)\bigr)\,\underbrace{\sigma(z)\bigl(1-\sigma(z)\bigr)}_{\sigma'(z)}\,x . $$
+
+  <p>Now imagine the worst case: the true label is $y = 1$ and the model says $\hat y = \sigma(z) = 0.001$. It is as wrong as it is possible to be. The error factor $(y - \hat y) = 0.999$ is large — good. But the $\sigma'$ factor is $0.001 \times 0.999 = 0.000999$. Their product is $\approx 0.000998$. <strong>The gradient is a thousandth of the size it would be for a point sitting right at the boundary</strong> ($0.25$ there). The model is confidently wrong and the optimiser barely notices.</p>
+
+  <p>This is the pathology of stage 3 creeping back in through the side door: saturation makes $\sigma'$ small, and squared loss multiplies by $\sigma'$. We need a loss whose derivative <em>cancels</em> that factor.</p>
+
+  <h3>7.2 The cross-entropy (negative log-likelihood) loss</h3>
+
+  <div class="box defn"><span class="label">Definition</span>
+    <p>For one sample with true label $y \in \{0,1\}$ and predicted probability $\hat y = h(x) \in (0,1)$, the <strong>binary cross-entropy</strong> loss is</p>
+    $$ \ell(y,\hat y) \;=\; -\Bigl[\,y\log \hat y \;+\; (1-y)\log(1-\hat y)\,\Bigr] $$
+    <p>and the training objective averages it over the dataset:</p>
+    $$ J(\theta) = \frac{1}{N}\sum_{i=1}^{N} -\Bigl[\,y^{(i)}\log \sigma\bigl(\theta^\top x^{(i)}\bigr) + \bigl(1-y^{(i)}\bigr)\log\bigl(1 - \sigma(\theta^\top x^{(i)})\bigr)\Bigr]. $$
+  </div>
+
+  <p><strong>Read the two branches.</strong> $y$ is either $0$ or $1$, so one of the two terms is always multiplied by zero and disappears. The formula is a switch written without an <code>if</code>:</p>
+
+  <ul>
+    <li><strong>If $y = 1$:</strong> the second term dies ($1-y = 0$) and $\ell = -\log\hat y$. You are charged for the log of the probability you assigned to the <em>right</em> answer. Say $\hat y = 0.9$ and you pay $0.105$; say $\hat y = 0.5$ and you pay $0.693$; say $\hat y = 0.01$ and you pay $4.605$.</li>
+    <li><strong>If $y = 0$:</strong> the first term dies and $\ell = -\log(1-\hat y)$. Same charge, applied to $1 - \hat y = P(Y=0\mid x)$, which is again the probability you assigned to the right answer.</li>
+  </ul>
+
+  <p>Both branches are the same sentence: <strong>your loss is $-\log(\text{the probability you gave the true label})$.</strong></p>
+
+  <div class="box intuition"><span class="label">Intuition</span>
+    <p>Where does $-\log$ come from? Two equivalent stories.</p>
+    <p><strong>Likelihood.</strong> The model claims the label is a Bernoulli draw: $P(y \mid x) = \hat y^{\,y}(1-\hat y)^{1-y}$ (check both cases: $y=1$ gives $\hat y$, $y=0$ gives $1-\hat y$). The probability of the whole dataset, assuming samples are independent, is the product $\prod_i P(y^{(i)}\mid x^{(i)})$. Maximising a product of tiny numbers is numerically awful, so take logs — which turns the product into a sum and is legal because $\log$ is increasing, so it does not move the maximiser. Then flip the sign to turn "maximise" into "minimise". You get exactly $J(\theta)$. Cross-entropy <strong>is</strong> negative log-likelihood; fitting a logistic regression <strong>is</strong> maximum likelihood estimation.</p>
+    <p><strong>Information.</strong> From <a href="information-theory.html">chapter 7</a>, $-\log p$ is the number of nats of surprise in an event you assigned probability $p$. Cross-entropy loss charges you your <em>surprise at the truth</em>. A model that is confidently wrong is infinitely surprised, and pays accordingly.</p>
+  </div>
+
+  <div class="viz">
+    <div class="viz-title">Figure D — the cost of a prediction, for each true label</div>
+    <svg id="figCE" role="img" aria-label="Two curves: for true label one the loss falls steeply from infinity at predicted probability zero down to zero at one; for true label zero the mirror image"></svg>
+    <div class="caption">Both curves pass through $(0.5,\ 0.693)$ — the cost of shrugging. Both reach $0$ when you put full probability on the truth. And both go to $+\infty$ as you put probability $\to 0$ on the truth: $-\log(0.1) = 2.303$, $-\log(0.01) = 4.605$, $-\log(0.001)=6.908$. <strong>The explosion is the design.</strong> Squared loss caps a wrong answer's cost at $1$; cross-entropy makes it unbounded, so the optimiser can never make peace with a confidently wrong prediction. Compare the two curves' <em>slopes</em> near the bad end, too: squared loss flattens out there, cross-entropy gets steeper.</div>
+  </div>
+
+  <div class="guided">
+    <div class="g-head"><span class="tag">Guided problem</span>Compute $\sigma(\theta^\top x)$ and the loss by hand</div>
+    <div class="g-body">
+      <p>A model has parameters $\theta = [-1,\; 2,\; 0.5]^\top$ acting on augmented feature vectors $x = [1,\; x_1,\; x_2]^\top$. Three samples arrive:</p>
+      <table class="tight center">
+        <thead><tr><th>sample</th><th>$x_1$</th><th>$x_2$</th><th>true $y$</th></tr></thead>
+        <tbody>
+          <tr><td>A</td><td>1.5</td><td>2</td><td>1</td></tr>
+          <tr><td>B</td><td>0.5</td><td>−1</td><td>0</td></tr>
+          <tr><td>C</td><td>2</td><td>1</td><td>0</td></tr>
+        </tbody>
+      </table>
+      <p>For each: compute the logit, the predicted probability, and the cross-entropy loss. Then compute the average loss $J(\theta)$. Which sample is the model most embarrassed by, and why? (You may use $e^{-3} = 0.049787$, $e^{0.5} = 1.648721$, $e^{-3.5} = 0.030197$.)</p>
+    </div>
+    <details class="step"><summary>Step 1 — Set up the recipe</summary>
+      <div>
+        <p>Three mechanical steps per sample, never skip one:</p>
+        <ol>
+          <li>$z = \theta^\top x$ — a dot product including the bias feature $1$.</li>
+          <li>$\hat y = \sigma(z) = 1/(1+e^{-z})$.</li>
+          <li>$\ell = -\log\hat y$ if $y=1$, else $\ell = -\log(1-\hat y)$.</li>
+        </ol>
+        <p>Logs here are natural logs. (Using $\log_2$ instead just rescales everything by $\log_2 e$ and changes nothing about the minimiser.)</p>
+      </div></details>
+    <details class="step"><summary>Step 2 — Sample A</summary>
+      <div>
+        <p>Augmented $x = [1,\;1.5,\;2]^\top$:</p>
+        $$ z = (-1)(1) + (2)(1.5) + (0.5)(2) = -1 + 3 + 1 = 3. $$
+        $$ \hat y = \sigma(3) = \frac{1}{1+e^{-3}} = \frac{1}{1.049787} = 0.952574 . $$
+        <p>True label is $1$, so we are on the $-\log\hat y$ branch:</p>
+        $$ \ell_A = -\log(0.952574) = 0.048587 . $$
+        <p>Small, as it should be: the model put $95.3\%$ on the correct class.</p>
+      </div></details>
+    <details class="step"><summary>Step 3 — Sample B</summary>
+      <div>
+        <p>Augmented $x = [1,\;0.5,\;-1]^\top$:</p>
+        $$ z = -1 + (2)(0.5) + (0.5)(-1) = -1 + 1 - 0.5 = -0.5 . $$
+        $$ \hat y = \sigma(-0.5) = \frac{1}{1+e^{0.5}} = \frac{1}{2.648721} = 0.377541 . $$
+        <p>True label is $0$, so use the other branch, with $1-\hat y = 0.622459$:</p>
+        $$ \ell_B = -\log(0.622459) = 0.474077 . $$
+        <p>Middling. The model leans the right way ($\hat y &lt; 0.5$, so it would predict class 0) but only weakly — the logit is just $-0.5$, half a unit from the boundary.</p>
+      </div></details>
+    <details class="step"><summary>Step 4 — Sample C, and the average</summary>
+      <div>
+        <p>Augmented $x = [1,\;2,\;1]^\top$:</p>
+        $$ z = -1 + 4 + 0.5 = 3.5, \qquad \hat y = \sigma(3.5) = \frac{1}{1.030197} = 0.970688 . $$
+        <p>True label is $0$, so $1 - \hat y = 0.029312$ and</p>
+        $$ \ell_C = -\log(0.029312) = 3.529750 . $$
+        <p>Average over the three:</p>
+        $$ J(\theta) = \frac{0.048587 + 0.474077 + 3.529750}{3} = \frac{4.052414}{3} = 1.350805 . $$
+      </div></details>
+    <details class="step"><summary>Answer &amp; the takeaway</summary>
+      <div>
+        <p><strong>Answers.</strong> A: $z=3$, $\hat y = 0.9526$, $\ell = 0.0486$. B: $z=-0.5$, $\hat y = 0.3775$, $\ell = 0.4741$. C: $z=3.5$, $\hat y = 0.9707$, $\ell = 3.5298$. Average $J = 1.3508$.</p>
+        <p><strong>The model is most embarrassed by C</strong>, and by a mile: $\ell_C$ is $73\times$ larger than $\ell_A$ and accounts for $87\%$ of the total loss. C is the confidently-wrong case — the model assigned $97\%$ to the wrong class.</p>
+        <p><strong>Takeaway.</strong> Under squared loss those same three samples would have cost $(1-0.9526)^2 = 0.0022$, $(0-0.3775)^2 = 0.1425$ and $(0-0.9707)^2 = 0.9423$ — C would be only $6.6\times$ worse than B instead of $7.4\times$, and its cost would be capped at $1$ no matter how wrong it got. Cross-entropy's unbounded penalty is what makes the optimiser go and fix C first. And as §7.3 will show, C is also where the <em>gradient</em> is biggest — under squared loss it would have been nearly the smallest.</p>
+      </div></details>
+  </div>
+
+  <h3>7.3 Next step: training it — the gradient</h3>
+
+  <p>To run <a href="optimization.html">gradient descent</a> we need $\nabla_\theta J$. Derive it for a single sample first; the average comes along for free by linearity of differentiation.</p>
+
+  <div class="box proof"><span class="label">Proof</span>
+    <p>Fix one sample $(x, y)$ and write $z = \theta^\top x$, $\hat y = \sigma(z)$. The per-sample loss is</p>
+    $$ \ell = -\bigl[\,y\log\sigma(z) + (1-y)\log(1-\sigma(z))\,\bigr]. $$
+    <p>We want $\partial\ell/\partial\theta$. Chain through $z$:</p>
+    $$ \frac{\partial \ell}{\partial \theta} = \frac{\partial \ell}{\partial z}\cdot\frac{\partial z}{\partial \theta}. $$
+
+    <p><strong>Line 1 — differentiate $\ell$ with respect to $z$.</strong> Use $\frac{d}{dz}\log u = \frac{1}{u}\frac{du}{dz}$ on each term, with $u = \sigma$ in the first and $u = 1-\sigma$ in the second. Note $\frac{d}{dz}(1-\sigma) = -\sigma'$:</p>
+    $$ \frac{\partial \ell}{\partial z} = -\left[\, y\cdot\frac{1}{\sigma}\cdot\sigma' \;+\; (1-y)\cdot\frac{1}{1-\sigma}\cdot(-\sigma')\,\right]. $$
+
+    <p><strong>Line 2 — pull out the common $\sigma'$.</strong></p>
+    $$ \frac{\partial \ell}{\partial z} = -\,\sigma' \left[\, \frac{y}{\sigma} - \frac{1-y}{1-\sigma} \,\right]. $$
+
+    <p><strong>Line 3 — substitute the identity $\sigma' = \sigma(1-\sigma)$.</strong> This is the step the whole chapter has been building toward:</p>
+    $$ \frac{\partial \ell}{\partial z} = -\,\sigma(1-\sigma) \left[\, \frac{y}{\sigma} - \frac{1-y}{1-\sigma} \,\right]. $$
+
+    <p><strong>Line 4 — distribute, and watch the denominators cancel.</strong> The first product cancels $\sigma$; the second cancels $(1-\sigma)$:</p>
+    $$ \frac{\partial \ell}{\partial z} = -\Bigl[\, y(1-\sigma) \;-\; (1-y)\sigma \,\Bigr]. $$
+
+    <p><strong>Line 5 — expand the bracket.</strong></p>
+    $$ y(1-\sigma) - (1-y)\sigma = y - y\sigma - \sigma + y\sigma = y - \sigma. $$
+    <p>The two $y\sigma$ terms annihilate. Therefore</p>
+    $$ \frac{\partial \ell}{\partial z} = -(y - \sigma) = \sigma(z) - y = \hat y - y . $$
+
+    <p><strong>Line 6 — the other factor.</strong> $z = \theta^\top x = \sum_j \theta_j x_j$, so $\partial z/\partial\theta_j = x_j$, i.e. $\partial z/\partial\theta = x$.</p>
+
+    <p><strong>Line 7 — multiply, and average over the dataset.</strong></p>
+    $$ \frac{\partial \ell}{\partial \theta} = \bigl(\sigma(\theta^\top x) - y\bigr)\,x, \qquad\Longrightarrow\qquad \boxed{\;\nabla_\theta J = \frac{1}{N}\sum_{i=1}^{N}\Bigl(\sigma\bigl(\theta^\top x^{(i)}\bigr) - y^{(i)}\Bigr)\,x^{(i)}\;} $$
+    <p>$\blacksquare$</p>
+  </div>
+
+  <div class="box key"><span class="label">Key idea</span>
+    <p>Look at how clean that is. Every $\log$, every $e$, every $\sigma'$ has cancelled. What is left is</p>
+    $$ \nabla_\theta J = \frac{1}{N}\sum_i (\text{prediction}_i - \text{truth}_i)\cdot x^{(i)} $$
+    <p>— literally "average the feature vectors, weighted by how wrong you were on each." Compare it with the linear-regression gradient from <a href="linear-regression.html">chapter 8</a>:</p>
+    $$ \nabla_\theta J_{\text{lin}} = \frac{1}{N}\sum_i \bigl(\theta^\top x^{(i)} - y^{(i)}\bigr)x^{(i)} \qquad\text{vs}\qquad \nabla_\theta J_{\text{log}} = \frac{1}{N}\sum_i \bigl(\sigma(\theta^\top x^{(i)}) - y^{(i)}\bigr)x^{(i)} $$
+    <p><strong>Identical form.</strong> The only difference is that the prediction passes through $\sigma$. This is not a coincidence — it is a general property of the exponential family, of which both models are members. <span class="pill">beyond syllabus</span></p>
+  </div>
+
+  <p>And note what this gradient does <em>not</em> have: the $\sigma'$ factor that crippled squared loss. Consider again the confidently-wrong point ($y=1$, $\hat y = 0.001$). The gradient contribution is $(0.001 - 1)x = -0.999\,x$ — essentially full strength. A confidently-<em>right</em> point ($y=1$, $\hat y = 0.999$) contributes $-0.001\,x$ — essentially nothing. <strong>The loss and the model were designed together so that the saturation cancels exactly.</strong> That is also the reason the far-away point at $x=10$ in Figure B left the logistic fit unchanged.</p>
+
+  <p><span class="pill">beyond syllabus</span> The Hessian works out to $\nabla^2 J = \frac{1}{N}\sum_i \sigma_i(1-\sigma_i)\,x^{(i)}x^{(i)\top}$, a non-negative combination of outer products, hence positive semi-definite — so <strong>$J$ is convex in $\theta$</strong>. No local minima, unlike squared loss. That is the formal justification for the whole §7.1 detour.</p>
+
+  <h3>7.4 There is no closed form</h3>
+
+  <p>Setting the gradient to zero gives the <em>score equations</em></p>
+
+  $$ \sum_{i=1}^{N}\sigma\bigl(\theta^\top x^{(i)}\bigr)\,x^{(i)} \;=\; \sum_{i=1}^{N} y^{(i)}x^{(i)} . $$
+
+  <p>In linear regression the analogous step gave $X^\top X\theta = X^\top y$ — <em>linear</em> in $\theta$, so you invert a matrix and you are done. Here $\theta$ is trapped inside $\sigma$, i.e. inside an exponential. The equation is transcendental and has no solution in elementary functions. There is <strong>no normal equation for logistic regression</strong>.</p>
+
+  <p>So you iterate. Since $J$ is convex and differentiable, <a href="optimization.html">gradient descent</a> is guaranteed to find the global minimum given a small enough step size:</p>
+
+  <pre><code>θ ← 0                                   # or small random values
+repeat until converged:
+    g ← (1/N) Σ_i ( σ(θᵀx⁽ⁱ⁾) − y⁽ⁱ⁾ ) x⁽ⁱ⁾     # full-batch gradient
+    θ ← θ − α·g                         # α is the learning rate</code></pre>
+
+  <p>and for large $N$ you use <a href="optimization.html">stochastic gradient descent</a> instead — replace the sum over all $N$ samples with a sum over one sample (or a minibatch) chosen at random. The gradient formula is unchanged; only the set you average over shrinks. Everything you learned in chapter 9 about learning rates, convergence and minibatches transfers verbatim.</p>
+
+  <div class="viz">
+    <div class="viz-title">Figure E — fit the model yourself (the centrepiece)</div>
+    <svg id="playMain" role="img" aria-label="Interactive plot of the twelve labelled points with a live logistic curve controlled by sliders"></svg>
+    <svg id="playLoss" role="img" aria-label="Bar chart of the per-point cross-entropy loss for the current parameters"></svg>
+    <div class="controls">
+      <label>$w$
+        <input type="range" id="pw" min="-2" max="10" step="0.05" value="1.00" data-out="pwv" data-dp="2">
+        <span class="val" id="pwv"></span></label>
+      <label>$b$
+        <input type="range" id="pb" min="-14" max="6" step="0.05" value="0.00" data-out="pbv" data-dp="2">
+        <span class="val" id="pbv"></span></label>
+      <label>learning rate $\alpha$
+        <input type="range" id="plr" min="0.1" max="4" step="0.1" value="2.0" data-out="plrv" data-dp="1">
+        <span class="val" id="plrv"></span></label>
+      <button class="btn primary" id="pfit">Fit it for me (200 GD steps)</button>
+      <button class="btn" id="pstep">One step</button>
+      <button class="btn" id="preset">Reset</button>
+    </div>
+    <div id="pstat" class="tiny" style="font-family:var(--mono);margin-top:6px"></div>
+    <div class="caption">Top: the data and the current $h(x) = \sigma(wx+b)$. Each dashed stalk runs from a point's true label ($0$ or $1$) to the curve — its length is the residual $|y^{(i)} - \hat y^{(i)}|$, so a long stalk is an unhappy point. Bottom: the per-sample cross-entropy $\ell_i$ as a bar; the total is the average of the bar heights. <strong>Press "Fit it for me"</strong> and watch 200 gradient-descent steps: the curve steepens and slides until its half-way point lands in the overlap, and $J$ falls from $0.456$ to about $0.207$. Notice what it <em>cannot</em> fix — the two bars at $x = 1.0$ and $x = 1.2$ stay tall forever, because those points genuinely overlap and no sigmoid can make both of them happy. That residual loss is the data's irreducible ambiguity, correctly reported. Try $\alpha = 4$ to watch it converge faster, or drag $w$ to $10$ by hand to see the threshold model reappear and the overlap points' bars shoot up.</div>
+  </div>
+
+  <div class="guided">
+    <div class="g-head"><span class="tag">Guided problem</span>Take one gradient-descent step by hand</div>
+    <div class="g-body">
+      <p>A tiny dataset with one real feature, and the bias folded in so $x^{(i)} = [1,\; x_1^{(i)}]^\top$ and $\theta = [b,\; w]^\top$:</p>
+      <table class="tight center">
+        <thead><tr><th>$i$</th><th>$x_1^{(i)}$</th><th>$y^{(i)}$</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>1</td><td>0</td></tr>
+          <tr><td>2</td><td>2</td><td>1</td></tr>
+          <tr><td>3</td><td>3</td><td>1</td></tr>
+        </tbody>
+      </table>
+      <p>Start at $\theta^{(0)} = [0,\;0]^\top$ with learning rate $\alpha = 1$. Compute $J(\theta^{(0)})$, take one full-batch gradient step, and compute $J(\theta^{(1)})$. Did every point improve?</p>
+      <p class="tiny muted">You may use $\log 2 = 0.6931$, $\sigma(0.8333)=0.6971$, $\sigma(1.5)=0.8176$, $\sigma(2.1667)=0.8972$.</p>
+    </div>
+    <details class="step"><summary>Step 1 — Predictions and loss at the start</summary>
+      <div>
+        <p>With $\theta = [0,0]^\top$ every logit is $z_i = 0\cdot 1 + 0\cdot x_1 = 0$, so every prediction is $\hat y_i = \sigma(0) = 0.5$. The model is maximally undecided about everything.</p>
+        <p>Each loss is $-\log(0.5) = \log 2 = 0.6931$ regardless of the label, so</p>
+        $$ J(\theta^{(0)}) = \frac{3 \times 0.6931}{3} = 0.6931 . $$
+        <p><em>Sanity check to remember:</em> $\log 2 \approx 0.693$ is the loss of a model that always shrugs. Any trained binary classifier reporting average cross-entropy above $0.693$ is doing worse than a coin.</p>
+      </div></details>
+    <details class="step"><summary>Step 2 — The residuals</summary>
+      <div>
+        <p>The gradient formula needs only $(\hat y_i - y_i)$:</p>
+        <table class="tight center">
+          <thead><tr><th>$i$</th><th>$\hat y_i$</th><th>$y_i$</th><th>$\hat y_i - y_i$</th><th>$x^{(i)}$</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>0.5</td><td>0</td><td>$+0.5$</td><td>$[1, 1]$</td></tr>
+            <tr><td>2</td><td>0.5</td><td>1</td><td>$-0.5$</td><td>$[1, 2]$</td></tr>
+            <tr><td>3</td><td>0.5</td><td>1</td><td>$-0.5$</td><td>$[1, 3]$</td></tr>
+          </tbody>
+        </table>
+        <p>Sign check: a <em>positive</em> residual means the model predicted too high, so the step should push that sample's score down. Point 1 is the only one labelled $0$, so it is the only positive residual. Good.</p>
+      </div></details>
+    <details class="step"><summary>Step 3 — Assemble the gradient</summary>
+      <div>
+        $$ \nabla_\theta J = \frac{1}{3}\sum_{i=1}^{3}(\hat y_i - y_i)\,x^{(i)} $$
+        <p><strong>Bias component</strong> (first coordinate of every $x^{(i)}$ is $1$):</p>
+        $$ \frac{\partial J}{\partial b} = \frac{1}{3}\bigl[(+0.5)(1) + (-0.5)(1) + (-0.5)(1)\bigr] = \frac{-0.5}{3} = -0.1667 . $$
+        <p><strong>Weight component</strong> (second coordinate is $x_1^{(i)}$):</p>
+        $$ \frac{\partial J}{\partial w} = \frac{1}{3}\bigl[(+0.5)(1) + (-0.5)(2) + (-0.5)(3)\bigr] = \frac{0.5 - 1 - 1.5}{3} = \frac{-2}{3} = -0.6667 . $$
+        <p>So $\nabla_\theta J = [-0.1667,\; -0.6667]^\top$. Both components are negative, meaning both parameters should <em>increase</em> — which matches intuition, since the class-1 points sit at larger $x$.</p>
+      </div></details>
+    <details class="step"><summary>Step 4 — The update and the new loss</summary>
+      <div>
+        $$ \theta^{(1)} = \theta^{(0)} - \alpha\nabla_\theta J = \begin{bmatrix}0\\0\end{bmatrix} - 1\cdot\begin{bmatrix}-0.1667\\-0.6667\end{bmatrix} = \begin{bmatrix}0.1667\\0.6667\end{bmatrix}. $$
+        <p>New logits $z_i = 0.1667 + 0.6667\,x_1^{(i)}$:</p>
+        <table class="tight center">
+          <thead><tr><th>$i$</th><th>$z_i$</th><th>$\hat y_i$</th><th>$y_i$</th><th>$\ell_i$</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>0.8333</td><td>0.6971</td><td>0</td><td>$-\log(0.3029) = 1.1942$</td></tr>
+            <tr><td>2</td><td>1.5000</td><td>0.8176</td><td>1</td><td>$-\log(0.8176) = 0.2014$</td></tr>
+            <tr><td>3</td><td>2.1667</td><td>0.8972</td><td>1</td><td>$-\log(0.8972) = 0.1085$</td></tr>
+          </tbody>
+        </table>
+        $$ J(\theta^{(1)}) = \frac{1.1942 + 0.2014 + 0.1085}{3} = \frac{1.5041}{3} = 0.5014 . $$
+      </div></details>
+    <details class="step"><summary>Answer &amp; the takeaway</summary>
+      <div>
+        <p><strong>Answers.</strong> $J(\theta^{(0)}) = 0.6931$; $\nabla J = [-0.1667, -0.6667]^\top$; $\theta^{(1)} = [0.1667, 0.6667]^\top$; $J(\theta^{(1)}) = 0.5014$. The loss fell by $0.192$.</p>
+        <p><strong>No, not every point improved.</strong> Point 1 got distinctly <em>worse</em>: its loss rose from $0.6931$ to $1.1942$, because the step pushed the whole score line up and point 1 is the lone class-0 sample fighting against two class-1 samples at larger $x$. Points 2 and 3 improved enough to more than pay for it.</p>
+        <p><strong>Takeaway.</strong> Gradient descent minimises the <em>average</em>, and the average is a negotiation. A single step can hurt individual samples; it can only ever hurt the majority-weighted sum if $\alpha$ is too large. This is also the honest answer to "why did my model get worse on my favourite example after retraining?" — because your favourite example is one term in a sum of $N$.</p>
+      </div></details>
+  </div>
+
+  <div class="quiz" data-answer="0">
+    <div class="q">A point is confidently wrong: true label $y=1$, model says $\hat y = 0.002$. Compare its contribution to the gradient under cross-entropy versus under squared loss.</div>
+    <button class="opt">Cross-entropy contributes $\approx -0.998\,x$ (near-maximal); squared loss contributes $\approx -0.004\,x$ (nearly nothing).</button>
+    <button class="opt">Both contribute about the same, since both losses see the same error $0.998$.</button>
+    <button class="opt">Squared loss contributes more, because squaring amplifies large errors.</button>
+    <button class="opt">Neither contributes, because $\sigma$ has saturated.</button>
+    <div class="why"><strong>Why:</strong> cross-entropy's per-sample gradient is $(\hat y - y)x = (0.002 - 1)x = -0.998x$. Squared loss's is $-2(y-\hat y)\sigma(1-\sigma)x = -2(0.998)(0.002)(0.998)x = -0.00398x$ — about $250$ times smaller. Option C states the usual intuition about squared loss, which is right for linear regression and <em>wrong</em> here: squaring does amplify the error term, but the extra $\sigma'$ factor from the chain rule crushes it far harder. This is the single most important practical reason to use cross-entropy with a sigmoid.</div>
+  </div>
+
+  <h2 id="multiclass">8. Next step: more than two classes</h2>
+
+  <p>The notes' third promise. Binary logistic regression outputs one number. For $K$ classes we want a whole distribution, $\hat y_1,\dots,\hat y_K$ with $\hat y_k \ge 0$ and $\sum_k \hat y_k = 1$. Give each class its own parameter vector $\theta_k \in \R^M$, compute $K$ scores $\theta_k^\top x$, and normalise them with the <strong>softmax</strong>:</p>
+
+  <div class="box defn"><span class="label">Definition</span>
+    $$ \hat y_k \;=\; P(Y = k \mid x) \;=\; \frac{\exp\bigl(\theta_k^\top x\bigr)}{\sum_{j=1}^{K}\exp\bigl(\theta_j^\top x\bigr)} $$
+    <p>$\exp$ makes every score positive; dividing by the sum makes them add to $1$. So the output really is a probability distribution over the $K$ classes, by construction.</p>
+  </div>
+
+  <div class="box proof"><span class="label">Proof</span>
+    <p><strong>Claim: softmax with $K=2$ <em>is</em> the sigmoid.</strong></p>
+    $$ \hat y_1 = \frac{e^{\theta_1^\top x}}{e^{\theta_1^\top x} + e^{\theta_0^\top x}} . $$
+    <p>Divide numerator and denominator by $e^{\theta_1^\top x}$ (non-zero, so legal):</p>
+    $$ \hat y_1 = \frac{1}{1 + e^{\theta_0^\top x - \theta_1^\top x}} = \frac{1}{1 + e^{-(\theta_1 - \theta_0)^\top x}} = \sigma\bigl((\theta_1-\theta_0)^\top x\bigr). \qquad\blacksquare $$
+    <p>So binary logistic regression is the $K=2$ softmax with $\theta = \theta_1 - \theta_0$. Only the <em>difference</em> of the two parameter vectors is identifiable, which is why two classes need one vector, not two — and in general why softmax has $K$ vectors but only $K-1$ degrees of freedom (adding a constant vector to every $\theta_k$ cancels top and bottom and leaves all predictions unchanged).</p>
+  </div>
+
+  <p>The loss generalises the same way. With the true class $y \in \{1,\dots,K\}$, <strong>multi-class cross-entropy</strong> is</p>
+
+  $$ \ell(y, \hat y) = -\sum_{k=1}^{K}\1\{y = k\}\log\hat y_k \;=\; -\log \hat y_{\,y} $$
+
+  <p>where $\1\{\cdot\}$ is the indicator (1 if true, 0 otherwise). Same sentence as before: <em>minus the log of the probability you gave the true class</em>. The binary formula is the $K=2$ case written out. And the gradient keeps its shape too:</p>
+
+  $$ \nabla_{\theta_k} J = \frac{1}{N}\sum_{i=1}^{N}\Bigl(\hat y^{(i)}_k - \1\{y^{(i)} = k\}\Bigr)x^{(i)} $$
+
+  <p>— prediction minus truth, times the input, exactly as in §7.3, now once per class. <span class="pill">beyond syllabus</span> This model is variously called softmax regression, multinomial logistic regression, or (in a neural network) "a linear layer with a softmax output" — it is the last layer of essentially every classifier you will ever train.</p>
+
+  <h2 id="mistakes">9. Common mistakes</h2>
+
+  <div class="box warn"><span class="label">Common mistake</span>
+    <p><strong>1. "Logistic regression is regression, so it predicts a number."</strong> No — it is a <strong>classification</strong> model. It is the model this chapter built to solve a classification problem, its labels are in $\{0,1\}$, and its output is used to choose a class.</p>
+    <p>So why the name? Because of §6. The model performs a <em>linear regression on the log-odds</em>: $\log\frac{p}{1-p} = \theta^\top x$ is a bona fide linear regression, whose response variable happens to be the logit of a probability rather than an observed number. The name records the mathematics of how the model was originally derived in 19th-century statistics, not the task it is used for. It is a historical label, and it misleads roughly one student per semester into fitting it with squared loss and wondering why nothing works.</p>
+  </div>
+
+  <div class="box warn"><span class="label">Common mistake</span>
+    <p><strong>2. Always thresholding at $0.5$.</strong> Nothing in the mathematics says $0.5$ is the right operating point; it is just the value that makes the decision rule coincide with $\theta^\top x \ge 0$. Two situations break it:</p>
+    <ul>
+      <li><strong>Class imbalance.</strong> If only $1\%$ of samples are class 1, a well-fitted model may never output $h(x) &gt; 0.5$ at all, and thresholding at $0.5$ gives you a classifier that says "class 0" to everything — $99\%$ accurate and completely useless.</li>
+      <li><strong>Asymmetric loss.</strong> Recall the asymmetric loss table from <a href="ml-formulation.html">chapter 5</a>: if a false negative costs $C_{\text{FN}}$ and a false positive costs $C_{\text{FP}}$, the expected-cost-minimising rule is to predict class 1 when $h(x)\,C_{\text{FN}} &gt; (1-h(x))\,C_{\text{FP}}$, i.e. when</li>
+    </ul>
+    $$ h(x) \;&gt;\; \frac{C_{\text{FP}}}{C_{\text{FP}} + C_{\text{FN}}} . $$
+    <p>If missing a tumour is $9\times$ worse than an unnecessary biopsy, the threshold is $1/(1+9) = 0.1$, not $0.5$. <strong>This is exactly why we wanted probabilities in §1</strong> — a probability lets you move the threshold after training; a hard label does not.</p>
+  </div>
+
+  <div class="box warn"><span class="label">Common mistake</span>
+    <p><strong>3. Forgetting the bias term.</strong> If you write $h(x) = \sigma(w^\top \tilde x)$ with no $\theta_0$, the decision boundary is $w^\top \tilde x = 0$, a hyperplane <em>forced through the origin</em>. Your model can rotate the boundary but never translate it. On our 1-D dataset that means the boundary is stuck at $x = 0$ instead of $x = 1.05$, and five points are misclassified no matter what $w$ you pick.</p>
+    <p>In practice the bug looks like this: you build the design matrix from your features, forget to prepend the column of ones (the same column <a href="feature-engineering.html">chapter 10</a> added to $\Phi$), and get an accuracy that is stubbornly mediocre with no error message. Always check that $\theta$ has $M+1$ entries when you have $M$ features.</p>
+  </div>
+
+  <div class="box warn"><span class="label">Common mistake</span>
+    <p><strong>4. Assuming $\sigma(\theta^\top x)$ is a <em>calibrated</em> probability.</strong> The output is a number in $(0,1)$ and we <em>interpret</em> it as $P(Y=1\mid x)$. That interpretation is an assumption about the model class — namely that the true log-odds really are linear in $x$. When that is roughly right (and the training loss really is cross-entropy, which is what pushes the outputs toward the empirical rates), the numbers come out well calibrated. When it is not, they can be systematically off even while the <em>rankings</em> and the accuracy are fine.</p>
+    <p><strong>How to check.</strong> Bin your held-out predictions — say all samples with $h(x) \in [0.7, 0.8)$ — and compute what fraction of them were actually class 1. Calibrated means the fraction is about $0.75$. Plot bin-midpoint against observed frequency (a <em>reliability diagram</em>); calibrated is the diagonal. Regularisation, class rebalancing, and any tree-ensemble or neural model all routinely distort this. <span class="pill">beyond syllabus</span> Post-hoc fixes exist (Platt scaling, isotonic regression) but the first step is simply to look.</p>
+  </div>
+
+  <div class="box warn"><span class="label">Common mistake</span>
+    <p><strong>5. Small numerical traps.</strong> (a) Computing $\sigma(z)$ as <code>1/(1+exp(-z))</code> overflows for very negative $z$; libraries use the branch $\sigma(z) = e^{z}/(1+e^{z})$ when $z &lt; 0$. (b) $\log(0)$ is $-\infty$, so never round $\hat y$ to $0$ or $1$ before taking the log — this is why real implementations fuse the sigmoid and the log into one "logits" function. (c) The range is $(0,1)$ <em>open</em>, so a printed $\hat y$ of exactly $1.0$ means floating-point rounding, not certainty.</p>
+  </div>
+
+  <h2 id="recap">10. Recap</h2>
+
+  <ol>
+    <li>A hard class label tells you nothing about <strong>strength of belief</strong>, so we want $P(Y = k \mid x)$ instead.</li>
+    <li>Decision trees classify non-linearly; logistic regression classifies while staying a <strong>linear model</strong>, keeping interpretable coefficients and easy optimisation.</li>
+    <li>Plain linear regression on $\{0,1\}$ labels produces outputs outside $[0,1]$ and is dragged around by far-away points.</li>
+    <li>Thresholding fixes the outputs but makes the model absurdly certain and — fatally — gives a <strong>derivative of zero almost everywhere</strong>, so gradient descent cannot move.</li>
+    <li>The logistic function $\sigma(z) = 1/(1+e^{-z})$ maps $\R$ smoothly onto $(0,1)$, with $\sigma(0) = 0.5$, asymptotes at $0$ and $1$, $\sigma(-z) = 1-\sigma(z)$, and the crucial identity $\sigma' = \sigma(1-\sigma)$.</li>
+    <li>The model is $h(x) = \sigma(\theta^\top x) = P(Y=1\mid x)$, with $P(Y=0\mid x) = 1-h(x)$.</li>
+    <li>$h(x)\ge 0.5 \iff \theta^\top x \ge 0$, a hyperplane — so it is a linear classifier. The direction of $w$ orients the boundary; $\|w\|$ sets the sharpness; $\theta_0$ slides it.</li>
+    <li>$\log\frac{h}{1-h} = \theta^\top x$: a unit increase in $x_j$ multiplies the odds by $e^{\theta_j}$.</li>
+    <li>Train with cross-entropy $\ell = -[y\log\hat y + (1-y)\log(1-\hat y)]$, not squared loss (non-convex, vanishing gradients).</li>
+    <li>$\nabla_\theta J = \frac{1}{N}\sum_i(\sigma(\theta^\top x^{(i)}) - y^{(i)})x^{(i)}$ — same form as linear regression. No closed form, so run <a href="optimization.html">GD or SGD</a>.</li>
+    <li>$K$ classes: softmax $\hat y_k = e^{\theta_k^\top x}/\sum_j e^{\theta_j^\top x}$, which is the sigmoid when $K=2$, with multi-class cross-entropy $-\log\hat y_y$.</li>
+  </ol>
+
+  <div class="quiz" data-answer="3">
+    <div class="q">Which single property of $\sigma$ is the reason the sigmoid replaced the threshold function?</div>
+    <button class="opt">It outputs values in $(0,1)$, so the output can be read as a probability.</button>
+    <button class="opt">It is symmetric: $\sigma(-z) = 1 - \sigma(z)$.</button>
+    <button class="opt">It makes the decision boundary linear.</button>
+    <button class="opt">Its derivative is non-zero everywhere, so gradient descent has a slope to follow.</button>
+    <div class="why"><strong>Why:</strong> all four statements are true of $\sigma$, but only the last one is a property the threshold function <em>lacks</em> and that we could not do without. The threshold already outputs valid classes (so A was not the blocker — though it does not output probabilities), it is also antisymmetric about its jump, and it also induces a linear boundary. What it does not have is a usable derivative: $g'_{\text{threshold}} = 0$ almost everywhere, so $\nabla_\theta J = 0$ and $\theta \leftarrow \theta - \alpha\cdot 0$ never moves. Differentiability with non-vanishing slope is the property that makes the model <em>trainable</em>, and trainability is what the notes single out when they call the threshold "very problematic to optimize over."</div>
+  </div>
+
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<script src="assets/site.js"></script>
+<script>
+document.addEventListener("shellready", () => {
+
+  /* ============ the dataset used everywhere on this page ================== */
+  const X0 = [-1.4, -0.8, -0.3, 0.2, 0.7, 1.2];       // label 0
+  const X1 = [ 1.0,  1.3,  1.6, 2.1, 2.7, 3.3];       // label 1
+  const DX = X0.concat(X1);
+  const DY = DX.map((_, i) => i < X0.length ? 0 : 1);
+
+  const sig = z => 1 / (1 + Math.exp(-z));
+  const clip = p => Math.min(1 - 1e-12, Math.max(1e-12, p));
+
+  /* least squares line through (xs, ys) -> [b, w] */
+  function linfit(xs, ys) {
+    const n = xs.length;
+    const mx = xs.reduce((a, v) => a + v, 0) / n;
+    const my = ys.reduce((a, v) => a + v, 0) / n;
+    let num = 0, den = 0;
+    for (let i = 0; i < n; i++) { num += (xs[i] - mx) * (ys[i] - my); den += (xs[i] - mx) ** 2; }
+    const w = num / den;
+    return [my - w * mx, w];
+  }
+  const LIN  = linfit(DX, DY);                                   // [0.2184, 0.2913]
+  const LINO = linfit(DX.concat([10]), DY.concat([1]));          // [0.3601, 0.1073]
+
+  /* mean cross-entropy of sigma(w x + b) on the page dataset */
+  function ceLoss(b, w, xs, ys) {
+    let s = 0;
+    for (let i = 0; i < xs.length; i++) {
+      const p = clip(sig(w * xs[i] + b));
+      s += -(ys[i] * Math.log(p) + (1 - ys[i]) * Math.log(1 - p));
+    }
+    return s / xs.length;
+  }
+  /* full-batch gradient descent on cross-entropy, 1-D + bias */
+  function gdStep(b, w, lr, xs, ys) {
+    let gb = 0, gw = 0;
+    for (let i = 0; i < xs.length; i++) {
+      const d = sig(w * xs[i] + b) - ys[i];
+      gb += d; gw += d * xs[i];
+    }
+    const n = xs.length;
+    return [b - lr * gb / n, w - lr * gw / n];
+  }
+  /* the maximum-likelihood fit, computed once */
+  const MLE = (() => {
+    let b = 0, w = 1;
+    for (let k = 0; k < 40000; k++) [b, w] = gdStep(b, w, 0.5, DX, DY);
+    return [b, w];                                    // ≈ [-5.8044, 5.5119]
+  })();
+
+  /* ==================== tiny SVG plotting frame =========================== */
+  function frame(svg, o) {
+    const W = o.W || 340, H = o.H || 240;
+    const m = Object.assign({ l: 42, r: 14, t: 18, b: 34 }, o.m || {});
+    svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    const sx = x => m.l + (x - o.xd[0]) / (o.xd[1] - o.xd[0]) * (W - m.l - m.r);
+    const sy = y => H - m.b - (y - o.yd[0]) / (o.yd[1] - o.yd[0]) * (H - m.t - m.b);
+    const g = (t, a, tx) => { const e = SG.el(t, a, tx); svg.appendChild(e); return e; };
+    (o.xt || []).forEach(v => {
+      g("line", { x1: sx(v), y1: sy(o.yd[0]), x2: sx(v), y2: sy(o.yd[1]), stroke: "var(--line)", "stroke-width": 1 });
+      g("text", { x: sx(v), y: H - m.b + 15, "text-anchor": "middle", "font-size": 10, fill: "var(--ink-mute)" },
+        o.xfmt ? o.xfmt(v) : String(v));
+    });
+    (o.yt || []).forEach(v => {
+      g("line", { x1: sx(o.xd[0]), y1: sy(v), x2: sx(o.xd[1]), y2: sy(v), stroke: "var(--line)", "stroke-width": 1 });
+      g("text", { x: m.l - 6, y: sy(v) + 3.5, "text-anchor": "end", "font-size": 10, fill: "var(--ink-mute)" },
+        o.yfmt ? o.yfmt(v) : String(v));
+    });
+    g("line", { x1: m.l, y1: H - m.b, x2: W - m.r, y2: H - m.b, stroke: "var(--ink)", "stroke-width": 1.3 });
+    g("line", { x1: m.l, y1: H - m.b, x2: m.l, y2: m.t, stroke: "var(--ink)", "stroke-width": 1.3 });
+    if (o.xlab) g("text", { x: (m.l + W - m.r) / 2, y: H - 4, "text-anchor": "middle", "font-size": 11, fill: "var(--ink-mute)" }, o.xlab);
+    if (o.ylab) g("text", { x: 11, y: (m.t + H - m.b) / 2, "font-size": 11, fill: "var(--ink-mute)", "text-anchor": "middle",
+      transform: "rotate(-90 11 " + ((m.t + H - m.b) / 2) + ")" }, o.ylab);
+    if (o.title) g("text", { x: W - m.r, y: m.t - 5, "text-anchor": "end", "font-size": 10.5, fill: "var(--ink-mute)", "font-weight": 700 }, o.title);
+    return { sx, sy, g, W, H, m };
+  }
+  function fnPath(f, F, o, steps) {
+    steps = steps || 300;
+    let d = "", pen = false;
+    for (let i = 0; i <= steps; i++) {
+      const x = o.xd[0] + (o.xd[1] - o.xd[0]) * i / steps;
+      const y = f(x);
+      if (!isFinite(y) || y < o.yd[0] || y > o.yd[1]) { pen = false; continue; }
+      d += (pen ? " L" : " M") + F.sx(x).toFixed(1) + " " + F.sy(y).toFixed(1);
+      pen = true;
+    }
+    return d;
+  }
+  /* draw the twelve labelled points at their label height */
+  function pts(F, r) {
+    DX.forEach((x, i) => F.g("circle", {
+      cx: F.sx(x), cy: F.sy(DY[i]), r: r || 4.6,
+      fill: DY[i] ? "var(--accent)" : "var(--accent-2)",
+      stroke: "var(--panel)", "stroke-width": 1.2
+    }));
+  }
+
+  /* ============ Figure A — the four-panel progression ===================== */
+  function drawProgression() {
+    const base = { W: 330, H: 210, xd: [-2.0, 4.0], yd: [-0.35, 1.35], xt: [-2, 0, 2, 4],
+      yt: [0, 0.5, 1], xlab: "x", ylab: "y  /  P(Y=1|x)", m: { l: 40, r: 12, t: 20, b: 32 },
+      yfmt: v => v.toFixed(1) };
+
+    // 1. raw data
+    let o = Object.assign({}, base, { title: "1. the data" });
+    let F = frame(document.getElementById("prog1"), o); pts(F, 4);
+
+    // 2. linear regression
+    o = Object.assign({}, base, { title: "2. linear regression" });
+    F = frame(document.getElementById("prog2"), o);
+    F.g("path", { d: fnPath(x => LIN[0] + LIN[1] * x, F, o), fill: "none", stroke: "var(--rose)", "stroke-width": 2.3 });
+    pts(F, 4);
+
+    // 3. threshold
+    o = Object.assign({}, base, { title: "3. threshold" });
+    F = frame(document.getElementById("prog3"), o);
+    const bd = (0.5 - LIN[0]) / LIN[1];
+    F.g("path", { d: "M" + F.sx(o.xd[0]) + " " + F.sy(0) + " L" + F.sx(bd) + " " + F.sy(0) +
+      " L" + F.sx(bd) + " " + F.sy(1) + " L" + F.sx(o.xd[1]) + " " + F.sy(1),
+      fill: "none", stroke: "var(--rose)", "stroke-width": 2.3 });
+    pts(F, 4);
+
+    // 4. sigmoid
+    o = Object.assign({}, base, { title: "4. logistic" });
+    F = frame(document.getElementById("prog4"), o);
+    F.g("path", { d: fnPath(x => sig(MLE[1] * x + MLE[0]), F, o, 420), fill: "none", stroke: "var(--accent-3)", "stroke-width": 2.6 });
+    pts(F, 4);
+  }
+
+  /* ============ Figure 5 — the dataset alone ============================= */
+  function drawFig5() {
+    const o = { W: 640, H: 210, xd: [-2.0, 4.0], yd: [-0.35, 1.35], xt: [-2, -1, 0, 1, 2, 3, 4],
+      yt: [0, 1], xlab: "x", ylab: "class y", m: { l: 48, r: 14, t: 18, b: 34 } };
+    const F = frame(document.getElementById("fig5"), o);
+    // overlap band
+    F.g("rect", { x: F.sx(1.0), y: F.sy(1.35), width: F.sx(1.2) - F.sx(1.0), height: F.sy(-0.35) - F.sy(1.35),
+      fill: "var(--gold)", "fill-opacity": 0.18 });
+    F.g("text", { x: F.sx(1.1), y: F.sy(1.22), "text-anchor": "middle", "font-size": 10.5, fill: "var(--gold)" }, "overlap");
+    pts(F, 5.4);
+    F.g("text", { x: F.sx(-1.9), y: F.sy(0.14), "font-size": 11, fill: "var(--accent-2)" }, "y = 0  (six points)");
+    F.g("text", { x: F.sx(-1.9), y: F.sy(0.86), "font-size": 11, fill: "var(--accent)" }, "y = 1  (six points)");
+  }
+
+  /* ============ Figure 6 — linear regression fit ========================== */
+  function drawFig6() {
+    const o = { W: 640, H: 250, xd: [-2.0, 4.0], yd: [-0.45, 1.5], xt: [-2, -1, 0, 1, 2, 3, 4],
+      yt: [-0.4, 0, 0.5, 1, 1.4], xlab: "x", ylab: "ŷ = wx + b", m: { l: 52, r: 14, t: 18, b: 34 },
+      yfmt: v => v.toFixed(1) };
+    const F = frame(document.getElementById("fig6"), o);
+    // valid band 0..1
+    F.g("rect", { x: F.sx(o.xd[0]), y: F.sy(1), width: F.sx(o.xd[1]) - F.sx(o.xd[0]), height: F.sy(0) - F.sy(1),
+      fill: "var(--accent-2)", "fill-opacity": 0.07 });
+    F.g("line", { x1: F.sx(o.xd[0]), y1: F.sy(0.5), x2: F.sx(o.xd[1]), y2: F.sy(0.5),
+      stroke: "var(--ink-mute)", "stroke-width": 1, "stroke-dasharray": "4 3" });
+    F.g("text", { x: F.sx(3.95), y: F.sy(0.53), "text-anchor": "end", "font-size": 10, fill: "var(--ink-mute)" }, "ŷ = 0.5");
+    F.g("path", { d: fnPath(x => LIN[0] + LIN[1] * x, F, o), fill: "none", stroke: "var(--rose)", "stroke-width": 2.6 });
+    pts(F, 5);
+    const bd = (0.5 - LIN[0]) / LIN[1];
+    F.g("line", { x1: F.sx(bd), y1: F.sy(-0.45), x2: F.sx(bd), y2: F.sy(1.5),
+      stroke: "var(--gold)", "stroke-width": 1.4, "stroke-dasharray": "5 3" });
+    F.g("text", { x: F.sx(bd) + 5, y: F.sy(1.42), "font-size": 10.5, fill: "var(--gold)" }, "boundary x = " + bd.toFixed(3));
+    // annotate the two out-of-range endpoints
+    [[-1.4, LIN[0] + LIN[1] * -1.4], [3.3, LIN[0] + LIN[1] * 3.3]].forEach(([x, y]) => {
+      F.g("circle", { cx: F.sx(x), cy: F.sy(y), r: 3.4, fill: "var(--rose)" });
+      F.g("text", { x: F.sx(x) + (x < 0 ? 6 : -6), y: F.sy(y) + (x < 0 ? 12 : -6),
+        "text-anchor": x < 0 ? "start" : "end", "font-size": 10.5, fill: "var(--rose)" }, "ŷ = " + y.toFixed(3));
+    });
+    F.g("text", { x: F.sx(-1.9), y: F.sy(1.42), "font-size": 11, fill: "var(--rose)" },
+      "ŷ = " + LIN[0].toFixed(4) + " + " + LIN[1].toFixed(4) + "x");
+  }
+
+  /* ============ Figure B — the outlier demo =============================== */
+  let outOn = false;
+  function drawFig6b() {
+    const o = { W: 640, H: 260, xd: [-2.2, 10.8], yd: [-0.35, 1.65], xt: [-2, 0, 2, 4, 6, 8, 10],
+      yt: [0, 0.5, 1, 1.5], xlab: "x", ylab: "ŷ", m: { l: 46, r: 14, t: 18, b: 34 },
+      yfmt: v => v.toFixed(1) };
+    const F = frame(document.getElementById("fig6b"), o);
+    F.g("line", { x1: F.sx(o.xd[0]), y1: F.sy(0.5), x2: F.sx(o.xd[1]), y2: F.sy(0.5),
+      stroke: "var(--ink-mute)", "stroke-width": 1, "stroke-dasharray": "4 3" });
+    // original fit, always shown (dashed once the outlier is added)
+    F.g("path", { d: fnPath(x => LIN[0] + LIN[1] * x, F, o), fill: "none",
+      stroke: outOn ? "var(--ink-mute)" : "var(--accent-2)", "stroke-width": outOn ? 1.6 : 2.6,
+      "stroke-dasharray": outOn ? "6 4" : "" });
+    const bd0 = (0.5 - LIN[0]) / LIN[1];
+    F.g("line", { x1: F.sx(bd0), y1: F.sy(-0.35), x2: F.sx(bd0), y2: F.sy(1.2),
+      stroke: outOn ? "var(--ink-mute)" : "var(--accent-2)", "stroke-width": 1.2, "stroke-dasharray": "4 3" });
+    F.g("text", { x: F.sx(bd0) - 4, y: F.sy(1.28), "text-anchor": "end", "font-size": 10, fill: "var(--ink-mute)" },
+      "old " + bd0.toFixed(3));
+    let bd = bd0, fit = LIN;
+    if (outOn) {
+      fit = LINO; bd = (0.5 - LINO[0]) / LINO[1];
+      F.g("path", { d: fnPath(x => LINO[0] + LINO[1] * x, F, o), fill: "none", stroke: "var(--rose)", "stroke-width": 2.6 });
+      F.g("line", { x1: F.sx(bd), y1: F.sy(-0.35), x2: F.sx(bd), y2: F.sy(1.2),
+        stroke: "var(--rose)", "stroke-width": 1.4, "stroke-dasharray": "4 3" });
+      F.g("text", { x: F.sx(bd) + 4, y: F.sy(1.28), "font-size": 10, fill: "var(--rose)" }, "new " + bd.toFixed(3));
+      F.g("circle", { cx: F.sx(10), cy: F.sy(1), r: 6.5, fill: "var(--accent)", stroke: "var(--panel)", "stroke-width": 1.4 });
+      F.g("text", { x: F.sx(10), y: F.sy(1) - 12, "text-anchor": "middle", "font-size": 10.5, fill: "var(--accent)" }, "(10, 1)");
+      F.g("text", { x: F.sx(-2.05), y: F.sy(1.55), "font-size": 11, fill: "var(--rose)" },
+        "ŷ = " + LINO[0].toFixed(4) + " + " + LINO[1].toFixed(4) + "x");
+    } else {
+      F.g("text", { x: F.sx(-2.05), y: F.sy(1.55), "font-size": 11, fill: "var(--accent-2)" },
+        "ŷ = " + LIN[0].toFixed(4) + " + " + LIN[1].toFixed(4) + "x");
+    }
+    // points, with misclassified ones ringed
+    let wrong = 0;
+    DX.forEach((x, i) => {
+      const pred = (fit[0] + fit[1] * x) >= 0.5 ? 1 : 0;
+      const bad = pred !== DY[i];
+      if (bad) wrong++;
+      F.g("circle", { cx: F.sx(x), cy: F.sy(DY[i]), r: bad ? 6.5 : 4.6,
+        fill: DY[i] ? "var(--accent)" : "var(--accent-2)", stroke: bad ? "var(--rose)" : "var(--panel)",
+        "stroke-width": bad ? 2.4 : 1.2 });
+    });
+    document.getElementById("outStat").textContent =
+      (outOn ? "with outlier" : "original") + " · " + wrong + " misclassified";
+  }
+  document.getElementById("outBtn").onclick = function () {
+    outOn = !outOn;
+    this.textContent = outOn ? "Remove the point at x = 10" : "Add the point at x = 10";
+    drawFig6b();
+  };
+
+  /* ============ Figure 7 — the threshold model ============================ */
+  function drawFig7() {
+    const o = { W: 640, H: 230, xd: [-2.0, 4.0], yd: [-0.35, 1.35], xt: [-2, -1, 0, 1, 2, 3, 4],
+      yt: [0, 0.5, 1], xlab: "x", ylab: "ŷ = g_threshold(wx+b)", m: { l: 56, r: 14, t: 18, b: 34 },
+      yfmt: v => v.toFixed(1) };
+    const F = frame(document.getElementById("fig7"), o);
+    const bd = (0.5 - LIN[0]) / LIN[1];
+    F.g("rect", { x: F.sx(1.0), y: F.sy(1.35), width: F.sx(1.2) - F.sx(1.0), height: F.sy(-0.35) - F.sy(1.35),
+      fill: "var(--gold)", "fill-opacity": 0.18 });
+    F.g("path", { d: "M" + F.sx(o.xd[0]) + " " + F.sy(0) + " L" + F.sx(bd) + " " + F.sy(0) +
+      " L" + F.sx(bd) + " " + F.sy(1) + " L" + F.sx(o.xd[1]) + " " + F.sy(1),
+      fill: "none", stroke: "var(--rose)", "stroke-width": 2.8 });
+    pts(F, 5);
+    F.g("text", { x: F.sx(-1.9), y: F.sy(1.24), "font-size": 11, fill: "var(--rose)" }, "slope = 0 here …");
+    F.g("text", { x: F.sx(3.9), y: F.sy(1.24), "text-anchor": "end", "font-size": 11, fill: "var(--rose)" }, "… and 0 here.");
+    F.g("text", { x: F.sx(bd) + 6, y: F.sy(0.5), "font-size": 10.5, fill: "var(--ink-mute)" }, "the only slope is here, and it is infinite");
+  }
+
+  /* ============ Figure 8 — sigmoid and its derivative ===================== */
+  function drawFig8() {
+    // sigma
+    let o = { W: 640, H: 240, xd: [-6.5, 6.5], yd: [-0.12, 1.12], xt: [-6, -4, -2, 0, 2, 4, 6],
+      yt: [0, 0.25, 0.5, 0.75, 1], xlab: "z", ylab: "σ(z)", m: { l: 46, r: 14, t: 18, b: 34 },
+      yfmt: v => v.toFixed(2) };
+    let F = frame(document.getElementById("fig8"), o);
+    [0, 1].forEach(v => {
+      F.g("line", { x1: F.sx(o.xd[0]), y1: F.sy(v), x2: F.sx(o.xd[1]), y2: F.sy(v),
+        stroke: "var(--rose)", "stroke-width": 1.2, "stroke-dasharray": "6 4" });
+    });
+    F.g("text", { x: F.sx(6.3), y: F.sy(1) - 6, "text-anchor": "end", "font-size": 10.5, fill: "var(--rose)" }, "asymptote σ → 1");
+    F.g("text", { x: F.sx(-6.3), y: F.sy(0) + 13, "font-size": 10.5, fill: "var(--rose)" }, "asymptote σ → 0");
+    F.g("line", { x1: F.sx(0), y1: F.sy(-0.12), x2: F.sx(0), y2: F.sy(1.12),
+      stroke: "var(--line-2)", "stroke-width": 1 });
+    F.g("path", { d: fnPath(sig, F, o, 420), fill: "none", stroke: "var(--accent-3)", "stroke-width": 3 });
+    F.g("circle", { cx: F.sx(0), cy: F.sy(0.5), r: 5, fill: "var(--gold)", stroke: "var(--panel)", "stroke-width": 1.5 });
+    F.g("text", { x: F.sx(0.25), y: F.sy(0.44), "font-size": 11, fill: "var(--gold)" }, "σ(0) = 0.5");
+    [[-2, "σ(−2) = 0.1192"], [2, "σ(2) = 0.8808"]].forEach(([z, lab]) => {
+      F.g("circle", { cx: F.sx(z), cy: F.sy(sig(z)), r: 3.4, fill: "var(--accent-3)" });
+      F.g("text", { x: F.sx(z) + (z < 0 ? 7 : -7), y: F.sy(sig(z)) + (z < 0 ? 13 : -7),
+        "text-anchor": z < 0 ? "start" : "end", "font-size": 10, fill: "var(--ink-mute)" }, lab);
+    });
+
+    // sigma'
+    o = { W: 640, H: 180, xd: [-6.5, 6.5], yd: [-0.02, 0.29], xt: [-6, -4, -2, 0, 2, 4, 6],
+      yt: [0, 0.1, 0.2, 0.25], xlab: "z", ylab: "σ′(z) = σ(1−σ)", m: { l: 46, r: 14, t: 18, b: 34 },
+      yfmt: v => v.toFixed(2) };
+    F = frame(document.getElementById("fig8d"), o);
+    F.g("line", { x1: F.sx(0), y1: F.sy(-0.02), x2: F.sx(0), y2: F.sy(0.29), stroke: "var(--line-2)", "stroke-width": 1 });
+    F.g("path", { d: fnPath(z => sig(z) * (1 - sig(z)), F, o, 420), fill: "none",
+      stroke: "var(--accent-2)", "stroke-width": 2.8 });
+    F.g("circle", { cx: F.sx(0), cy: F.sy(0.25), r: 4.5, fill: "var(--gold)", stroke: "var(--panel)", "stroke-width": 1.4 });
+    F.g("text", { x: F.sx(0.3), y: F.sy(0.25) + 4, "font-size": 11, fill: "var(--gold)" }, "max σ′ = 0.25 at z = 0");
+    F.g("text", { x: F.sx(-6.3), y: F.sy(0.06), "font-size": 10.5, fill: "var(--ink-mute)" }, "saturated: σ′ ≈ 0");
+    F.g("text", { x: F.sx(6.3), y: F.sy(0.06), "text-anchor": "end", "font-size": 10.5, fill: "var(--ink-mute)" }, "saturated: σ′ ≈ 0");
+  }
+
+  /* ============ Figure 9 — the logistic fit =============================== */
+  function drawFig9() {
+    const o = { W: 640, H: 250, xd: [-2.0, 4.0], yd: [-0.2, 1.2], xt: [-2, -1, 0, 1, 2, 3, 4],
+      yt: [0, 0.25, 0.5, 0.75, 1], xlab: "x", ylab: "h(x) = P(Y=1|x)", m: { l: 58, r: 14, t: 18, b: 34 },
+      yfmt: v => v.toFixed(2) };
+    const F = frame(document.getElementById("fig9"), o);
+    F.g("rect", { x: F.sx(1.0), y: F.sy(1.2), width: F.sx(1.2) - F.sx(1.0), height: F.sy(-0.2) - F.sy(1.2),
+      fill: "var(--gold)", "fill-opacity": 0.18 });
+    F.g("line", { x1: F.sx(o.xd[0]), y1: F.sy(0.5), x2: F.sx(o.xd[1]), y2: F.sy(0.5),
+      stroke: "var(--ink-mute)", "stroke-width": 1, "stroke-dasharray": "4 3" });
+    F.g("path", { d: fnPath(x => sig(MLE[1] * x + MLE[0]), F, o, 500), fill: "none",
+      stroke: "var(--accent-3)", "stroke-width": 3 });
+    const bd = -MLE[0] / MLE[1];
+    F.g("line", { x1: F.sx(bd), y1: F.sy(-0.2), x2: F.sx(bd), y2: F.sy(1.2),
+      stroke: "var(--gold)", "stroke-width": 1.4, "stroke-dasharray": "5 3" });
+    F.g("text", { x: F.sx(bd) + 5, y: F.sy(1.13), "font-size": 10.5, fill: "var(--gold)" },
+      "h = 0.5 at x = " + bd.toFixed(3));
+    pts(F, 5);
+    F.g("circle", { cx: F.sx(1), cy: F.sy(sig(MLE[1] + MLE[0])), r: 4.2, fill: "var(--accent-3)" });
+    F.g("text", { x: F.sx(1) - 7, y: F.sy(sig(MLE[1] + MLE[0])) + 4, "text-anchor": "end", "font-size": 10.5, fill: "var(--accent-3)" },
+      "P(Y=1|x=1) = " + sig(MLE[1] + MLE[0]).toFixed(3));
+    F.g("text", { x: F.sx(-1.95), y: F.sy(1.13), "font-size": 11, fill: "var(--accent-3)" },
+      "h(x) = σ(" + MLE[1].toFixed(4) + "x " + (MLE[0] < 0 ? "− " : "+ ") + Math.abs(MLE[0]).toFixed(4) + ")");
+  }
+
+  /* ============ Figure D — cross-entropy curves =========================== */
+  function drawFigCE() {
+    const o = { W: 640, H: 270, xd: [0, 1], yd: [0, 5], xt: [0, 0.25, 0.5, 0.75, 1],
+      yt: [0, 1, 2, 3, 4, 5], xlab: "ŷ = predicted P(Y=1|x)", ylab: "loss ℓ(y, ŷ)",
+      m: { l: 46, r: 14, t: 18, b: 34 }, xfmt: v => v.toFixed(2) };
+    const F = frame(document.getElementById("figCE"), o);
+    F.g("path", { d: fnPath(p => p <= 1e-4 ? NaN : -Math.log(p), F, o, 600), fill: "none",
+      stroke: "var(--accent)", "stroke-width": 2.8 });
+    F.g("path", { d: fnPath(p => p >= 1 - 1e-4 ? NaN : -Math.log(1 - p), F, o, 600), fill: "none",
+      stroke: "var(--accent-2)", "stroke-width": 2.8 });
+    // squared loss for comparison
+    F.g("path", { d: fnPath(p => (1 - p) * (1 - p), F, o, 300), fill: "none",
+      stroke: "var(--ink-mute)", "stroke-width": 1.6, "stroke-dasharray": "5 4" });
+    F.g("line", { x1: F.sx(0.5), y1: F.sy(0), x2: F.sx(0.5), y2: F.sy(5), stroke: "var(--line-2)", "stroke-width": 1 });
+    F.g("circle", { cx: F.sx(0.5), cy: F.sy(Math.log(2)), r: 4.2, fill: "var(--gold)", stroke: "var(--panel)", "stroke-width": 1.3 });
+    F.g("text", { x: F.sx(0.52), y: F.sy(Math.log(2)) - 8, "font-size": 10.5, fill: "var(--gold)" }, "shrug: ℓ = ln 2 = 0.693");
+    F.g("text", { x: F.sx(0.06), y: F.sy(4.3), "font-size": 11.5, fill: "var(--accent)" }, "y = 1:  ℓ = −ln ŷ");
+    F.g("text", { x: F.sx(0.94), y: F.sy(4.3), "text-anchor": "end", "font-size": 11.5, fill: "var(--accent-2)" }, "y = 0:  ℓ = −ln(1−ŷ)");
+    F.g("text", { x: F.sx(0.30), y: F.sy(0.55), "font-size": 10.5, fill: "var(--ink-mute)" }, "dashed: squared loss for y = 1 (capped at 1)");
+  }
+
+  /* ============ Figure E — the interactive centrepiece ==================== */
+  const P0 = { w: 1.0, b: 0.0 };
+  let pw = P0.w, pb = P0.b, anim = null;
+
+  function drawPlay() {
+    /* ---- top: data + current sigmoid ---- */
+    const o = { W: 640, H: 250, xd: [-2.0, 4.0], yd: [-0.16, 1.16], xt: [-2, -1, 0, 1, 2, 3, 4],
+      yt: [0, 0.5, 1], xlab: "x", ylab: "h(x) = P(Y=1|x)", m: { l: 52, r: 14, t: 18, b: 32 },
+      yfmt: v => v.toFixed(1) };
+    const F = frame(document.getElementById("playMain"), o);
+    F.g("rect", { x: F.sx(1.0), y: F.sy(1.16), width: F.sx(1.2) - F.sx(1.0), height: F.sy(-0.16) - F.sy(1.16),
+      fill: "var(--gold)", "fill-opacity": 0.15 });
+    F.g("line", { x1: F.sx(o.xd[0]), y1: F.sy(0.5), x2: F.sx(o.xd[1]), y2: F.sy(0.5),
+      stroke: "var(--ink-mute)", "stroke-width": 1, "stroke-dasharray": "4 3" });
+    // stalks: from each point's label height up/down to the curve — the residual |y − ŷ|
+    DX.forEach((x, i) => {
+      const p = sig(pw * x + pb);
+      F.g("line", { x1: F.sx(x), y1: F.sy(DY[i]), x2: F.sx(x), y2: F.sy(p),
+        stroke: DY[i] ? "var(--accent)" : "var(--accent-2)", "stroke-width": 1.2, "stroke-dasharray": "3 3" });
+    });
+    if (Math.abs(pw) > 1e-6) {
+      const bdv = -pb / pw;
+      if (bdv > o.xd[0] && bdv < o.xd[1]) {
+        F.g("line", { x1: F.sx(bdv), y1: F.sy(-0.16), x2: F.sx(bdv), y2: F.sy(1.16),
+          stroke: "var(--gold)", "stroke-width": 1.4, "stroke-dasharray": "5 3" });
+        F.g("text", { x: F.sx(bdv) + 4, y: F.sy(1.1), "font-size": 10, fill: "var(--gold)" }, "x = " + bdv.toFixed(2));
+      }
+    }
+    F.g("path", { d: fnPath(x => sig(pw * x + pb), F, o, 500), fill: "none",
+      stroke: "var(--accent-3)", "stroke-width": 3 });
+    pts(F, 5);
+
+    /* ---- bottom: per-point cross-entropy bars ---- */
+    const losses = DX.map((x, i) => {
+      const p = clip(sig(pw * x + pb));
+      return -(DY[i] * Math.log(p) + (1 - DY[i]) * Math.log(1 - p));
+    });
+    const hi = Math.max(1.2, Math.ceil(Math.max.apply(null, losses) * 1.15));
+    const o2 = { W: 640, H: 170, xd: [-2.0, 4.0], yd: [0, hi], xt: [-2, -1, 0, 1, 2, 3, 4],
+      yt: [0, hi / 2, hi], xlab: "x", ylab: "per-point loss ℓᵢ", m: { l: 52, r: 14, t: 18, b: 32 },
+      yfmt: v => v.toFixed(2) };
+    const F2 = frame(document.getElementById("playLoss"), o2);
+    const bw = 9;
+    DX.forEach((x, i) => {
+      const h = Math.min(losses[i], hi);
+      F2.g("rect", { x: F2.sx(x) - bw / 2, y: F2.sy(h), width: bw, height: F2.sy(0) - F2.sy(h),
+        fill: DY[i] ? "var(--accent)" : "var(--accent-2)", "fill-opacity": 0.85 });
+    });
+    F2.g("line", { x1: F2.sx(o2.xd[0]), y1: F2.sy(Math.log(2)), x2: F2.sx(o2.xd[1]), y2: F2.sy(Math.log(2)),
+      stroke: "var(--rose)", "stroke-width": 1.2, "stroke-dasharray": "5 3" });
+    F2.g("text", { x: F2.sx(3.95), y: F2.sy(Math.log(2)) - 4, "text-anchor": "end", "font-size": 10, fill: "var(--rose)" },
+      "ln 2 = 0.693 (a coin flip)");
+
+    const J = losses.reduce((a, v) => a + v, 0) / losses.length;
+    const bd = Math.abs(pw) > 1e-9 ? (-pb / pw).toFixed(3) : "none";
+    let wrong = 0;
+    DX.forEach((x, i) => { if (((pw * x + pb) >= 0 ? 1 : 0) !== DY[i]) wrong++; });
+    document.getElementById("pstat").innerHTML =
+      "w = " + pw.toFixed(3) + " &nbsp; b = " + pb.toFixed(3) +
+      " &nbsp;|&nbsp; boundary x = " + bd +
+      " &nbsp;|&nbsp; total loss J = <strong>" + J.toFixed(4) + "</strong>" +
+      " &nbsp;|&nbsp; misclassified " + wrong + "/12";
+  }
+  /* push pw/pb into the slider UI WITHOUT firing "input" (that would cancel the animation) */
+  function syncSliders() {
+    document.getElementById("pw").value = pw;
+    document.getElementById("pb").value = pb;
+    document.getElementById("pwv").textContent = pw.toFixed(2);
+    document.getElementById("pbv").textContent = pb.toFixed(2);
+  }
+  document.getElementById("pw").addEventListener("input", e => {
+    if (anim) { clearInterval(anim); anim = null; }
+    pw = +e.target.value; drawPlay();
+  });
+  document.getElementById("pb").addEventListener("input", e => {
+    if (anim) { clearInterval(anim); anim = null; }
+    pb = +e.target.value; drawPlay();
+  });
+  document.getElementById("pstep").onclick = () => {
+    const lr = +document.getElementById("plr").value;
+    [pb, pw] = gdStep(pb, pw, lr, DX, DY);
+    syncSliders(); drawPlay();
+  };
+  document.getElementById("preset").onclick = () => {
+    if (anim) { clearInterval(anim); anim = null; }
+    document.getElementById("pfit").textContent = "Fit it for me (200 GD steps)";
+    pw = P0.w; pb = P0.b; syncSliders(); drawPlay();
+  };
+  document.getElementById("pfit").onclick = function () {
+    if (anim) { clearInterval(anim); anim = null; this.textContent = "Fit it for me (200 GD steps)"; return; }
+    const lr = +document.getElementById("plr").value;
+    let k = 0;
+    const btn = this;
+    btn.textContent = "running…";
+    anim = setInterval(() => {
+      for (let j = 0; j < 2; j++) {                 // 2 GD steps per frame → 200 steps total
+        [pb, pw] = gdStep(pb, pw, lr, DX, DY);
+        k++;
+      }
+      syncSliders(); drawPlay();
+      btn.textContent = "step " + k + " / 200 — J = " + ceLoss(pb, pw, DX, DY).toFixed(4);
+      if (k >= 200) { clearInterval(anim); anim = null; btn.textContent = "Fit again (200 more steps)"; }
+    }, 22);
+  };
+
+  /* ============ Figure C — the 2-D probability field (canvas) ============= */
+  const cv = document.getElementById("cv2d");
+  const CW = 640, CH = 380;
+  /* deterministic pseudo-random two-cluster dataset */
+  const D2 = (() => {
+    let s = 20260920;
+    const rnd = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
+    const gauss = () => {
+      const u = Math.max(1e-9, rnd()), v = rnd();
+      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    };
+    const a = [];
+    for (let i = 0; i < 26; i++) a.push({ x: -1.5 + 1.05 * gauss(), y: -1.0 + 1.05 * gauss(), c: 0 });
+    for (let i = 0; i < 26; i++) a.push({ x:  1.6 + 1.05 * gauss(), y:  1.2 + 1.05 * gauss(), c: 1 });
+    return a;
+  })();
+
+  function hex2rgb(h) {
+    h = (h || "").trim().replace("#", "");
+    if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+    const n = parseInt(h, 16);
+    return isFinite(n) ? [(n >> 16) & 255, (n >> 8) & 255, n & 255] : [128, 128, 128];
+  }
+  function draw2d() {
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    cv.width = CW * dpr; cv.height = CH * dpr;
+    cv.style.aspectRatio = CW + " / " + CH;
+    const g = cv.getContext("2d");
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    const c0 = hex2rgb(SG.css("--accent-2")), c1 = hex2rgb(SG.css("--accent"));
+    const bgc = SG.css("--panel"), inkc = SG.css("--ink"), mutec = SG.css("--ink-mute"), goldc = SG.css("--gold");
+
+    const ang = +document.getElementById("ang").value * Math.PI / 180;
+    const mag = +document.getElementById("mag").value;
+    const th0 = +document.getElementById("bia").value;
+    const w1 = mag * Math.cos(ang), w2 = mag * Math.sin(ang);
+
+    const xd = [-5, 5], yd = [-3.2, 3.2];
+    const m = { l: 40, r: 14, t: 14, b: 32 };
+    const sx = x => m.l + (x - xd[0]) / (xd[1] - xd[0]) * (CW - m.l - m.r);
+    const sy = y => CH - m.b - (y - yd[0]) / (yd[1] - yd[0]) * (CH - m.t - m.b);
+    const ix = px => xd[0] + (px - m.l) / (CW - m.l - m.r) * (xd[1] - xd[0]);
+    const iy = py => yd[0] + (CH - m.b - py) / (CH - m.t - m.b) * (yd[1] - yd[0]);
+
+    g.fillStyle = bgc; g.fillRect(0, 0, CW, CH);
+
+    /* heat-map in 4-pixel blocks */
+    const B = 4;
+    for (let px = m.l; px < CW - m.r; px += B) {
+      for (let py = m.t; py < CH - m.b; py += B) {
+        const p = sig(th0 + w1 * ix(px + B / 2) + w2 * iy(py + B / 2));
+        const r = Math.round(c0[0] + (c1[0] - c0[0]) * p);
+        const gg = Math.round(c0[1] + (c1[1] - c0[1]) * p);
+        const bb = Math.round(c0[2] + (c1[2] - c0[2]) * p);
+        const a = 0.15 + 0.55 * Math.abs(2 * p - 1);      // pale near the boundary
+        g.fillStyle = "rgba(" + r + "," + gg + "," + bb + "," + a.toFixed(3) + ")";
+        g.fillRect(px, py, B, B);
+      }
+    }
+
+    /* the h = 0.5 boundary: th0 + w1 x + w2 y = 0 */
+    g.strokeStyle = goldc; g.lineWidth = 2.4; g.setLineDash([]);
+    g.beginPath();
+    if (Math.abs(w2) > 1e-9) {
+      const ya = (-th0 - w1 * xd[0]) / w2, yb = (-th0 - w1 * xd[1]) / w2;
+      g.moveTo(sx(xd[0]), sy(ya)); g.lineTo(sx(xd[1]), sy(yb));
+    } else if (Math.abs(w1) > 1e-9) {
+      const xa = -th0 / w1;
+      g.moveTo(sx(xa), sy(yd[0])); g.lineTo(sx(xa), sy(yd[1]));
+    }
+    g.save(); g.beginPath(); g.rect(m.l, m.t, CW - m.l - m.r, CH - m.t - m.b); g.clip();
+    g.stroke(); g.restore();
+
+    /* the normal arrow, drawn from the boundary's closest point to the origin */
+    if (mag > 1e-6) {
+      const d0 = th0 / (mag * mag);                 // foot of perpendicular from origin
+      const fx = -d0 * w1, fy = -d0 * w2;
+      const ux = w1 / mag, uy = w2 / mag;
+      const L = 1.5;
+      g.strokeStyle = inkc; g.lineWidth = 2; g.beginPath();
+      g.moveTo(sx(fx), sy(fy)); g.lineTo(sx(fx + L * ux), sy(fy + L * uy)); g.stroke();
+      const hx = sx(fx + L * ux), hy = sy(fy + L * uy);
+      const a2 = Math.atan2(sy(fy + L * uy) - sy(fy), sx(fx + L * ux) - sx(fx));
+      g.fillStyle = inkc; g.beginPath();
+      g.moveTo(hx, hy);
+      g.lineTo(hx - 10 * Math.cos(a2 - 0.4), hy - 10 * Math.sin(a2 - 0.4));
+      g.lineTo(hx - 10 * Math.cos(a2 + 0.4), hy - 10 * Math.sin(a2 + 0.4));
+      g.closePath(); g.fill();
+      g.fillStyle = inkc; g.font = "12px sans-serif";
+      g.fillText("w", hx + 6, hy - 4);
+    }
+
+    /* points */
+    let wrong = 0, J = 0;
+    D2.forEach(p => {
+      const z = th0 + w1 * p.x + w2 * p.y;
+      const pr = clip(sig(z));
+      J += -(p.c * Math.log(pr) + (1 - p.c) * Math.log(1 - pr));
+      const bad = ((z >= 0) ? 1 : 0) !== p.c;
+      if (bad) wrong++;
+      g.beginPath(); g.arc(sx(p.x), sy(p.y), bad ? 6 : 4.6, 0, 2 * Math.PI);
+      g.fillStyle = p.c ? SG.css("--accent") : SG.css("--accent-2"); g.fill();
+      g.lineWidth = bad ? 2.2 : 1.2; g.strokeStyle = bad ? SG.css("--rose") : bgc; g.stroke();
+    });
+    J /= D2.length;
+
+    /* axes + labels */
+    g.strokeStyle = inkc; g.lineWidth = 1.3; g.setLineDash([]);
+    g.beginPath(); g.moveTo(m.l, CH - m.b); g.lineTo(CW - m.r, CH - m.b);
+    g.moveTo(m.l, CH - m.b); g.lineTo(m.l, m.t); g.stroke();
+    g.fillStyle = mutec; g.font = "11px sans-serif"; g.textAlign = "center";
+    [-4, -2, 0, 2, 4].forEach(v => g.fillText(String(v), sx(v), CH - m.b + 15));
+    g.textAlign = "right";
+    [-3, 0, 3].forEach(v => g.fillText(String(v), m.l - 6, sy(v) + 4));
+    g.textAlign = "center"; g.fillText("x₁", (m.l + CW - m.r) / 2, CH - 6);
+    g.save(); g.translate(12, (m.t + CH - m.b) / 2); g.rotate(-Math.PI / 2); g.fillText("x₂", 0, 0); g.restore();
+    g.textAlign = "left"; g.fillStyle = inkc; g.font = "12px sans-serif";
+    g.fillText("θ = [" + th0.toFixed(1) + ", " + w1.toFixed(2) + ", " + w2.toFixed(2) + "]   ‖w‖ = " +
+      mag.toFixed(2) + "   J = " + J.toFixed(3) + "   misclassified " + wrong + "/" + D2.length, m.l + 6, m.t + 14);
+  }
+  function fit2d() {
+    /* gradient descent on (th0, w1, w2), then push the result back to the sliders */
+    let t0 = 0, a = 0, b2 = 0;
+    for (let k = 0; k < 4000; k++) {
+      let g0 = 0, g1 = 0, g2 = 0;
+      D2.forEach(p => {
+        const d = sig(t0 + a * p.x + b2 * p.y) - p.c;
+        g0 += d; g1 += d * p.x; g2 += d * p.y;
+      });
+      const n = D2.length, lr = 0.5;
+      t0 -= lr * g0 / n; a -= lr * g1 / n; b2 -= lr * g2 / n;
+    }
+    let mag = Math.hypot(a, b2);
+    let ang = Math.atan2(b2, a) * 180 / Math.PI; if (ang < 0) ang += 360;
+    mag = SG.clamp(mag, 0.05, 6);
+    t0 = SG.clamp(t0, -6, 6);
+    document.getElementById("ang").value = ang.toFixed(0);
+    document.getElementById("mag").value = mag.toFixed(2);
+    document.getElementById("bia").value = t0.toFixed(1);
+    ["ang", "mag", "bia"].forEach(id => document.getElementById(id).dispatchEvent(new Event("input")));
+    draw2d();
+  }
+  ["ang", "mag", "bia"].forEach(id => document.getElementById(id).addEventListener("input", draw2d));
+  document.getElementById("fit2d").onclick = fit2d;
+  document.getElementById("reset2d").onclick = () => {
+    document.getElementById("ang").value = 35;
+    document.getElementById("mag").value = 1.2;
+    document.getElementById("bia").value = -1.0;
+    ["ang", "mag", "bia"].forEach(id => document.getElementById(id).dispatchEvent(new Event("input")));
+    draw2d();
+  };
+
+  /* ============================ go ======================================= */
+  function drawAll() {
+    drawProgression(); drawFig5(); drawFig6(); drawFig6b(); drawFig7();
+    drawFig8(); drawFig9(); drawFigCE(); drawPlay(); draw2d();
+  }
+  drawAll();
+  document.addEventListener("themechange", drawAll);
+  window.addEventListener("resize", draw2d);
+});
+</script>
+</body>
+</html>

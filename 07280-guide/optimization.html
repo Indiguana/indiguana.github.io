@@ -1,0 +1,1274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Optimization: GD &amp; SGD · 07-280 Field Guide</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body data-page="optimization">
+<main>
+
+  <div class="eyebrow">Part II · Chapter 9</div>
+  <h1>Optimization: gradient descent &amp; SGD</h1>
+  <p class="subtitle">By the end of this page you can derive the gradient-descent update from nothing but the sign of a derivative, predict for any learning rate whether it converges, oscillates or explodes, take the gradient of $\|y-X\theta\|_2^2$ by hand, and explain exactly why sampling one training point at a time still works.</p>
+
+  <div data-toc></div>
+
+  <h2 id="erm-is-optimization">ERM is an optimization problem</h2>
+
+  <p>Every chapter of this course so far has ended at the same door. <a href="ml-formulation.html">Problem formulation</a> ended there, <a href="decision-trees.html">decision trees</a> ended there, and <a href="linear-regression.html">linear regression</a> ended there. The door is empirical risk minimization:</p>
+
+  $$\argmin_{h\in\H}\ \sum_{i=1}^{N} \ell\!\left(h(x^{(i)}),\, y^{(i)}\right).$$
+
+  <p><strong>Every symbol, in words.</strong> $\H$ is the hypothesis class — the set of functions we are willing to consider (all lines, all depth-3 trees, all networks of a fixed architecture). $h$ is one candidate function from that set. $x^{(i)}$ is the $i$-th training input — the parenthesised superscript is an <em>index, not a power</em> — and $y^{(i)}$ is its label. $\ell$ is the loss, a number saying how bad the prediction $h(x^{(i)})$ was against the truth $y^{(i)}$. The sum runs over all $N$ training examples. And $\argmin$ returns the <em>argument</em> achieving the smallest value, not the value itself.</p>
+
+  <div class="box key"><span class="label">Key idea</span>
+    <p>Read that expression again with fresh eyes and notice what kind of object it is. It is not a statement about learning. It is a <strong>optimization problem</strong>: find a min, a max, an $\argmin$ or an $\argmax$ of a function. Machine learning has, at this point in the course, been entirely reduced to "minimise this function of the parameters."</p>
+    <p>So the remaining question is purely computational: <em>how do we actually find that minimum, in a computationally efficient manner?</em></p>
+  </div>
+
+  <p>"Efficient" is the load-bearing word. The previous chapter ended with a closed-form answer, $\theta^\star=(X^\top X)^{-1}X^\top y$, that costs $O(Nd^2+d^3)$ — and pointed out that the $d^3$ is a problem. With $d=10^6$ parameters (a small neural network) that cubic term is $10^{18}$ operations, which is not "slow", it is "never". Worse, for almost any $\H$ other than linear models, the closed form does not exist at all.</p>
+
+  <p>The professor's strategy in these notes is the right one, and it is worth naming so you can follow the thread: <strong>start with the simplest possible instance of the problem, solve it completely, and then generalise the algorithm you found.</strong> The algorithm that comes out the other end — gradient descent — is the single most widely used numerical procedure in machine learning. Every neural network you have heard of was trained by a direct descendant of the four lines we are about to write down.</p>
+
+  <h2 id="simplest-possible-case">The simplest possible case: one sample, one parameter</h2>
+
+  <p>Strip linear regression down as far as it will go. Take $\X=\R$, so each input is a single real number. Set the intercept $b=0$, so the model is $h(x)=xw$ — a line through the origin with one knob $w$. And suppose $N=1$: exactly one training point $(x^{(1)},y^{(1)})$.</p>
+
+  <p>ERM becomes</p>
+
+  $$\argmin_{w}\ \underbrace{\left(y^{(1)} - x^{(1)}\!\cdot w\right)^2}_{J(w),\ \ J:\R\to\R}.$$
+
+  <p>We give the objective a name, $J$. It eats a real number (a candidate weight $w$) and returns a real number (the squared error that weight incurs). The data $x^{(1)},y^{(1)}$ are <em>fixed constants</em> here — this is the parameters-are-the-variables view from the <a href="linear-regression.html">previous chapter</a>. The lecture notes write the weight as $\omega$; this guide writes $w$. Same object.</p>
+
+  <p><strong>What shape is $J$?</strong> Expand it:</p>
+
+  $$J(w) = \left(y^{(1)}\right)^2 - 2x^{(1)}y^{(1)}w + \left(x^{(1)}\right)^2 w^2.$$
+
+  <p>A constant, plus a linear term in $w$, plus a positive multiple of $w^2$. That is a <strong>parabola</strong> opening upward. It has exactly one bottom, no flat regions, no second dip, no surprises. And — this matters enormously — it stays a parabola for general $N$, because a sum of upward parabolas in $w$ is another upward parabola in $w$. We will come back to that.</p>
+
+  <h2 id="derivative-sign">The one observation the whole algorithm is built on</h2>
+
+  <p>Here is the observation. Stand at any point $w$ on the parabola and compute the slope $\frac{dJ(w)}{dw}$.</p>
+
+  <ul>
+    <li>At every point <strong>to the right</strong> of the minimiser, the derivative is <strong>positive</strong> — the curve is climbing as you walk right.</li>
+    <li>At every point <strong>to the left</strong> of the minimiser, the derivative is <strong>negative</strong> — the curve is falling as you walk right.</li>
+  </ul>
+
+  <p>That is not a coincidence about this particular parabola; it is what "the minimum" means, plus the fact that a parabola has only one of them. And it is <em>actionable</em>, because a derivative is something you can compute at a single point without knowing where the minimum is.</p>
+
+  <div class="viz">
+    <div class="viz-title">Figure 1 · The sign of the derivative always points away from the minimum</div>
+    <svg id="figSign" viewBox="0 0 660 360" role="img" aria-label="A parabola with tangent lines drawn at a point left of the minimum and a point right of the minimum, with arrows showing which way to step"></svg>
+    <div class="caption">What to notice: the tangent on the right leans uphill (positive slope) and the correct move is <em>left</em>; the tangent on the left leans downhill (negative slope) and the correct move is <em>right</em>. In both cases you move in the direction <em>opposite</em> to the sign of the derivative. Notice also that the far-left tangent is much steeper than the near-left one — distance from the minimum shows up as steepness.</div>
+  </div>
+
+  <div class="box intuition"><span class="label">Intuition</span>
+    <p>You are standing on a hillside in dense fog. You cannot see the valley floor, and you have no map. But you can feel the slope under your feet. The rule "walk downhill" requires no global knowledge at all — just the ground you are standing on. Gradient descent is exactly that rule, and its famous weakness is exactly the fog: in the fog you find <em>a</em> valley, not necessarily <em>the</em> valley. Hold on to that; we return to it in the <a href="#local-vs-global">local minimum</a> section.</p>
+  </div>
+
+  <h3>From the observation to an algorithm</h3>
+
+  <p>The notes turn the observation into a procedure in three lines. Start at any point $w$, then:</p>
+
+  <ul>
+    <li>If the derivative of $J$ is <strong>positive</strong> at that point, move <strong>left</strong>.</li>
+    <li>If the derivative of $J$ is <strong>negative</strong> at that point, move <strong>right</strong>.</li>
+    <li>Repeat until some stopping criterion is met.</li>
+  </ul>
+
+  <p>This is already a correct algorithm sketch, and it answers "which way". It leaves one question wide open, and the answer to that question is where all the interesting behaviour lives:</p>
+
+  <p><strong>How far should we move?</strong></p>
+
+  <p>A fixed step of, say, $0.1$ each time would be terrible. Start a mile away and you need a great many steps; get within a hair of the bottom and a fixed step of $0.1$ steps straight past it, forever. We want big strides when we are far away and tiny adjustments when we are close — but "how far away am I" is precisely what we do not know.</p>
+
+  <p>So look at the picture again. Out at the edges of the parabola the tangent is nearly vertical; near the bottom it is nearly flat. The derivative is not only telling us the <em>direction</em> of the minimum, its <em>magnitude</em> is telling us something about the <em>distance</em> to it:</p>
+
+  <div class="box key"><span class="label">Key idea</span>
+    <p>The magnitude of the derivative is large whenever the point is farther from the $\argmin$, and small when we are near it. So: <strong>move by an amount proportional to the magnitude of the derivative.</strong></p>
+  </div>
+
+  <p>Now combine the two facts into one expression. "Move opposite to the sign" and "move proportionally to the magnitude" are both accomplished by a single subtraction — subtract a multiple of the derivative itself:</p>
+
+  $$w \ \longleftarrow\ w - \alpha\,\frac{dJ(w)}{dw}.$$
+
+  <p>If the derivative is $+8$ we move $8\alpha$ to the left. If it is $-0.2$ we move $0.02\alpha$ to the right. The sign handles the direction for free; the magnitude handles the step length for free. Nothing else in the update was designed — it fell out of two observations about a parabola.</p>
+
+  <div class="box warn"><span class="label">Common mistake</span>
+    <p>"The derivative is small, so I must be close to the minimum" is the <em>motivation</em> for the rule, not a theorem. On a very flat function you can be small-derivative and miles away; on a saddle or a plateau the derivative is near zero and you are nowhere useful. The proportional-step idea is a heuristic that happens to be exactly right for quadratics and approximately right near the optimum of anything smooth. It is not a distance estimate.</p>
+  </div>
+
+  <h2 id="gradient-descent">The gradient descent algorithm</h2>
+
+  <div class="box defn"><span class="label">Definition</span>
+    <p><strong>Gradient descent (scalar case).</strong></p>
+    <ul>
+      <li>Initialise to some $w^{(0)}\in\R$.</li>
+      <li>For $t=1,2,\dots$ (until some stopping criterion is met):
+        $$w^{(t)} \;=\; w^{(t-1)} \;-\; \alpha\,\left.\frac{dJ(w)}{dw}\right|_{w=w^{(t-1)}}$$</li>
+      <li>Return $w^{(t)}$.</li>
+    </ul>
+  </div>
+
+  <p><strong>Every symbol.</strong> The superscript $(t)$ is the <em>iteration index</em>, not a power — $w^{(3)}$ is the weight after three updates. $w^{(0)}$ is wherever you chose to start, and "any point" genuinely means any point for a parabola. The vertical bar with $w=w^{(t-1)}$ underneath means "evaluate that derivative function at the current iterate" — the derivative is a function of $w$, and we plug in where we are standing now. And $\alpha$ is a positive number we choose.</p>
+
+  <pre><code>GradientDescent(J, alpha, w0):
+    w &lt;- w0
+    for t = 1, 2, 3, ...:
+        g &lt;- dJ/dw evaluated at w      # one number
+        w &lt;- w - alpha * g             # the whole algorithm
+        if stopping_criterion(): break
+    return w</code></pre>
+
+  <h3>Stopping criteria</h3>
+
+  <p>Notice the algorithm says "for $t=1,2,\dots$" with no upper limit. Something has to stop it. The notes list four, and they are genuinely different tests, not four phrasings of one:</p>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="kicker">1 · Performance</div>
+      <h3>The objective isn't improving much</h3>
+      <p>Stop when $|J(w^{(t)}) - J(w^{(t-1)})|$ falls below a tolerance. You are measuring the thing you actually care about — but it can trigger early on a long flat plateau you would eventually have escaped.</p>
+    </div>
+    <div class="card">
+      <div class="kicker">2 · Gradient</div>
+      <h3>The derivative isn't changing much</h3>
+      <p>Watch the slope itself. Related and more common: stop when the slope is <em>small</em>, $|dJ/dw| &lt; \varepsilon$ — that is the first-order condition for a minimum, tested numerically.</p>
+    </div>
+    <div class="card">
+      <div class="kicker">3 · Iterate</div>
+      <h3>The iterate isn't moving much</h3>
+      <p>Stop when $|w^{(t)} - w^{(t-1)}|$ is tiny. Careful: since the step <em>is</em> $\alpha\cdot$gradient, a tiny step can also mean a tiny $\alpha$ rather than a tiny gradient. This criterion is fooled by an over-decayed learning rate.</p>
+    </div>
+    <div class="card">
+      <div class="kicker">4 · Budget</div>
+      <h3>You ran out of compute</h3>
+      <p>The honest one, and in deep learning the usual one. A fixed number of iterations, or a wall-clock deadline. Not a failure mode — a legitimate criterion the notes list alongside the others.</p>
+    </div>
+  </div>
+
+  <p>In practice you combine them: run for at most $T$ iterations, stopping early if the objective has improved by less than $10^{-6}$ for ten iterations in a row.</p>
+
+  <h3>$\alpha$: the learning rate</h3>
+
+  <p>$\alpha$ is called the <strong>learning rate</strong> or <strong>step size</strong>. Three families of choices, exactly as the notes give them:</p>
+
+  <ul>
+    <li><strong>Constant.</strong> Just pick a number and keep it, e.g. $\alpha=0.01$. Simple, and the default starting point.</li>
+    <li><strong>Decaying with the iteration number.</strong> Let $\alpha$ depend on $t$, for example $\alpha_t = \frac{1}{\sqrt{t}}$. Big confident strides early, cautious nudges later. This is the standard choice when the gradients are noisy (see <a href="#sgd">SGD</a>), because a shrinking step averages the noise out instead of bouncing around forever.</li>
+    <li><strong>Adaptive methods</strong> that tune the rate automatically, per parameter, from the history of gradients. <span class="pill">beyond syllabus</span> These exist, they are what people actually run (AdaGrad, RMSProp, Adam), and this course does not go into them.</li>
+  </ul>
+
+  <p>Everything now hinges on $\alpha$, so the notes immediately pose an exercise — and then leave it for the poll. Let us do it properly, because it is the single most illuminating computation in this chapter.</p>
+
+  <h2 id="alpha-worked-example">The four learning rates, computed in full</h2>
+
+  <p>The exercise: let $J(w)=w^2$. Initialise $w^{(0)}=1$. Run three iterations. What is $w^{(3)}$ when (i) $\alpha=0.25$, (ii) $\alpha=0.5$, (iii) $\alpha=1$, (iv) $\alpha=2$?</p>
+
+  <p>First, set up once and reuse. The derivative of $J(w)=w^2$ is</p>
+
+  $$\frac{dJ}{dw} = 2w,$$
+
+  <p>so the update $w^{(t)} = w^{(t-1)} - \alpha\cdot 2w^{(t-1)}$ factors beautifully:</p>
+
+  $$\boxed{\ w^{(t)} = w^{(t-1)}\,(1-2\alpha).\ }$$
+
+  <p>Each iteration multiplies the iterate by the same constant $(1-2\alpha)$. So after $t$ steps, $w^{(t)} = (1-2\alpha)^t\, w^{(0)}$, and with $w^{(0)}=1$ the answer is simply $w^{(3)}=(1-2\alpha)^3$. Everything about the behaviour is controlled by that one number, the <strong>contraction factor</strong>. Let us nonetheless grind through every arithmetic step, because the shape of the numbers is the lesson.</p>
+
+  <div class="scroll-x">
+  <table class="center">
+    <thead>
+      <tr><th>$\alpha$</th><th>factor $1-2\alpha$</th><th>$w^{(0)}$</th><th>step 1</th><th>$w^{(1)}$</th><th>step 2</th><th>$w^{(2)}$</th><th>step 3</th><th>$w^{(3)}$</th><th>$J(w^{(3)})$</th><th>verdict</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>$0.25$</td><td>$0.5$</td><td>$1$</td>
+        <td>$1-0.25(2)$</td><td>$0.5$</td>
+        <td>$0.5-0.25(1)$</td><td>$0.25$</td>
+        <td>$0.25-0.25(0.5)$</td><td>$\mathbf{0.125}$</td><td>$0.015625$</td>
+        <td>converging</td>
+      </tr>
+      <tr>
+        <td>$0.5$</td><td>$0$</td><td>$1$</td>
+        <td>$1-0.5(2)$</td><td>$0$</td>
+        <td>$0-0.5(0)$</td><td>$0$</td>
+        <td>$0-0.5(0)$</td><td>$\mathbf{0}$</td><td>$0$</td>
+        <td>exact, in one step</td>
+      </tr>
+      <tr>
+        <td>$1$</td><td>$-1$</td><td>$1$</td>
+        <td>$1-1(2)$</td><td>$-1$</td>
+        <td>$-1-1(-2)$</td><td>$1$</td>
+        <td>$1-1(2)$</td><td>$\mathbf{-1}$</td><td>$1$</td>
+        <td>oscillates forever</td>
+      </tr>
+      <tr>
+        <td>$2$</td><td>$-3$</td><td>$1$</td>
+        <td>$1-2(2)$</td><td>$-3$</td>
+        <td>$-3-2(-6)$</td><td>$9$</td>
+        <td>$9-2(18)$</td><td>$\mathbf{-27}$</td><td>$729$</td>
+        <td>diverges</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>Read the "step" columns as $w^{(t-1)} - \alpha\cdot 2w^{(t-1)}$ with the derivative $2w^{(t-1)}$ shown in the parentheses. For instance in row four, step 2: the iterate is $-3$, the derivative there is $2(-3)=-6$, so we compute $-3 - 2(-6) = -3+12 = 9$.</p>
+
+  <h3>What each case is telling you</h3>
+
+  <p><strong>(i) $\alpha=0.25$ — healthy convergence.</strong> The factor is $0.5$, so every step halves the distance to the minimum: $1, \tfrac12, \tfrac14, \tfrac18, \dots$. It never exactly arrives — it converges geometrically. In infinitely many steps it reaches $0$; in practice a stopping criterion fires long before. This is what a well-tuned run looks like.</p>
+
+  <p><strong>(ii) $\alpha=0.5$ — the bullseye.</strong> The factor is exactly $0$ and we land on the exact minimiser in a single step, then stay there (the gradient at $0$ is $0$, so all later steps do nothing). Why is this possible? Because for a quadratic, the "proportional to the derivative" heuristic is not a heuristic at all: it is exact. For $J(w)=cw^2$ the minimum is at $0$ and the derivative at $w$ is $2cw$, so the distance to the minimum is <em>exactly</em> $\frac{1}{2c}$ times the derivative. Choosing $\alpha=\frac{1}{2c}$ (here $c=1$, so $\alpha=0.5$) makes the step precisely the distance.</p>
+
+  <p>That choice has a name: it is <strong>Newton's method</strong> <span class="pill">beyond syllabus</span>, which divides the gradient by the second derivative $J''=2c$ instead of guessing $\alpha$. It is exact on any quadratic in one step. It is not used at scale because on a $d$-parameter model, the second derivative is a $d\times d$ matrix that you would have to invert — the same $d^3$ wall the closed form hit.</p>
+
+  <p><strong>(iii) $\alpha=1$ — perpetual oscillation.</strong> The factor is $-1$: every step flips the sign and preserves the magnitude. $1 \to -1 \to 1 \to -1$, forever. The direction is right every single time (at $w=1$ the derivative is positive and we do move left), but we overshoot by exactly twice the distance to the minimum, landing at the mirror-image point with the mirror-image gradient. $J$ never decreases. Every stopping criterion that watches improvement will report no progress; one that watches $|w^{(t)}-w^{(t-1)}|$ never fires either, since that distance is stuck at $2$.</p>
+
+  <p><strong>(iv) $\alpha=2$ — divergence.</strong> Factor $-3$: each step flips the sign <em>and triples</em> the magnitude. $1\to-3\to9\to-27\to81\dots$, and the objective goes $1\to 9\to 81\to 729$. We are climbing the parabola at an accelerating rate. In floating point this becomes <code>inf</code> and then <code>NaN</code> within a few dozen iterations. If you have ever seen a training loss print <code>nan</code>, this — in a thousand dimensions — is almost always what happened.</p>
+
+  <div class="box warn"><span class="label">Common mistake</span>
+    <p>Reading case (iv) as "$\alpha$ was too big so we took too big a step and overshot a little". The failure is not that one step was sloppy; it is that the process is <em>unstable</em>. Each overshoot lands somewhere with a <em>larger</em> gradient, which produces a larger next step, which lands even further out. The error is multiplied by $3$ every iteration. Halving $\alpha$ from $2$ to $1$ does not fix it either (you get case iii). Stability needs $\alpha$ below a hard threshold, which we now derive.</p>
+  </div>
+
+  <h3>The convergence condition, derived</h3>
+
+  <div class="box proof"><span class="label">Proof</span>
+    <p>We have the exact solution of the recursion: $w^{(t)} = (1-2\alpha)^t\,w^{(0)}$.</p>
+    <p>For $w^{(t)}\to 0$ as $t\to\infty$, from an arbitrary starting point $w^{(0)}\neq 0$, we need the geometric factor to shrink:</p>
+    $$|1-2\alpha| &lt; 1.$$
+    <p>Unwrap the absolute value: $-1 &lt; 1-2\alpha &lt; 1$. Subtract $1$ throughout: $-2 &lt; -2\alpha &lt; 0$. Divide by $-2$, which <em>reverses</em> both inequalities: $1 &gt; \alpha &gt; 0$. So</p>
+    $$\boxed{\,0 &lt; \alpha &lt; 1\,}$$
+    <p>and the four cases check out: $0.25$ and $0.5$ are inside, $\alpha=1$ sits exactly on the boundary where $|1-2\alpha|=1$ (no decay, no growth — the oscillation), and $\alpha=2$ gives $|1-2\alpha|=3&gt;1$, divergence. $\blacksquare$</p>
+  </div>
+
+  <p><strong>Generalise to $J(w)=cw^2$ with $c&gt;0$.</strong> Now $\frac{dJ}{dw}=2cw$, the update is $w^{(t)}=w^{(t-1)}(1-2\alpha c)$, and the same argument gives $|1-2\alpha c| &lt; 1$, i.e.</p>
+
+  $$0 &lt; \alpha &lt; \frac{1}{c}.$$
+
+  <p>The fastest choice is $\alpha=\frac{1}{2c}$, the midpoint, which converges in one step. Sharper curvature (bigger $c$) forces smaller steps — a narrow steep valley must be walked carefully.</p>
+
+  <p><strong>The general quadratic statement.</strong> Write the curvature as the second derivative, $L = J''= 2c$. Then the condition $\alpha &lt; 1/c$ reads</p>
+
+  $$\alpha &lt; \frac{2}{L},$$
+
+  <p>and this is the form that generalises. For any function whose gradient does not change faster than rate $L$ (formally: $L$-smooth, meaning $\|\nabla J(u)-\nabla J(v)\|\le L\|u-v\|$), gradient descent with $\alpha &lt; 2/L$ is stable, and $\alpha = 1/L$ is the standard safe choice. <strong>$L$ is the largest curvature anywhere in the landscape</strong>, and it is the thing your step size must respect. In $d$ dimensions, $L$ is the largest eigenvalue of the Hessian — which for linear regression is the largest eigenvalue of $\frac{2}{N}X^\top X$.</p>
+
+  <div class="viz">
+    <div class="viz-title">Figure 2 · Gradient descent, step by step — drive it yourself</div>
+    <svg id="figGD" viewBox="0 0 680 400" role="img" aria-label="Interactive plot of an objective function with the gradient-descent iterates drawn as a trail on the curve"></svg>
+    <div class="controls">
+      <label>Learning rate $\alpha$
+        <input type="range" id="gdAlpha" min="0.05" max="2" step="0.05" value="0.25" data-out="gdAlphaV" data-dp="2">
+        <span class="val" id="gdAlphaV"></span></label>
+      <label>Start $w^{(0)}$
+        <input type="range" id="gdStart" min="-3" max="3" step="0.1" value="1" data-out="gdStartV" data-dp="1">
+        <span class="val" id="gdStartV"></span></label>
+      <button class="btn primary" id="gdStep">Step</button>
+      <button class="btn" id="gdRun">▶ Auto-run</button>
+      <button class="btn" id="gdReset">Reset</button>
+      <button class="btn" id="gdFn">Function: J(w) = w²</button>
+    </div>
+    <div id="gdReadout" class="tiny muted" style="font-family:var(--mono); margin-top:6px"></div>
+    <div class="caption">What to notice: set $\alpha=0.25$ and step — each iterate halves its distance to $0$. Set $\alpha=0.5$ — one step and you are done. Set $\alpha=1$ — the trail flips between $+1$ and $-1$ and never gets anywhere. Set $\alpha=2$ — three steps and the iterate is off the top of the plot. Then switch the function to the four-minimum landscape, and drag the start point: from $w^{(0)}=-2.5$ you fall into one valley, from $w^{(0)}=2.0$ into a different, shallower one. Same algorithm, same $\alpha$, different answer.</div>
+  </div>
+
+  <div class="guided">
+    <div class="g-head"><span class="tag">Guided problem</span>The notes' exercise: $w^{(3)}$ for four learning rates</div>
+    <div class="g-body">
+      <p>$J(w)=w^2$, $w^{(0)}=1$, three iterations of gradient descent. Find $w^{(3)}$ for $\alpha\in\{0.25,\ 0.5,\ 1,\ 2\}$, classify each behaviour, and state the exact set of $\alpha$ for which this run converges. Try it on paper before opening anything.</p>
+    </div>
+    <details class="step"><summary>Step 1 — Write the update concretely before plugging in any number</summary>
+      <div>
+        <p>Do the calculus once, not four times. $J(w)=w^2 \Rightarrow \frac{dJ}{dw}=2w$. Substituting into $w^{(t)}=w^{(t-1)}-\alpha\frac{dJ}{dw}\big|_{w^{(t-1)}}$:</p>
+        $$w^{(t)} = w^{(t-1)} - 2\alpha w^{(t-1)} = (1-2\alpha)\,w^{(t-1)}.$$
+        <p>This is the single most useful line in the problem. It says the iteration is just repeated multiplication by the constant $r=1-2\alpha$, so $w^{(3)} = r^3 w^{(0)} = r^3$.</p>
+      </div></details>
+    <details class="step"><summary>Step 2 — $\alpha=0.25$ and $\alpha=0.5$</summary>
+      <div>
+        <p><strong>$\alpha=0.25$:</strong> $r = 1-0.5 = 0.5$.</p>
+        <p>$w^{(1)} = 1 - 0.25\cdot 2(1) = 1-0.5 = 0.5$. &nbsp; $w^{(2)} = 0.5 - 0.25\cdot 2(0.5) = 0.5-0.25 = 0.25$. &nbsp; $w^{(3)} = 0.25 - 0.25\cdot 2(0.25) = 0.25-0.125 = \mathbf{0.125}$.</p>
+        <p>Check against the shortcut: $0.5^3 = 0.125$. ✓ Halving each time — converging.</p>
+        <p><strong>$\alpha=0.5$:</strong> $r = 1-1 = 0$.</p>
+        <p>$w^{(1)} = 1 - 0.5\cdot2(1) = 1-1 = 0$. The gradient at $w=0$ is $2(0)=0$, so $w^{(2)} = 0 - 0.5(0) = 0$ and $w^{(3)}=\mathbf{0}$. Exact minimiser after one step, and it stays there — a zero gradient is a fixed point of the update, which is the algorithmic meaning of "we're done".</p>
+      </div></details>
+    <details class="step"><summary>Step 3 — $\alpha=1$ and $\alpha=2$ (do the signs slowly)</summary>
+      <div>
+        <p><strong>$\alpha=1$:</strong> $r = 1-2 = -1$.</p>
+        <p>$w^{(1)} = 1 - 1\cdot 2(1) = 1-2 = -1$. &nbsp; Now the derivative at $-1$ is $2(-1)=-2$, so $w^{(2)} = -1 - 1(-2) = -1+2 = 1$. &nbsp; And $w^{(3)} = 1-2 = \mathbf{-1}$.</p>
+        <p>Cycle of period two: $1,-1,1,-1$. $J$ equals $1$ at every single iterate — zero progress, forever.</p>
+        <p><strong>$\alpha=2$:</strong> $r = 1-4 = -3$.</p>
+        <p>$w^{(1)} = 1 - 2\cdot2(1) = 1-4 = -3$. &nbsp; Derivative at $-3$ is $-6$: $w^{(2)} = -3 - 2(-6) = -3+12 = 9$. &nbsp; Derivative at $9$ is $18$: $w^{(3)} = 9 - 2(18) = 9-36 = \mathbf{-27}$.</p>
+        <p>Check: $(-3)^3 = -27$ ✓. The objective went $1 \to 9 \to 81 \to 729$. Diverging.</p>
+      </div></details>
+    <details class="step"><summary>Step 4 — the general condition</summary>
+      <div>
+        <p>$w^{(t)} = (1-2\alpha)^t$ tends to $0$ exactly when $|1-2\alpha|&lt;1$. Solving: $-1 &lt; 1-2\alpha &lt; 1 \Rightarrow -2 &lt; -2\alpha &lt; 0 \Rightarrow 0 &lt; \alpha &lt; 1$ (dividing by $-2$ flips the inequalities).</p>
+        <p>Within that window, smaller $|1-2\alpha|$ means faster convergence, so $\alpha=0.5$ is optimal and convergence degrades symmetrically as you move toward either $0$ or $1$. Note that $\alpha=0.1$ and $\alpha=0.9$ converge at exactly the same rate ($|r|=0.8$) — but $\alpha=0.9$ does it by oscillating across the minimum while $\alpha=0.1$ creeps in from one side.</p>
+      </div></details>
+    <details class="step"><summary>Answer &amp; the takeaway</summary>
+      <div>
+        <p>$w^{(3)} = 0.125,\ 0,\ -1,\ -27$ respectively. Converging / exact / oscillating / diverging. Convergence iff $0&lt;\alpha&lt;1$.</p>
+        <p><strong>Takeaway:</strong> the learning rate is not a tuning detail, it is the difference between an algorithm that works, an algorithm that spins in place, and an algorithm that destroys itself — on a function with <em>one</em> minimum and <em>no</em> pathologies. The threshold is set by the curvature: $\alpha &lt; 2/L$ with $L=J''$. Everything else in this chapter is a variation on this one computation.</p>
+      </div></details>
+  </div>
+
+  <div class="quiz" data-answer="2">
+    <div class="q">You run gradient descent on $J(w)=10w^2$ from $w^{(0)}=1$ with $\alpha=0.25$ and the loss explodes. What is the smallest change that fixes it?</div>
+    <button class="opt">Flip the sign of the update to $w+\alpha\,dJ/dw$ — descent must be going the wrong way.</button>
+    <button class="opt">Nothing is wrong; $\alpha = 0.25$ converged for $J(w)=w^2$, so it converges here too.</button>
+    <button class="opt">Shrink $\alpha$ below $1/c = 0.1$ — the curvature is ten times larger, so the stable window is ten times narrower.</button>
+    <button class="opt">Start closer to the minimum, e.g. $w^{(0)}=0.01$.</button>
+    <div class="why"><strong>Why:</strong> with $c=10$ the factor is $1-2(0.25)(10) = -4$, so each step multiplies the iterate by $-4$. Convergence requires $|1-2\alpha c|&lt;1$, i.e. $0&lt;\alpha&lt;1/c = 0.1$. Flipping the sign turns descent into <em>ascent</em> (it would climb even faster). And the starting point is irrelevant to stability: $w^{(t)} = (-4)^t w^{(0)}$ diverges from <em>any</em> nonzero start — it just takes a few more iterations to notice from $0.01$. Stability is a property of $\alpha$ and the curvature, never of the initialisation.</div>
+  </div>
+
+  <h2 id="general-n">Why this already works for all $N$</h2>
+
+  <p>Everything so far was derived on a single sample, $N=1$. Do we have to redo it? No — and the reason is the one we noticed at the start.</p>
+
+  <p>With $N$ samples (still $\X=\R$, still $b=0$) the objective is the mean squared error</p>
+
+  $$J(w) \;=\; \frac{1}{N}\sum_{i=1}^{N}\left(y^{(i)} - x^{(i)}w\right)^2.$$
+
+  <p>Expand the square inside the sum and collect powers of $w$:</p>
+
+  $$J(w) \;=\; \underbrace{\frac{1}{N}\sum_i \left(x^{(i)}\right)^2}_{\textstyle c}\; w^2 \;-\; 2\underbrace{\frac{1}{N}\sum_i x^{(i)}y^{(i)}}_{\textstyle m}\; w \;+\; \underbrace{\frac{1}{N}\sum_i \left(y^{(i)}\right)^2}_{\textstyle k}.$$
+
+  <p>That is $J(w) = cw^2 - 2mw + k$: <strong>a parabola again</strong>, opening upward because $c=\frac1N\sum (x^{(i)})^2 \ge 0$ is a sum of squares. Averaging $N$ upward parabolas gives an upward parabola. So the single-sample analysis transfers verbatim: same update rule, same sign argument, same stability threshold $\alpha &lt; 1/c$ — only now $c$ is the mean squared input rather than one $(x^{(1)})^2$.</p>
+
+  <p>Two things deserve a flag. First, $c$ depends on the <em>scale</em> of your features: multiply every $x^{(i)}$ by $1000$ (say, miles → metres) and $c$ grows by $10^6$, so the largest safe $\alpha$ shrinks by $10^6$. This is precisely why people standardise features before running gradient descent, and it is a topic the <a href="feature-engineering.html">feature engineering</a> chapter picks up. Second, the corner case from the previous chapter reappears wearing a new hat: if $\sum_i (x^{(i)})^2 = 0$ then $c=0$, $J$ is a flat line, the gradient is $0$ everywhere, and gradient descent stops at whatever $w^{(0)}$ you happened to type. The closed form reported this by dividing by zero; gradient descent reports it by returning your initialisation. Both are saying "the data does not determine $w$".</p>
+
+  <div class="box key"><span class="label">Key idea</span>
+    <p>We developed gradient descent on a parabola because a parabola is where it is easiest to see <em>why</em> it works. But nothing in the algorithm ever used the parabola. It used a derivative. The rule "evaluate the slope where you stand, step against it" is meaningful for any differentiable $J$ — and that is exactly why this algorithm and its variants are used in settings far more general than parabolas, up to and including networks with billions of parameters whose loss surfaces have, as the notes put it, crazy shapes.</p>
+  </div>
+
+  <div class="guided">
+    <div class="g-head"><span class="tag">Guided problem</span>Run gradient descent on real data, by hand</div>
+    <div class="g-body">
+      <p>Three training points, $b=0$, so $h(x)=xw$: &nbsp; $(x,y) = (1,2),\ (2,3),\ (3,5)$.</p>
+      <p>(a) Write $J(w)=\frac13\sum_i (y^{(i)}-x^{(i)}w)^2$ as a parabola $cw^2 - 2mw + k$. (b) What is the largest stable learning rate? (c) Starting from $w^{(0)}=0$ with $\alpha=0.1$, compute $w^{(1)}$ and $w^{(2)}$. (d) Where is it heading, and does that agree with the closed form from the previous chapter?</p>
+    </div>
+    <details class="step"><summary>Step 1 — Build the parabola</summary>
+      <div>
+        <p>$\sum_i (x^{(i)})^2 = 1 + 4 + 9 = 14$, so $c = 14/3$. &nbsp; $\sum_i x^{(i)}y^{(i)} = 1(2)+2(3)+3(5) = 2+6+15 = 23$, so $m = 23/3$. &nbsp; $\sum_i (y^{(i)})^2 = 4+9+25 = 38$, so $k = 38/3$.</p>
+        $$J(w) = \tfrac{14}{3}w^2 - \tfrac{46}{3}w + \tfrac{38}{3}, \qquad \frac{dJ}{dw} = \tfrac{28}{3}w - \tfrac{46}{3}.$$
+        <p>(The $-2m$ coefficient is $-2\cdot\frac{23}{3} = -\frac{46}{3}$ — don't drop that factor of 2.)</p>
+      </div></details>
+    <details class="step"><summary>Step 2 — The stability threshold</summary>
+      <div>
+        <p>Curvature $L = J'' = \frac{28}{3} \approx 9.33$. The condition $\alpha &lt; 2/L$ gives</p>
+        $$\alpha &lt; \frac{2}{28/3} = \frac{6}{28} = \frac{3}{14} \approx 0.214.$$
+        <p>Equivalently $\alpha &lt; 1/c = 3/14$. Same number, as it must be. So $\alpha = 0.1$ is safely inside; $\alpha=0.25$ would diverge, and $\alpha = 3/28 \approx 0.107$ would hit the minimum in a single step.</p>
+      </div></details>
+    <details class="step"><summary>Step 3 — Two iterations, arithmetic shown</summary>
+      <div>
+        <p><strong>Iteration 1.</strong> At $w^{(0)}=0$: $\frac{dJ}{dw} = \frac{28}{3}(0) - \frac{46}{3} = -\frac{46}{3} \approx -15.33$. Negative slope, so we should move <em>right</em> — and indeed</p>
+        $$w^{(1)} = 0 - 0.1\left(-\tfrac{46}{3}\right) = \tfrac{46}{30} = \tfrac{23}{15} \approx 1.5333.$$
+        <p><strong>Iteration 2.</strong> At $w^{(1)}=\frac{23}{15}$: $\frac{dJ}{dw} = \frac{28}{3}\cdot\frac{23}{15} - \frac{46}{3} = \frac{644}{45} - \frac{690}{45} = -\frac{46}{45} \approx -1.022$. Still negative but <strong>fifteen times smaller</strong> — we are much closer now, exactly as the magnitude argument predicted.</p>
+        $$w^{(2)} = \tfrac{23}{15} - 0.1\left(-\tfrac{46}{45}\right) = \tfrac{23}{15} + \tfrac{46}{450} = \tfrac{368}{225} \approx 1.6356.$$
+      </div></details>
+    <details class="step"><summary>Answer &amp; the takeaway</summary>
+      <div>
+        <p>Continuing: $w^{(3)} \approx 1.64237$, $w^{(4)} \approx 1.642825$, $w^{(5)} \approx 1.6428550$. The closed form from the <a href="linear-regression.html">previous chapter</a> is</p>
+        $$w^\star = \frac{\sum_i x^{(i)}y^{(i)}}{\sum_i (x^{(i)})^2} = \frac{23}{14} = 1.642857\ldots$$
+        <p>Gradient descent is converging to the closed-form answer, gaining roughly one decimal digit per iteration (each step multiplies the remaining error by $|1-2\alpha c| = |1 - 0.1\cdot\frac{28}{3}| \approx 0.0667$).</p>
+        <p><strong>Takeaway:</strong> on a problem this small, gradient descent is strictly worse than the closed form — it gives an approximation after five steps where division gave the exact answer immediately. That is the honest comparison, and it is why the closed form is still what you use for small linear regression. Gradient descent earns its keep when $d$ is large enough that the $d^3$ matrix inverse is impossible, or when $\H$ is anything other than linear so no closed form exists at all.</p>
+      </div></details>
+  </div>
+
+  <h2 id="multivariate-calculus">Multivariate calculus: what a gradient is</h2>
+
+  <p>Real problems have many parameters. Extend to $\X=\R^d$, $\Y=\R$, and a general objective $J:\R^d\to\R$ — it consumes a whole parameter vector $\theta$ and returns one number. We want $\argmin_{\theta\in\R^d} J(\theta)$. Before we can run the algorithm we need to know what replaces $dJ/dw$. Some background, exactly as the notes set it out.</p>
+
+  <p>In the scalar case $J:\R\to\R$ and $\frac{\partial J(\theta)}{\partial\theta} \in \R$: one input, one derivative, a single number. When $J:\R^d\to\R$ there are $d$ separate inputs, so there are $d$ separate partial derivatives, and we stack them into a column:</p>
+
+  $$\frac{\partial J(\theta)}{\partial \theta} \;=\; \begin{bmatrix} \dfrac{\partial J(\theta)}{\partial \theta_1} \\[6pt] \dfrac{\partial J(\theta)}{\partial \theta_2} \\[2pt] \vdots \\[2pt] \dfrac{\partial J(\theta)}{\partial \theta_d} \end{bmatrix} \;\in\; \R^d.$$
+
+  <div class="box defn"><span class="label">Definition</span>
+    <p>This vector is the <strong>gradient</strong> of $J$, written $\nabla_\theta J(\theta)$ or just $\nabla J$. Its $j$-th entry $\frac{\partial J}{\partial\theta_j}$ answers one narrow question: <em>if I nudge parameter $j$ alone and freeze all the others, how fast does $J$ change?</em> The gradient is nothing more than all $d$ of those answers collected in one place — but collecting them turns out to be enormously more useful than holding them separately.</p>
+  </div>
+
+  <h3>What the gradient means geometrically</h3>
+
+  <p>Here is the fact that makes the gradient the right object, stated for $d=2$ where you can see it. Picture $J$ as a landscape: $\theta=(\theta_1,\theta_2)$ is a map coordinate and $J(\theta)$ is the altitude. Draw the <strong>level sets</strong> (contour lines) — curves along which the altitude is constant, exactly as on a topographic map.</p>
+
+  <ul>
+    <li>$\nabla J(\theta)$ points in the direction of <strong>steepest ascent</strong>: of all directions you could step, that one increases $J$ fastest, and its length $\|\nabla J\|$ is how fast.</li>
+    <li>Therefore $-\nabla J(\theta)$ is the direction of <strong>steepest descent</strong>. That is the direction gradient descent walks.</li>
+    <li>The gradient is <strong>perpendicular to the level set</strong> through that point. Walking <em>along</em> a contour does not change altitude, so the rate of change in that direction is zero, so the gradient has no component along it.</li>
+  </ul>
+
+  <div class="viz">
+    <div class="viz-title">Figure 3 · Level sets, the gradient, and steepest descent</div>
+    <svg id="figGrad" viewBox="0 0 660 360" role="img" aria-label="Contour lines of a two-dimensional function with gradient and negative gradient arrows drawn perpendicular to a contour"></svg>
+    <div class="caption">What to notice: each arrow crosses its contour at a right angle. The long arrow sits where the contours are packed tightly (steep ground, large gradient); the short arrow sits where they are widely spaced (gentle ground, small gradient). The dashed arrow along the contour is the direction of <em>zero</em> change — move that way and the objective is unaffected.</div>
+  </div>
+
+  <div class="box analogy"><span class="label">Analogy</span>
+    <p>A ball dropped on the landscape rolls along $-\nabla J$. That analogy is good for direction and honest about one thing — steepest descent is a purely <em>local</em> choice, and a ball has no idea what is over the ridge. It breaks in two places. A real ball has <em>momentum</em>: it keeps going and can roll up out of a shallow dip. Plain gradient descent has no memory and cannot. (Adding momentum to gradient descent is a real and very standard modification, precisely to recover that. <span class="pill">beyond syllabus</span>) And a ball moves continuously, while gradient descent teleports in discrete jumps of length $\alpha\|\nabla J\|$ — which is why too large an $\alpha$ can jump clean across the valley, something no rolling ball does.</p>
+  </div>
+
+  <h3>The two identities you need — both proved</h3>
+
+  <p>The notes state two gradient formulas and use them immediately. They are the only two you need for linear regression, and both are proved the same way: <strong>write out a single coordinate of the gradient as an ordinary scalar partial derivative, differentiate it with high-school rules, then recognise the resulting vector.</strong> That technique works for every matrix-calculus identity you will meet; learn it once here.</p>
+
+  <div class="box proof"><span class="label">Proof</span>
+    <p><strong>(i) If $J(\theta) = \theta^\top v$ for some fixed $v\in\R^d$, then $\nabla_\theta J(\theta) = v$.</strong></p>
+    <p>Written out with explicit sums, the inner product is</p>
+    $$J(\theta) = \theta^\top v = \sum_{k=1}^{d} \theta_k v_k = \theta_1v_1 + \theta_2v_2 + \dots + \theta_dv_d.$$
+    <p>Take the partial derivative with respect to one particular coordinate $\theta_j$. Every term $\theta_kv_k$ with $k\neq j$ contains no $\theta_j$, so it is a constant and dies. The one surviving term is $\theta_jv_j$, whose derivative is $v_j$:</p>
+    $$\frac{\partial J}{\partial \theta_j} = \frac{\partial}{\partial\theta_j}\sum_{k=1}^d \theta_kv_k = v_j.$$
+    <p>Now stack over $j=1,\dots,d$: the vector whose $j$-th entry is $v_j$ is $v$ itself. Hence $\nabla_\theta J = v$. $\blacksquare$</p>
+    <p class="muted tiny">Sanity check in one dimension: $J(\theta)=\theta v$ is a line of slope $v$, and its derivative is $v$. The identity is the exact analogue — $\theta^\top v$ is the multidimensional straight line, and its gradient is the constant vector of slopes.</p>
+  </div>
+
+  <div class="box proof"><span class="label">Proof</span>
+    <p><strong>(ii) If $J(\theta) = \theta^\top A\theta$ for some fixed $A\in\R^{d\times d}$, then $\nabla_\theta J(\theta) = (A + A^\top)\theta$.</strong></p>
+    <p>The quadratic form written as a double sum:</p>
+    $$J(\theta) = \theta^\top A\theta = \sum_{k=1}^{d}\sum_{l=1}^{d} A_{kl}\,\theta_k\theta_l.$$
+    <p>Differentiate with respect to $\theta_j$. A term $A_{kl}\theta_k\theta_l$ survives only if it contains $\theta_j$, which happens in three situations:</p>
+    <ul>
+      <li>$k=j$ and $l\neq j$: the term is $A_{jl}\theta_j\theta_l$, and $\frac{\partial}{\partial\theta_j} = A_{jl}\theta_l$.</li>
+      <li>$l=j$ and $k\neq j$: the term is $A_{kj}\theta_k\theta_j$, and $\frac{\partial}{\partial\theta_j} = A_{kj}\theta_k$.</li>
+      <li>$k=l=j$: the term is $A_{jj}\theta_j^2$, and $\frac{\partial}{\partial\theta_j} = 2A_{jj}\theta_j$ by the power rule.</li>
+    </ul>
+    <p>The third case is exactly what you get by letting $l=j$ in the first sum <em>and</em> $k=j$ in the second (giving $A_{jj}\theta_j + A_{jj}\theta_j$), so we can fold all three cases into two unrestricted sums:</p>
+    $$\frac{\partial J}{\partial\theta_j} = \sum_{l=1}^{d} A_{jl}\theta_l \;+\; \sum_{k=1}^{d} A_{kj}\theta_k.$$
+    <p>Read each piece. $\sum_l A_{jl}\theta_l$ is row $j$ of $A$ dotted with $\theta$ — the $j$-th entry of $A\theta$. And $\sum_k A_{kj}\theta_k$ is column $j$ of $A$ dotted with $\theta$ — which is row $j$ of $A^\top$ dotted with $\theta$, the $j$-th entry of $A^\top\theta$. So</p>
+    $$\frac{\partial J}{\partial\theta_j} = (A\theta)_j + (A^\top\theta)_j = \left((A+A^\top)\theta\right)_j,$$
+    <p>and stacking over all $j$ gives $\nabla_\theta J(\theta) = (A+A^\top)\theta$. $\blacksquare$</p>
+  </div>
+
+  <div class="box key"><span class="label">Key idea</span>
+    <p><strong>The symmetric special case.</strong> If $A$ is symmetric, meaning $A^\top = A$, then $(A+A^\top)\theta = 2A\theta$ and the identity collapses to</p>
+    $$\nabla_\theta\,\theta^\top A\theta = 2A\theta,$$
+    <p>which is the perfect analogue of the scalar $\frac{d}{dw}(cw^2) = 2cw$. And this is not a rare case for us: <strong>$X^\top X$ is always symmetric</strong>, for any matrix $X$ whatsoever, because $(X^\top X)^\top = X^\top (X^\top)^\top = X^\top X$. The matrix sitting in the middle of the linear-regression objective is guaranteed to be of exactly the form that makes this identity simple.</p>
+  </div>
+
+  <h3>Shapes, and which layout a formula is written in</h3>
+
+  <p>More generally — and you will hit this again when you meet backpropagation — you may need $\frac{\partial J(\theta)}{\partial\theta}$ where $\theta$ is a scalar, a vector <em>or a matrix</em>, and where the output of $J$ is also a scalar, vector or matrix. Do not memorise a table of cases. Remember instead what the notes say:</p>
+
+  <div class="box defn"><span class="label">Definition</span>
+    <p>$\frac{\partial J(\theta)}{\partial \theta}$ is <strong>simply a collection of scalar-by-scalar partial derivatives</strong>: the partial derivative of each coordinate of the output $J(\theta)$ with respect to each coordinate of the input $\theta$. Those scalar partials are then <em>arranged in some shape</em> — as a vector in the case of $\nabla_\theta J(\theta)$, as a matrix when both sides are vectors, and so on.</p>
+  </div>
+
+  <p>The content is never in doubt; only the arrangement is. And there are two conventions for arranging it:</p>
+
+  <ul>
+    <li><strong>Denominator layout</strong> (what this course uses, and the more popular convention in ML): the result is shaped like the <em>denominator</em>, i.e. like $\theta$. So for $J:\R^d\to\R$, the gradient is a $d\times 1$ column, matching $\theta$.</li>
+    <li><strong>Numerator layout</strong>: the result is shaped like the <em>numerator</em>, i.e. like $J$. The same object comes out as a $1\times d$ row.</li>
+  </ul>
+
+  <p><strong>One small example so you can recognise which you are reading.</strong> Let $d=3$, $J(\theta)=\theta^\top v$ with $v=(4,5,6)^\top$. The three scalar partials are $\frac{\partial J}{\partial\theta_1}=4$, $\frac{\partial J}{\partial\theta_2}=5$, $\frac{\partial J}{\partial\theta_3}=6$ — identical in both conventions. The layouts differ only in how they are stacked:</p>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="kicker">Denominator layout · this course</div>
+      <p>Shaped like $\theta$ &nbsp;($3\times1$):</p>
+      $$\frac{\partial J}{\partial\theta} = \begin{bmatrix}4\\5\\6\end{bmatrix}$$
+      <p>Update reads $\theta \leftarrow \theta - \alpha\nabla_\theta J$ — a column minus a column. Shapes just work.</p>
+    </div>
+    <div class="card">
+      <div class="kicker">Numerator layout</div>
+      <p>Shaped like $J$ &nbsp;($1\times3$):</p>
+      $$\frac{\partial J}{\partial\theta} = \begin{bmatrix}4&amp;5&amp;6\end{bmatrix}$$
+      <p>Update needs a transpose: $\theta \leftarrow \theta - \alpha\left(\frac{\partial J}{\partial\theta}\right)^\top$.</p>
+    </div>
+  </div>
+
+  <p><strong>How to tell at a glance:</strong> look at whether the author's update rule has a stray transpose in it, or check a known identity — if a source tells you $\nabla_\theta(\theta^\top A\theta) = \theta^\top(A+A^\top)$ (a row), it is in numerator layout; our $(A+A^\top)\theta$ (a column) is denominator layout. The two differ by a transpose and nothing else, so nobody is wrong — but mixing them mid-derivation produces shape errors that are maddening to debug.</p>
+
+  <div class="quiz" data-answer="1">
+    <div class="q">$J(\theta)=\theta^\top A\theta$ with $A = \begin{bmatrix}1&amp;3\\0&amp;1\end{bmatrix}$ and $\theta=(1,1)^\top$. What is $\nabla_\theta J$?</div>
+    <button class="opt">$2A\theta = (8,2)^\top$</button>
+    <button class="opt">$(A+A^\top)\theta = \begin{bmatrix}2&amp;3\\3&amp;2\end{bmatrix}\begin{bmatrix}1\\1\end{bmatrix} = (5,5)^\top$</button>
+    <button class="opt">$A\theta = (4,1)^\top$</button>
+    <div class="why"><strong>Why:</strong> $A$ here is <em>not</em> symmetric ($A_{12}=3$ but $A_{21}=0$), so the shortcut $2A\theta$ does not apply — you must use the general identity $(A+A^\top)\theta$. Verify directly: $J(\theta) = \theta_1^2 + 3\theta_1\theta_2 + \theta_2^2$, so $\partial J/\partial\theta_1 = 2\theta_1 + 3\theta_2 = 5$ and $\partial J/\partial\theta_2 = 3\theta_1 + 2\theta_2 = 5$. ✓ The happy news is that in linear regression the middle matrix is $X^\top X$, which is symmetric by construction, so there $2A\theta$ is legitimate.</div>
+  </div>
+
+  <h2 id="back-to-optimization">Back to optimization: linear regression in matrix form</h2>
+
+  <p>Now take $\X=\R^d$, $\Y=\R$, and recall ERM for linear regression as the <a href="linear-regression.html">previous chapter</a> left it. Stack the samples as rows of the design matrix $X\in\R^{N\times d}$ and the labels into $y\in\R^N$. Then:</p>
+
+  $$\argmin_\theta \|y - X\theta\|_2^2 \;=\; \argmin_\theta\, (y-X\theta)^\top(y-X\theta) \;=\; \argmin_\theta\, \underbrace{y^\top y - 2\theta^\top X^\top y + \theta^\top X^\top X\theta}_{J(\theta)}.$$
+
+  <p>The middle step is just the definition of the squared Euclidean norm, $\|v\|_2^2 = v^\top v$. The last step multiplies out; the two cross terms $-y^\top X\theta$ and $-\theta^\top X^\top y$ are each $1\times1$ — scalars — and a scalar equals its own transpose, so they are the same number and combine into $-2\theta^\top X^\top y$.</p>
+
+  <p>$J$ is a parabola (in $d$ dimensions: a bowl), and we want the $\theta$ where $\nabla_\theta J(\theta)=0$. Differentiate term by term:</p>
+
+  <ul>
+    <li>$y^\top y$ contains no $\theta$. Gradient: $\mathbf{0}$.</li>
+    <li>$-2\theta^\top X^\top y$ has the form $\theta^\top v$ with the fixed vector $v = -2X^\top y \in\R^d$. By identity (i), gradient: $-2X^\top y$.</li>
+    <li>$\theta^\top X^\top X\theta$ has the form $\theta^\top A\theta$ with $A = X^\top X$, which is symmetric. By identity (ii), gradient: $2X^\top X\theta$.</li>
+  </ul>
+
+  $$\boxed{\ \nabla_\theta J(\theta) = -2X^\top y + 2X^\top X\theta.\ }$$
+
+  <p>Every piece of that came from the two identities we proved above — nothing was asserted. Now set it to zero:</p>
+
+  $$-2X^\top y + 2X^\top X\theta = 0 \;\Longrightarrow\; X^\top X\theta = X^\top y \;\Longrightarrow\; \theta^\star = (X^\top X)^{-1}X^\top y,$$
+
+  <p>assuming $X^\top X$ is invertible — which, as the previous chapter details, requires $X$ to have full column rank.</p>
+
+  <div class="box key"><span class="label">Key idea</span>
+    <p><strong>Two routes, one answer.</strong> The <a href="linear-regression.html#normal-equations">previous chapter</a> derived this same $\theta^\star$ by <em>completing the square</em> in matrix form — no calculus at all — and that route proves the point is a <em>global</em> minimum, because completing the square exhibits $J$ as a constant plus a manifestly non-negative term. The calculus route here is shorter but proves less on its own: setting a gradient to zero finds a <em>stationary</em> point, which could in principle be a maximum or a saddle. The two agree because $X^\top X$ is positive semi-definite, so the only stationary points of this bowl are minima. Use whichever route you prefer, and take comfort that they meet.</p>
+  </div>
+
+  <h3>Why this is a lucky accident, not the general situation</h3>
+
+  <p>Linear regression is a <strong>special</strong> setting where something nice happens: setting the gradient to zero produced an equation we could solve for $\theta$ in closed form, by hand, exactly. That happened because the gradient was <em>linear</em> in $\theta$ — and the gradient is linear in $\theta$ precisely because $J$ was quadratic.</p>
+
+  <p>In real life, most problems do not admit a closed-form solution. Try setting the gradient of a neural network's loss to zero: you get a system of millions of coupled nonlinear equations with no solution formula anywhere. This is the norm, not the exception. Gradient descent is a highly effective tool in exactly that situation, because it never needs to <em>solve</em> $\nabla J = 0$ — it only needs to <em>evaluate</em> $\nabla J$ at the point where it happens to be standing, and evaluation is always possible.</p>
+
+  <div class="box defn"><span class="label">Definition</span>
+    <p><strong>Gradient descent for a general $J:\R^d\to\R$.</strong></p>
+    <ul>
+      <li>Initialise $\theta^{(0)}\in\R^d$.</li>
+      <li>For $t=1,2,\dots$ (until some stopping criterion is met):
+        $$\theta^{(t)} = \theta^{(t-1)} - \alpha\,\nabla_\theta J(\theta)\big|_{\theta=\theta^{(t-1)}}$$</li>
+      <li>Return $\theta^{(t)}$.</li>
+    </ul>
+    <p>Line for line the same algorithm as the scalar version. The only change is that $w$ became a vector $\theta$ and the derivative became a gradient — so the update now moves all $d$ coordinates at once, each by its own partial derivative times the same $\alpha$.</p>
+  </div>
+
+  <div class="viz">
+    <div class="viz-title">Figure 4 · The zig-zag: gradient descent in a stretched bowl</div>
+    <svg id="figBowl" viewBox="0 0 680 400" role="img" aria-label="Contour plot of an elongated quadratic bowl with the gradient descent path zig-zagging across the narrow valley toward the minimum"></svg>
+    <div class="controls">
+      <label>Learning rate $\alpha$
+        <input type="range" id="bwAlpha" min="0.01" max="0.105" step="0.005" value="0.09" data-out="bwAlphaV" data-dp="3">
+        <span class="val" id="bwAlphaV"></span></label>
+      <label>Steps
+        <input type="range" id="bwSteps" min="1" max="40" step="1" value="18" data-out="bwStepsV" data-fmt="int">
+        <span class="val" id="bwStepsV"></span></label>
+    </div>
+    <div class="caption">The bowl is $J(\theta)=\tfrac12(\theta_1^2 + 20\theta_2^2)$ — curvature $1$ along $\theta_1$ but $20$ along $\theta_2$, a condition number of $20$. What to notice: $\alpha$ is forced small by the <em>steep</em> direction ($\alpha&lt;2/20=0.1$), but then progress along the <em>shallow</em> direction is agonisingly slow, so the path bounces across the valley while creeping along it. Push $\alpha$ past $0.1$ and the vertical bounce grows instead of shrinking. This picture is the whole reason feature scaling, momentum and adaptive methods exist.</div>
+  </div>
+
+  <h2 id="local-vs-global">Local minima, global minima, and getting stuck</h2>
+
+  <p>Gradient descent may not find the optimal solution unless the function takes some special form (like our bowl). It may get stuck in a <strong>local minimum</strong>. The notes' definitions, exactly:</p>
+
+  <div class="box defn"><span class="label">Definition</span>
+    <p><strong>Local minimum.</strong> A value of $\theta\in\R^d$ which is the lowest in its neighbourhood — but there could be points $\theta'$ farther away which are lower.</p>
+    <p><strong>Global minimum.</strong> A value of $\theta$ that minimises the function: $J(\theta) \le J(\theta')$ for every $\theta'\in\R^d$.</p>
+  </div>
+
+  <p>Note the asymmetry in the two definitions. "Local" quantifies over a neighbourhood — some small ball around $\theta$ — while "global" quantifies over <em>all of $\R^d$</em>. Every global minimum is also a local minimum; the converse is what fails. And the gradient cannot tell the difference: at a local minimum $\nabla J = 0$ and the surface curves upward in every direction, which is exactly what a global minimum looks like from up close. In the fog, a small dip and the deepest valley feel identical.</p>
+
+  <p>Consequently <strong>where you start determines where you end.</strong> Run gradient descent from $\theta^{(0)}_A$ and you slide into the basin containing $\theta^{(0)}_A$; run it from $\theta^{(0)}_B$ on the other side of a ridge and you slide into a different basin, with a different final loss. This is not randomness in the algorithm — plain gradient descent is entirely deterministic — it is sensitivity to the initialisation.</p>
+
+  <p><span class="pill">Try it</span> Go back to <a href="#alpha-worked-example">Figure 2</a>, press <em>Function</em> to switch to the multi-minimum landscape, and move the start slider. From $w^{(0)}=-2.5$ you end in the deep left valley; from $w^{(0)}=2.0$ you end in the shallower right one; start almost exactly on the little ridge between them and a tiny nudge decides your fate. That figure is the picture the notes describe in words.</p>
+
+  <h3>Saddle points and convexity, briefly</h3>
+
+  <p>Two more things live at $\nabla J = 0$, worth naming so the vocabulary is not new later.</p>
+
+  <p><strong>Saddle points.</strong> <span class="pill">beyond syllabus</span> A point where the gradient vanishes but which is a minimum along some directions and a maximum along others — the middle of a horse's saddle, or a mountain pass. Gradient descent slows to a crawl near one (small gradient means small steps) without being truly trapped; it eventually escapes along the downhill direction. In high dimensions, saddles vastly outnumber local minima, because for a point to be a local minimum <em>all</em> $d$ curvature directions must point up, and that is a demanding coincidence when $d$ is a million. Modern thinking is that the practical enemy in deep learning is saddles and flat plateaus, not bad local minima.</p>
+
+  <p><strong>Convex problems.</strong> <span class="pill">beyond syllabus</span> A function is convex if the chord between any two points on its graph lies on or above the graph — bowls, parabolas, and $\|y-X\theta\|_2^2$ all qualify. For a convex function there are <em>no bad local minima</em>: every local minimum is a global minimum. That is why linear regression does not have this problem at all, and why gradient descent on it converges to the same answer from every starting point. Logistic regression, coming up in a <a href="logistic-regression.html">later chapter</a>, is also convex. Neural networks emphatically are not.</p>
+
+  <div class="box key"><span class="label">Key idea</span>
+    <p>Despite the fact that gradient descent may not always reach a global minimum, and may get stuck at a local minimum that is not global, in practice gradient descent and its variants are still <strong>very popular</strong> — because they find a <em>good</em> solution in a computationally efficient manner. This is the pragmatic bargain at the heart of modern ML: an approximate answer you can actually compute beats an exact answer you cannot. Nobody training a large model believes they found the global optimum. The model works anyway.</p>
+  </div>
+
+  <div class="quiz" data-answer="0">
+    <div class="q">You train the same neural network twice on the same data with the same hyperparameters, changing only the random initialisation, and get final training losses of $0.031$ and $0.047$. What is the most accurate reading?</div>
+    <button class="opt">Different initialisations landed in different basins; neither run is guaranteed to be the global minimum, and this is expected behaviour.</button>
+    <button class="opt">The second run has a bug — deterministic gradient descent on a fixed dataset must produce a unique answer.</button>
+    <button class="opt">The learning rate diverged in the second run.</button>
+    <div class="why"><strong>Why:</strong> gradient descent is deterministic <em>given</em> its starting point, but the loss surface of a network is non-convex, so the starting point selects which local minimum you converge to. Divergence looks completely different — the loss grows without bound or becomes <code>NaN</code>, not $0.047$. This is also why serious papers report a mean and a standard deviation over several seeds rather than a single number.</div>
+  </div>
+
+  <div class="guided">
+    <div class="g-head"><span class="tag">Guided problem</span>A gradient step in two dimensions, by hand</div>
+    <div class="g-body">
+      <p>Three points with an intercept, so $x^{(i)} = (1,\ \text{feature})^\top$ and $\theta=(b,w)^\top$:</p>
+      $$X = \begin{bmatrix}1&amp;1\\1&amp;2\\1&amp;3\end{bmatrix},\qquad y=\begin{bmatrix}2\\3\\5\end{bmatrix}.$$
+      <p>(a) Compute $X^\top X$ and $X^\top y$. (b) Write $\nabla_\theta J(\theta)$ for $J(\theta)=\|y-X\theta\|_2^2$. (c) Take two gradient-descent steps from $\theta^{(0)}=(0,0)^\top$ with $\alpha=0.02$. (d) Compare to the closed form.</p>
+    </div>
+    <details class="step"><summary>Step 1 — The two matrix products</summary>
+      <div>
+        <p>$X^\top X$ is $2\times2$. Entry $(1,1)$ is column 1 dotted with itself: $1+1+1=3$. Entry $(1,2)=(2,1)$ is column 1 dotted with column 2: $1+2+3=6$. Entry $(2,2)$ is column 2 with itself: $1+4+9=14$.</p>
+        $$X^\top X = \begin{bmatrix}3&amp;6\\6&amp;14\end{bmatrix} \quad\text{(symmetric, as promised)},\qquad X^\top y = \begin{bmatrix}2+3+5\\ 1(2)+2(3)+3(5)\end{bmatrix} = \begin{bmatrix}10\\23\end{bmatrix}.$$
+      </div></details>
+    <details class="step"><summary>Step 2 — The gradient, instantiated</summary>
+      <div>
+        <p>Plug into $\nabla_\theta J(\theta) = -2X^\top y + 2X^\top X\theta$:</p>
+        $$\nabla_\theta J(\theta) = -2\begin{bmatrix}10\\23\end{bmatrix} + 2\begin{bmatrix}3&amp;6\\6&amp;14\end{bmatrix}\begin{bmatrix}b\\w\end{bmatrix} = \begin{bmatrix}-20 + 6b + 12w\\ -46 + 12b + 28w\end{bmatrix}.$$
+        <p>Both entries are <em>linear</em> in $\theta$ — that linearity is the whole reason a closed form exists here.</p>
+      </div></details>
+    <details class="step"><summary>Step 3 — Two steps of arithmetic</summary>
+      <div>
+        <p><strong>Step 1.</strong> At $\theta^{(0)}=(0,0)$ the gradient is $(-20,-46)^\top$. Both components negative, so both parameters increase:</p>
+        $$\theta^{(1)} = \begin{bmatrix}0\\0\end{bmatrix} - 0.02\begin{bmatrix}-20\\-46\end{bmatrix} = \begin{bmatrix}0.4\\0.92\end{bmatrix}.$$
+        <p><strong>Step 2.</strong> At $\theta^{(1)}$: first component $-20 + 6(0.4) + 12(0.92) = -20 + 2.4 + 11.04 = -6.56$; second $-46 + 12(0.4) + 28(0.92) = -46 + 4.8 + 25.76 = -15.44$.</p>
+        $$\theta^{(2)} = \begin{bmatrix}0.4\\0.92\end{bmatrix} - 0.02\begin{bmatrix}-6.56\\-15.44\end{bmatrix} = \begin{bmatrix}0.4+0.1312\\0.92+0.3088\end{bmatrix} = \begin{bmatrix}0.5312\\1.2288\end{bmatrix}.$$
+        <p>Both gradient components shrank by about two thirds. We are heading in.</p>
+      </div></details>
+    <details class="step"><summary>Answer &amp; the takeaway</summary>
+      <div>
+        <p>Closed form: $\det(X^\top X) = 3(14)-6(6) = 6$, so $(X^\top X)^{-1} = \frac16\begin{bmatrix}14&amp;-6\\-6&amp;3\end{bmatrix}$ and</p>
+        $$\theta^\star = \frac16\begin{bmatrix}14&amp;-6\\-6&amp;3\end{bmatrix}\begin{bmatrix}10\\23\end{bmatrix} = \frac16\begin{bmatrix}140-138\\-60+69\end{bmatrix} = \frac16\begin{bmatrix}2\\9\end{bmatrix} = \begin{bmatrix}1/3\\3/2\end{bmatrix}.$$
+        <p>After two steps we are at $(0.53, 1.23)$ against a target of $(0.33, 1.50)$ — the right neighbourhood, not the right answer. Continuing takes a while, and here is why: the Hessian is $2X^\top X$ with eigenvalues $\approx 33.3$ and $\approx 0.72$. Stability demands $\alpha &lt; 2/33.3 \approx 0.060$, but progress along the flat direction happens at rate $\alpha \cdot 0.72 \approx 0.014$ per step. A condition number of $33.3/0.72\approx 46$ means roughly 46 times more iterations than a round bowl would need.</p>
+        <p><strong>Takeaway:</strong> this is the <a href="#back-to-optimization">zig-zag figure</a> in numbers. The intercept column of all-ones and the feature column of $1,2,3$ are strongly correlated, which stretches the bowl. Centering the feature (subtracting its mean) would decorrelate the columns and shrink the condition number dramatically — a cheap fix, and a preview of <a href="feature-engineering.html">feature engineering</a>.</p>
+      </div></details>
+  </div>
+
+  <h2 id="batch-gd">Batch gradient descent, and the problem with it</h2>
+
+  <p>Come back to ERM one more time, now written with the average and with a general hypothesis:</p>
+
+  $$\argmin_\theta\ \frac{1}{N}\sum_{i=1}^{N} \ell\!\left(h_\theta(x^{(i)}),\, y^{(i)}\right)$$
+
+  <p>where $h_\theta(x) = \theta^\top x$ under linear regression, but $h_\theta$ could alternatively capture other types of hypothesis — a neural network, for instance. Nothing below depends on which; all we need is that $\ell$ is differentiable in $\theta$.</p>
+
+  <p>Because the objective is a sum, and differentiation is linear, the gradient is also a sum:</p>
+
+  $$\nabla_\theta J(\theta) = \frac{1}{N}\sum_{i=1}^{N} \nabla_\theta\,\ell\!\left(h_\theta(x^{(i)}), y^{(i)}\right).$$
+
+  <p>Look hard at that. To take <em>one</em> step — to change $\theta^{(t-1)}$ into $\theta^{(t)}$ — the algorithm must compute a gradient for <strong>every single training example</strong> and average them. In the context of ERM, gradient descent is therefore also called <strong>batch gradient descent</strong>: it processes all $N$ samples together, as one batch, per update. This causes a problem.</p>
+
+  <div class="box warn"><span class="label">Common mistake</span>
+    <p><strong>Problem.</strong> Suppose $N$ is large. Then gradient descent has to compute $\nabla_\theta \ell(h_\theta(x^{(i)}),y^{(i)})$ for every $i\in\{1,\dots,N\}$ in order to make <em>any</em> update to the iterate $\theta^{(t-1)}$. This makes it slow.</p>
+  </div>
+
+  <h3>Put numbers on it</h3>
+
+  <p>Take ImageNet-scale training: $N = 1{,}280{,}000$ images. Suppose one forward-and-backward pass through the network costs about $0.5$ ms on your hardware. Then one <em>full</em> gradient costs</p>
+
+  $$1{,}280{,}000 \times 0.5\,\text{ms} \approx 640\ \text{seconds} \approx 10.7\ \text{minutes}.$$
+
+  <p>That buys you <strong>one</strong> update to $\theta$ — one step of the four-line loop. Training needs tens of thousands of steps. At $10.7$ minutes each, $10{,}000$ steps is <strong>74 days</strong>.</p>
+
+  <p>And notice how wasteful it is. The first thousand images already told you, very clearly, roughly which way is downhill. Images $1{,}001$ through $1{,}280{,}000$ refine that estimate into the <em>exact</em> average gradient — and then you multiply it by $\alpha=0.001$ and take a tiny step, which immediately makes the exact computation obsolete because you are now standing somewhere else. <strong>We are computing a very precise number and then barely using it.</strong></p>
+
+  <div class="box key"><span class="label">Key idea</span>
+    <p><strong>Idea:</strong> take gradients of just one sample at a time for each update. You get a much worse estimate of the descent direction — but you get it $N$ times faster, and you can take $N$ steps in the time the batch version takes one. Trading accuracy per step for number of steps is, it turns out, an overwhelmingly good trade.</p>
+  </div>
+
+  <h2 id="sgd">Stochastic gradient descent</h2>
+
+  <div class="box defn"><span class="label">Definition</span>
+    <p><strong>Stochastic gradient descent (SGD).</strong></p>
+    <ul>
+      <li>Initialise $\theta^{(0)}\in\R^d$.</li>
+      <li>For $t=1,2,\dots$ (until some stopping criterion is met):
+        <ul>
+          <li>Choose $j \in \text{Uniform-Random}\{1,2,\dots,N\}$.</li>
+          <li>$\theta^{(t)} = \theta^{(t-1)} - \alpha\,\nabla_\theta\,\ell\!\left(h_\theta(x^{(j)}), y^{(j)}\right)$.</li>
+        </ul>
+      </li>
+      <li>Return $\theta^{(t)}$.</li>
+    </ul>
+    <p>"Stochastic" is the whole difference: the index $j$ is drawn at random, fresh, every iteration. The update uses the gradient of the loss on that <em>one</em> sample, as if it were the entire training set.</p>
+  </div>
+
+  <p>The cost per update drops by a factor of $N$. On the ImageNet numbers above, an SGD update costs $0.5$ ms instead of $10.7$ minutes, so in the time batch GD makes one step, SGD makes $1{,}280{,}000$ of them. As the notes put it: a very noisy version of the full gradient, but fast to compute.</p>
+
+  <h3>Why does this work at all?</h3>
+
+  <p>It is worth being suspicious. A single random training point is a terrible summary of a dataset. Why doesn't following it just wander?</p>
+
+  <p>Because the single-sample gradient is an <strong>unbiased estimate</strong> of the full gradient: wrong on any given step, but right <em>on average</em>, with no systematic lean in any direction. Two lines:</p>
+
+  <div class="box proof"><span class="label">Proof</span>
+    <p>Write $g_j = \nabla_\theta\,\ell(h_\theta(x^{(j)}), y^{(j)})$ for the gradient contributed by sample $j$, and let $j$ be drawn uniformly from $\{1,\dots,N\}$, so $\Pr[j=i] = \frac1N$ for each $i$. Then by the definition of expectation,</p>
+    $$\E_j\!\left[g_j\right] \;=\; \sum_{i=1}^{N}\Pr[j=i]\; g_i \;=\; \sum_{i=1}^{N}\frac{1}{N}\,g_i \;=\; \frac{1}{N}\sum_{i=1}^{N}\nabla_\theta\,\ell\!\left(h_\theta(x^{(i)}),y^{(i)}\right) \;=\; \nabla_\theta J(\theta). \qquad\blacksquare$$
+    <p>The uniform-random draw is exactly what makes the middle equality hold: each sample's gradient is weighted by $\frac1N$, which is precisely how the ERM average weights it. Sampling non-uniformly (say, always preferring the hard examples) would break unbiasedness — and is a real technique, but then you must reweight to compensate.</p>
+  </div>
+
+  <div class="box intuition"><span class="label">Intuition</span>
+    <p>Write the stochastic gradient as truth plus noise: $g_j = \nabla J(\theta) + \varepsilon_j$ where, by the proof above, $\E[\varepsilon_j]=0$. An SGD step is then $\theta \leftarrow \theta - \alpha\nabla J(\theta) - \alpha\varepsilon_j$: a true gradient step, plus a random kick. Over many steps the kicks partially cancel while the true-gradient parts accumulate — so the <em>drift</em> is downhill even though any individual step may go uphill.</p>
+    <p>Analogy: a drunk walking home downhill. Each footstep is unreliable, some go the wrong way entirely, and the path looks nothing like a straight line. But gravity biases every step slightly, and he arrives — usually before the sober man who insists on surveying the whole hillside before each step. Where the analogy breaks: he never stops staggering. The kicks do not vanish near the minimum (a single sample's gradient is generally nonzero even at $\theta^\star$), so SGD with a constant $\alpha$ does not converge to a point, it ends up bouncing around within a ball of radius roughly proportional to $\alpha$. That is exactly why $\alpha_t = 1/\sqrt{t}$ decay schedules exist: shrink the kicks over time and the ball shrinks to a point.</p>
+  </div>
+
+  <h3>The training-error curves</h3>
+
+  <p class="muted tiny"><strong>A note on these two figures.</strong> The lecture notes contain two plots — "Figure 1: Training error of gradient descent" and "Figure 2: Training error of (batch) GD and SGD" — whose images did not survive extraction from the PDF. The curves below are <em>reconstructions</em>: real simulations run live in your browser, fitting a linear model to 200 synthetic points with both algorithms, so the shapes are genuine rather than drawn by hand. Press <em>Re-run</em> to draw a fresh random dataset and watch the qualitative story stay the same.</p>
+
+  <div class="viz">
+    <div class="viz-title">Figure 5 · Reconstruction of Figure 1 — training error of gradient descent</div>
+    <svg id="figErrGD" viewBox="0 0 660 300" role="img" aria-label="Training error of batch gradient descent decreasing smoothly and monotonically with iteration number"></svg>
+    <div class="caption">What to notice: smooth, monotone, and decelerating. Every step uses the exact gradient, so (with $\alpha$ in the stable range) the objective <em>cannot</em> go up. The curve flattens because the gradient shrinks as you approach the minimum — the same "steps get smaller near the bottom" property we relied on in Figure 1. This is the picture people mean by "a healthy loss curve".</div>
+  </div>
+
+  <div class="viz">
+    <div class="viz-title">Figure 6 · Reconstruction of Figure 2 — batch GD vs SGD</div>
+    <svg id="figErrBoth" viewBox="0 0 660 320" role="img" aria-label="Training error of batch gradient descent and stochastic gradient descent plotted against number of per-sample gradient computations"></svg>
+    <div class="controls">
+      <button class="btn" id="errRerun">Re-run with new data</button>
+      <label><input type="checkbox" id="errXmode"> plot against <em>iterations</em> instead</label>
+    </div>
+    <div class="caption">What to notice — and this is the point of the figure: the horizontal axis is <strong>per-sample gradient computations</strong> (a proxy for wall-clock time), not iterations. That is the honest comparison, because one GD iteration costs $N$ times one SGD iteration. On this axis SGD is essentially at the floor before batch GD has finished its <em>second</em> step. SGD's curve is visibly noisy and sometimes goes <em>up</em> — a single bad sample can point uphill — and it flattens into a noise floor rather than a point. Tick the box to plot against iterations instead and watch GD appear to win, which is the misleading plot you should refuse to accept from anyone.</div>
+  </div>
+
+  <div class="box warn"><span class="label">Common mistake</span>
+    <p>Comparing optimizers by iteration count. Per iteration, batch GD is strictly better — it uses strictly more information. The only comparison that means anything is error against <em>compute spent</em> (gradient evaluations, FLOPs, or seconds). Under that accounting SGD wins decisively on large $N$, which is why it, and not batch GD, trains essentially every large model in existence.</p>
+  </div>
+
+  <h2 id="mini-batch">Mini-batch gradient descent</h2>
+
+  <p>Batch GD uses all $N$ samples per update; SGD uses exactly $1$. The intermediate version is the obvious one, and it is what everyone actually runs.</p>
+
+  <div class="box defn"><span class="label">Definition</span>
+    <p><strong>Mini-batch gradient descent.</strong> Choose $K$ samples at random per iteration, with $1 &lt; K &lt; N$. Call the chosen index set $B_t$ (the <em>mini-batch</em>). The update is</p>
+    $$\theta^{(t)} = \theta^{(t-1)} - \alpha\,\frac{1}{K}\sum_{j\in B_t}\nabla_\theta\,\ell\!\left(h_\theta(x^{(j)}), y^{(j)}\right).$$
+    <p>$K=1$ recovers SGD; $K=N$ recovers batch GD. Everything in between is a dial.</p>
+  </div>
+
+  <h3>The tradeoff, quantified</h3>
+
+  <p>Averaging $K$ independent unbiased estimates gives an estimate that is still unbiased (the average of things each averaging to $\nabla J$ averages to $\nabla J$) but less noisy. Specifically, for independent draws the variance of the mean is</p>
+
+  $$\mathrm{Var}\!\left[\frac{1}{K}\sum_{j\in B_t} g_j\right] = \frac{\sigma^2}{K},$$
+
+  <p>where $\sigma^2$ is the per-sample gradient variance. So:</p>
+
+  <ul>
+    <li><strong>Noise falls like $1/K$.</strong> The standard deviation — the actual scale of the wobble — falls like $1/\sqrt{K}$.</li>
+    <li><strong>Cost rises like $K$.</strong> Each iteration does $K$ times the work.</li>
+  </ul>
+
+  <p>Multiply those together and you get the uncomfortable fact: <em>noise reduction per unit of compute is roughly constant</em>. Going from $K=1$ to $K=100$ makes each step $100\times$ more expensive to make the noise $10\times$ smaller. Purely in flop-counting terms, small $K$ wins.</p>
+
+  <p>So why does everyone use $K=32$ or $K=256$ rather than $K=1$? Because the flop count is not the wall clock:</p>
+
+  <ul>
+    <li><strong>Hardware parallelism.</strong> A GPU computing $256$ sample gradients simultaneously takes barely longer than computing one — the arithmetic units are idle otherwise. Up to the point of saturation, mini-batching is nearly free in real time.</li>
+    <li><strong>Fixed per-step overhead.</strong> Kernel launches, memory transfers, the optimizer update itself: costs paid per <em>iteration</em>, not per sample. With $K=1$ they dominate.</li>
+    <li><strong>Stability.</strong> A less noisy gradient tolerates a larger $\alpha$, which recovers some of the lost steps.</li>
+  </ul>
+
+  <p><span class="pill">beyond syllabus</span> <strong>Why $K$ is usually a power of two.</strong> $32, 64, 128, 256$ — this is convention with a hardware reason, not mathematics. GPU threads execute in fixed-size groups (32 on NVIDIA hardware, a "warp"), memory coalesces on power-of-two boundaries, and tensor cores want dimensions that are multiples of 8 or 16. A batch of $100$ pads out to $128$ internally and you pay for $128$ anyway, so you may as well use $128$. There is nothing about the <em>statistics</em> that prefers a power of two — $K=100$ is a perfectly good estimator.</p>
+
+  <p class="muted tiny">One vocabulary note you will need immediately in practice: implementations usually do not draw $K$ indices uniformly at random with replacement, as the definition literally says. They shuffle the dataset once and cut it into consecutive blocks of $K$, so every sample is used exactly once per pass. One such pass is an <strong>epoch</strong>. This is sampling <em>without</em> replacement, which is slightly biased within an epoch but has lower variance overall and is easier on memory bandwidth — a small, deliberate, universal deviation from the theory.</p>
+
+  <div class="guided">
+    <div class="g-head"><span class="tag">Guided problem</span>Budget three optimizers</div>
+    <div class="g-body">
+      <p>$N = 100{,}000$ training samples. One per-sample gradient costs $1$ microsecond, and per-iteration overhead is negligible except where stated. Your compute budget is <strong>10 seconds</strong>, i.e. $10^7$ per-sample gradient computations.</p>
+      <p>(a) How many parameter updates does batch GD get? (b) How many does SGD get? (c) How many does mini-batch with $K=100$ get? (d) If the hardware computes a batch of 100 gradients in $20\,\mu$s wall-clock rather than $100\,\mu$s, redo (c). (e) Which would you run?</p>
+    </div>
+    <details class="step"><summary>Step 1 — Updates per unit compute</summary>
+      <div>
+        <p>Each update costs (gradients per update) $\times$ (cost per gradient). Budget $= 10^7$ gradient computations.</p>
+        <p><strong>(a) Batch GD:</strong> $N = 10^5$ gradients per update $\Rightarrow 10^7/10^5 = \mathbf{100}$ updates.</p>
+        <p><strong>(b) SGD:</strong> $1$ gradient per update $\Rightarrow \mathbf{10^7}$ updates — ten million.</p>
+        <p><strong>(c) Mini-batch $K=100$:</strong> $10^7/100 = \mathbf{10^5}$ updates.</p>
+        <p>In epochs: the budget is $10^7/10^5 = 100$ passes over the data, for all three. They differ entirely in how finely they slice those passes into updates.</p>
+      </div></details>
+    <details class="step"><summary>Step 2 — Is 100 updates ever enough?</summary>
+      <div>
+        <p>For linear regression on a well-conditioned problem, quite possibly — we saw geometric convergence, gaining a digit every few iterations. For a neural network, no: $100$ updates from a random initialisation leaves you essentially at the initialisation. This is the crux. Batch GD does not fail because its direction is bad; its direction is the best available. It fails because <em>the number of updates is the resource that matters</em>, and batch GD spends its entire budget on a hundred extremely well-informed steps.</p>
+      </div></details>
+    <details class="step"><summary>Step 3 — Wall-clock changes the answer (d)</summary>
+      <div>
+        <p>With parallel hardware, $100$ gradients cost $20\,\mu$s, so the effective cost per gradient is $0.2\,\mu$s. In $10$ seconds: $10\,\text{s}/20\,\mu\text{s} = \mathbf{500{,}000}$ updates — five times more than the naive count in (c), and each update uses a gradient with $\frac{1}{\sqrt{100}} = \frac{1}{10}$ the noise of a single sample's.</p>
+        <p>Compare to SGD, which on the same hardware still gets $10^7$ updates only if a single gradient really costs $1\,\mu$s — but it leaves 99% of the GPU idle doing so. This is the entire practical argument for mini-batching.</p>
+      </div></details>
+    <details class="step"><summary>Answer &amp; the takeaway</summary>
+      <div>
+        <p>(a) $100$ &nbsp; (b) $10^7$ &nbsp; (c) $10^5$ &nbsp; (d) $5\times10^5$ &nbsp; (e) mini-batch, with $K$ set to the largest value your hardware absorbs for free — typically $32$ to $256$.</p>
+        <p><strong>Takeaway:</strong> all three algorithms consume identical compute and differ only in the granularity of the updates. The right question is never "which gradient is most accurate?" but "how much progress can I buy per second?" — and the answer to that depends on your hardware, not only your mathematics.</p>
+      </div></details>
+  </div>
+
+  <div class="quiz" data-answer="2">
+    <div class="q">Your SGD training-loss curve is jagged: it goes down overall, but individual steps clearly increase the loss. What should you conclude?</div>
+    <button class="opt">The gradient computation has a sign error — descent can never increase the loss.</button>
+    <button class="opt">$\alpha$ is definitely too large; halve it until the curve is smooth.</button>
+    <button class="opt">This is expected. Each step descends the loss of <em>one sampled point</em>, which is only the full training loss in expectation, so any single step can raise the full loss.</button>
+    <button class="opt">You must switch to batch gradient descent to get a valid result.</button>
+    <div class="why"><strong>Why:</strong> SGD steps exactly downhill on $\ell_j$, not on $J$ — and $\nabla\ell_j = \nabla J + \varepsilon_j$ with a nonzero kick $\varepsilon_j$. Jaggedness is the noise term, not a bug, and it is the price of the $N\times$ speedup. Diagnosing the difference: healthy SGD is jagged with a <em>downward trend</em> and a stable noise floor, while too-large $\alpha$ makes the trend flat or upward and the amplitude grow. A smooth curve is not the goal; a decreasing one is.</div>
+  </div>
+
+  <h2 id="recap">Recap</h2>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="kicker">The rule</div>
+      <h3>Where it came from</h3>
+      <p>Derivative positive $\Rightarrow$ step left; negative $\Rightarrow$ step right; magnitude is large when far away $\Rightarrow$ step proportionally. All three at once: $\theta \leftarrow \theta - \alpha\nabla_\theta J$. Nothing else was designed.</p>
+    </div>
+    <div class="card">
+      <div class="kicker">The dial</div>
+      <h3>Learning rate</h3>
+      <p>On $J(w)=cw^2$: converges iff $0&lt;\alpha&lt;1/c$; exact in one step at $\alpha = 1/(2c)$; oscillates at the boundary; diverges beyond. In general $\alpha &lt; 2/L$ with $L$ the largest curvature.</p>
+    </div>
+  </div>
+
+  <ul>
+    <li><strong>ERM is an optimization problem.</strong> Once the hypothesis class and loss are fixed, learning <em>is</em> minimising a function of the parameters, and the only remaining question is how to do it efficiently.</li>
+    <li><strong>Everything was derived on a parabola,</strong> because a one-sample squared loss is a parabola and so is the $N$-sample average — but the algorithm only ever uses a derivative, which is why it transfers to landscapes of any shape.</li>
+    <li><strong>Four stopping criteria:</strong> the objective stops improving, the derivative stops changing, the iterate stops moving, or you run out of compute.</li>
+    <li><strong>The gradient</strong> is the stack of all $d$ partial derivatives; it points along steepest ascent, perpendicular to the level sets, so $-\nabla J$ is the descent direction. This course arranges derivatives in <em>denominator layout</em>.</li>
+    <li><strong>Two identities do all the work:</strong> $\nabla_\theta(\theta^\top v) = v$ and $\nabla_\theta(\theta^\top A\theta) = (A+A^\top)\theta$, which is $2A\theta$ for symmetric $A$ — and $X^\top X$ is always symmetric. Together they give $\nabla_\theta\|y-X\theta\|_2^2 = -2X^\top y + 2X^\top X\theta$ and hence the normal equations, agreeing with the completing-the-square derivation in the <a href="linear-regression.html">previous chapter</a>.</li>
+    <li><strong>Linear regression is the lucky case.</strong> Almost nothing else has a closed form; gradient descent is what you use when $\nabla J = 0$ cannot be solved, including for the crazy shapes of neural networks.</li>
+    <li><strong>Local minima are real</strong> — lowest in their neighbourhood, not necessarily lowest anywhere — and gradient descent can get stuck in one depending on where it starts. It remains overwhelmingly popular anyway, because a good solution found efficiently beats a perfect one found never.</li>
+    <li><strong>Batch GD needs all $N$ gradients per update.</strong> SGD needs one, chosen uniformly at random, and works because that single gradient is an <em>unbiased estimate</em> of the full one: $\E_j[\nabla\ell_j] = \nabla J$. Mini-batch takes $K$ of them, cutting variance by $1/K$ at $K$ times the cost — a wash on paper, a clear win on real hardware.</li>
+    <li>Judge optimizers by error versus <em>compute</em>, never versus iterations.</li>
+  </ul>
+
+  <p>Next: <a href="feature-engineering.html">feature engineering</a>, where the shape of the bowl you are descending turns out to be something you get to choose.</p>
+
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<script src="assets/site.js"></script>
+<script>
+document.addEventListener("shellready", () => {
+
+  const E = (t, a, txt) => SG.el(t, a || {}, txt);
+  const clear = n => { while (n.firstChild) n.removeChild(n.firstChild); };
+  const P = pts => pts.map(p => p[0].toFixed(2) + "," + p[1].toFixed(2)).join(" ");
+
+  /* a reusable plot frame: returns scale functions */
+  function frame(svg, o) {
+    const L = o.L, R = o.R, T = o.T, B = o.B;
+    const sx = v => L + (v - o.x0) / (o.x1 - o.x0) * (R - L);
+    const sy = v => B - (v - o.y0) / (o.y1 - o.y0) * (B - T);
+    svg.appendChild(E("rect", { x: L, y: T, width: R - L, height: B - T,
+      fill: "var(--bg-soft)", stroke: "var(--line)", rx: 6 }));
+    (o.xticks || []).forEach(t => {
+      svg.appendChild(E("line", { x1: sx(t), y1: B, x2: sx(t), y2: B + 5, stroke: "var(--line-2)" }));
+      svg.appendChild(E("text", { x: sx(t), y: B + 19, "font-size": 11,
+        fill: "var(--ink-mute)", "text-anchor": "middle" }, o.xfmt ? o.xfmt(t) : String(t)));
+    });
+    (o.yticks || []).forEach(t => {
+      svg.appendChild(E("line", { x1: L - 5, y1: sy(t), x2: L, y2: sy(t), stroke: "var(--line-2)" }));
+      svg.appendChild(E("text", { x: L - 9, y: sy(t) + 4, "font-size": 11,
+        fill: "var(--ink-mute)", "text-anchor": "end" }, o.yfmt ? o.yfmt(t) : String(t)));
+    });
+    if (o.xlabel) svg.appendChild(E("text", { x: (L + R) / 2, y: B + 38, "font-size": 12.5,
+      fill: "var(--ink-soft)", "text-anchor": "middle" }, o.xlabel));
+    if (o.ylabel) svg.appendChild(E("text", { x: 14, y: (T + B) / 2, "font-size": 12.5,
+      fill: "var(--ink-soft)", "text-anchor": "middle",
+      transform: "rotate(-90 14 " + ((T + B) / 2) + ")" }, o.ylabel));
+    return { sx, sy, L, R, T, B };
+  }
+
+  function arrowDefs(svg, id, color) {
+    const defs = E("defs");
+    const m = E("marker", { id: id, viewBox: "0 0 10 10", refX: 8, refY: 5,
+      markerWidth: 6, markerHeight: 6, orient: "auto-start-reverse" });
+    m.appendChild(E("path", { d: "M 0 0 L 10 5 L 0 10 z", fill: color }));
+    defs.appendChild(m); svg.appendChild(defs);
+  }
+
+  /* =================================================================
+     Figure 1 — the sign of the derivative
+     ================================================================= */
+  (function () {
+    const svg = document.getElementById("figSign");
+    if (!svg) return;
+    const J = w => 0.6 * w * w, dJ = w => 1.2 * w;
+    const f = frame(svg, { L: 62, R: 620, T: 26, B: 292, x0: -4, x1: 4, y0: 0, y1: 10,
+      xticks: [-4, -3, -2, -1, 0, 1, 2, 3, 4], yticks: [0, 2, 4, 6, 8, 10],
+      xlabel: "w", ylabel: "J(w)" });
+    ["a1", "a2"].forEach((id, i) => arrowDefs(svg, "sign-" + id, i ? "var(--accent-2)" : "var(--accent)"));
+
+    const pts = [];
+    for (let w = -4; w <= 4.0001; w += 0.05) pts.push([f.sx(w), f.sy(Math.min(J(w), 10))]);
+    svg.appendChild(E("polyline", { points: P(pts), fill: "none",
+      stroke: "var(--ink)", "stroke-width": 2.2 }));
+
+    /* minimum marker */
+    svg.appendChild(E("line", { x1: f.sx(0), y1: f.sy(0), x2: f.sx(0), y2: f.T,
+      stroke: "var(--line-2)", "stroke-dasharray": "3 4" }));
+    svg.appendChild(E("circle", { cx: f.sx(0), cy: f.sy(0), r: 5,
+      fill: "var(--gold)", stroke: "var(--panel)", "stroke-width": 1.5 }));
+    svg.appendChild(E("text", { x: f.sx(0), y: f.sy(0) + 22, "font-size": 12,
+      fill: "var(--gold)", "text-anchor": "middle" }, "the minimiser"));
+
+    function mark(w, col, arrowId, label, side, h) {
+      const g = E("g");
+      const y = J(w), s = dJ(w);
+      g.appendChild(E("line", { x1: f.sx(w - h), y1: f.sy(y - s * h), x2: f.sx(w + h), y2: f.sy(y + s * h),
+        stroke: col, "stroke-width": 2, "stroke-dasharray": "6 4" }));
+      g.appendChild(E("circle", { cx: f.sx(w), cy: f.sy(y), r: 5.5, fill: col }));
+      /* the step arrow along the axis, opposite the sign */
+      const dir = s > 0 ? -1 : 1, base = f.sy(y) + 26;
+      g.appendChild(E("line", { x1: f.sx(w), y1: base, x2: f.sx(w + dir * 1.15), y2: base,
+        stroke: col, "stroke-width": 2.4, "marker-end": "url(#sign-" + arrowId + ")" }));
+      g.appendChild(E("text", { x: f.sx(w + dir * 0.55), y: base - 8, "font-size": 11.5,
+        fill: col, "text-anchor": "middle" }, dir < 0 ? "step left" : "step right"));
+      g.appendChild(E("text", { x: f.sx(w) + (side > 0 ? 12 : -12), y: f.sy(y) - 10, "font-size": 12,
+        fill: col, "text-anchor": side > 0 ? "start" : "end" }, label));
+      svg.appendChild(g);
+    }
+    mark(2.9, "var(--accent)", "a1", "slope = +3.5  (positive)", -1, 1.35);
+    mark(-2.0, "var(--accent-2)", "a2", "slope = −2.4  (negative)", 1, 1.2);
+    mark(-3.0, "var(--accent-2)", "a2", "slope = −3.6  (steeper: farther out)", 1, 0.9);
+
+    svg.appendChild(E("text", { x: 340, y: 352, "font-size": 12.5, fill: "var(--ink-mute)",
+      "text-anchor": "middle" }, "move against the sign of dJ/dw, by an amount proportional to its size"));
+  })();
+
+  /* =================================================================
+     Figure 2 — interactive gradient-descent stepper
+     ================================================================= */
+  (function () {
+    const svg = document.getElementById("figGD");
+    if (!svg) return;
+    const alphaI = document.getElementById("gdAlpha"),
+          startI = document.getElementById("gdStart"),
+          readout = document.getElementById("gdReadout");
+
+    const FNS = [
+      { name: "J(w) = w²", J: w => w * w, d: w => 2 * w, ymax: 12.5,
+        yticks: [0, 3, 6, 9, 12], note: "single minimum at w = 0, curvature 2" },
+      { name: "J(w) = ¼w⁴ − 1.5w² + 0.4w + 4", J: w => 0.25 * Math.pow(w, 4) - 1.5 * w * w + 0.4 * w + 4,
+        d: w => Math.pow(w, 3) - 3 * w + 0.4, ymax: 9,
+        yticks: [0, 2, 4, 6, 8], note: "two minima (deep left, shallow right) and a ridge between them" }
+    ];
+    let fi = 0, trail = [], running = null;
+
+    function reset() {
+      trail = [+startI.value];
+      draw();
+    }
+    function step() {
+      const f = FNS[fi], a = +alphaI.value;
+      const w = trail[trail.length - 1];
+      if (!isFinite(w) || Math.abs(w) > 1e6) return;
+      trail.push(w - a * f.d(w));
+      if (trail.length > 60) trail.shift();
+      draw();
+    }
+
+    function draw() {
+      clear(svg);
+      const f = FNS[fi];
+      const X0 = -3.5, X1 = 3.5;
+      const fr = frame(svg, { L: 66, R: 650, T: 26, B: 330, x0: X0, x1: X1, y0: 0, y1: f.ymax,
+        xticks: [-3, -2, -1, 0, 1, 2, 3], yticks: f.yticks,
+        xlabel: "w", ylabel: "J(w)" });
+      arrowDefs(svg, "gd-ar", "var(--accent)");
+
+      const pts = [];
+      for (let w = X0; w <= X1 + 1e-9; w += 0.02) {
+        const v = f.J(w); if (v <= f.ymax) pts.push([fr.sx(w), fr.sy(v)]);
+      }
+      svg.appendChild(E("polyline", { points: P(pts), fill: "none",
+        stroke: "var(--ink)", "stroke-width": 2.2 }));
+
+      const clampW = w => SG.clamp(w, X0, X1);
+      const onPlot = w => w >= X0 && w <= X1 && f.J(w) <= f.ymax;
+
+      /* connecting segments between consecutive iterates */
+      for (let i = 1; i < trail.length; i++) {
+        const a = trail[i - 1], b = trail[i];
+        if (!isFinite(a) || !isFinite(b)) continue;
+        svg.appendChild(E("line", {
+          x1: fr.sx(clampW(a)), y1: fr.sy(Math.min(f.J(clampW(a)), f.ymax)),
+          x2: fr.sx(clampW(b)), y2: fr.sy(Math.min(f.J(clampW(b)), f.ymax)),
+          stroke: "var(--accent)", "stroke-width": 1.4, "stroke-dasharray": "4 3", opacity: 0.55
+        }));
+      }
+      /* the iterates themselves */
+      trail.forEach((w, i) => {
+        const last = i === trail.length - 1;
+        const cw = clampW(w), off = !onPlot(w);
+        const cy = fr.sy(Math.min(f.J(cw), f.ymax));
+        svg.appendChild(E("line", { x1: fr.sx(cw), y1: cy, x2: fr.sx(cw), y2: fr.B,
+          stroke: last ? "var(--accent)" : "var(--line-2)", "stroke-width": 1,
+          "stroke-dasharray": "2 3", opacity: last ? 0.8 : 0.5 }));
+        svg.appendChild(E("circle", { cx: fr.sx(cw), cy: cy, r: last ? 6.5 : 4,
+          fill: off ? "var(--rose)" : (last ? "var(--accent)" : "var(--accent-3)"),
+          stroke: "var(--panel)", "stroke-width": last ? 1.8 : 1,
+          opacity: last ? 1 : 0.55 + 0.4 * (i / Math.max(1, trail.length)) }));
+        if (last) svg.appendChild(E("text", { x: fr.sx(cw), y: cy - 14, "font-size": 12,
+          fill: "var(--accent)", "text-anchor": "middle", "font-weight": 650 },
+          "w(" + (trail.length - 1) + ") = " + (isFinite(w) ? w.toFixed(3) : "∞")));
+      });
+
+      /* off-scale warning */
+      const wlast = trail[trail.length - 1];
+      if (!onPlot(wlast)) {
+        svg.appendChild(E("text", { x: 358, y: 50, "font-size": 13, fill: "var(--rose)",
+          "text-anchor": "middle", "font-weight": 650 },
+          "iterate is off the plot — |w| = " + (isFinite(wlast) ? Math.abs(wlast).toFixed(2) : "∞") + ", diverging"));
+      }
+      svg.appendChild(E("text", { x: 358, y: 390, "font-size": 12, fill: "var(--ink-mute)",
+        "text-anchor": "middle" }, f.note));
+
+      const a = +alphaI.value;
+      let verdict = "";
+      if (fi === 0) {
+        const r = Math.abs(1 - 2 * a);
+        verdict = r < 1e-9 ? "  factor |1−2α| = 0 → exact in one step"
+          : r < 1 ? "  factor |1−2α| = " + r.toFixed(2) + " < 1 → converging"
+          : (r === 1 ? "  factor |1−2α| = 1 → oscillates forever" : "  factor |1−2α| = " + r.toFixed(2) + " > 1 → diverging");
+      }
+      readout.textContent = "trail: " + trail.slice(-6).map(v => isFinite(v) ? v.toFixed(4) : "±∞").join("  →  ") + verdict;
+    }
+
+    alphaI.addEventListener("input", draw);
+    startI.addEventListener("input", reset);
+    document.getElementById("gdStep").onclick = step;
+    document.getElementById("gdReset").onclick = reset;
+    const runBtn = document.getElementById("gdRun");
+    runBtn.onclick = () => {
+      if (running) { clearInterval(running); running = null; runBtn.textContent = "▶ Auto-run"; }
+      else { running = setInterval(step, 420); runBtn.textContent = "❚❚ Pause"; }
+    };
+    const fnBtn = document.getElementById("gdFn");
+    fnBtn.onclick = () => { fi = (fi + 1) % FNS.length; fnBtn.textContent = "Function: " + FNS[fi].name; reset(); };
+    fnBtn.textContent = "Function: " + FNS[0].name;
+    reset();
+  })();
+
+  /* =================================================================
+     Figure 3 — level sets and the gradient
+     ================================================================= */
+  (function () {
+    const svg = document.getElementById("figGrad");
+    if (!svg) return;
+    const fr = frame(svg, { L: 60, R: 620, T: 26, B: 326, x0: -4.5, x1: 4.5, y0: -2.4, y1: 2.4,
+      xticks: [-4, -2, 0, 2, 4], yticks: [-2, -1, 0, 1, 2],
+      xlabel: "θ₁", ylabel: "θ₂" });
+    arrowDefs(svg, "gr-up", "var(--accent)");
+    arrowDefs(svg, "gr-dn", "var(--accent-2)");
+    arrowDefs(svg, "gr-fl", "var(--ink-mute)");
+
+    /* J(θ) = θ₁²/4 + θ₂² ; level set J = c is an ellipse with semi-axes 2√c, √c */
+    [0.12, 0.35, 0.7, 1, 1.6, 2.3, 3.1, 4].forEach(c => {
+      svg.appendChild(E("ellipse", {
+        cx: fr.sx(0), cy: fr.sy(0),
+        rx: fr.sx(2 * Math.sqrt(c)) - fr.sx(0),
+        ry: fr.sy(0) - fr.sy(Math.sqrt(c)),
+        fill: "none", stroke: c === 1 ? "var(--accent-3)" : "var(--line-2)",
+        "stroke-width": c === 1 ? 1.8 : 1.1
+      }));
+    });
+    svg.appendChild(E("circle", { cx: fr.sx(0), cy: fr.sy(0), r: 4.5, fill: "var(--gold)" }));
+    svg.appendChild(E("text", { x: fr.sx(0) + 8, y: fr.sy(0) - 8, "font-size": 11.5,
+      fill: "var(--gold)" }, "minimum"));
+
+    const grad = p => [p[0] / 2, 2 * p[1]];
+    function show(p, lab) {
+      const g = grad(p), s = 0.75;
+      svg.appendChild(E("line", { x1: fr.sx(p[0]), y1: fr.sy(p[1]),
+        x2: fr.sx(p[0] + s * g[0]), y2: fr.sy(p[1] + s * g[1]),
+        stroke: "var(--accent)", "stroke-width": 2.6, "marker-end": "url(#gr-up)" }));
+      svg.appendChild(E("line", { x1: fr.sx(p[0]), y1: fr.sy(p[1]),
+        x2: fr.sx(p[0] - s * g[0]), y2: fr.sy(p[1] - s * g[1]),
+        stroke: "var(--accent-2)", "stroke-width": 2.6, "marker-end": "url(#gr-dn)" }));
+      svg.appendChild(E("circle", { cx: fr.sx(p[0]), cy: fr.sy(p[1]), r: 5, fill: "var(--ink)" }));
+      svg.appendChild(E("text", { x: fr.sx(p[0]) + 10, y: fr.sy(p[1]) + 16, "font-size": 11.5,
+        fill: "var(--ink-soft)" }, lab));
+    }
+    show([0, 1], "θ = (0,1):  ∇J = (0,2) — long");
+    show([2, 0], "θ = (2,0):  ∇J = (1,0) — short");
+
+    /* the zero-change direction, tangent to the contour at (0,1) */
+    svg.appendChild(E("line", { x1: fr.sx(0), y1: fr.sy(1), x2: fr.sx(1.5), y2: fr.sy(1),
+      stroke: "var(--ink-mute)", "stroke-width": 2, "stroke-dasharray": "6 4",
+      "marker-end": "url(#gr-fl)" }));
+    svg.appendChild(E("text", { x: fr.sx(1.6), y: fr.sy(1) + 4, "font-size": 11.5,
+      fill: "var(--ink-mute)" }, "along the contour: zero change"));
+
+    const key = [["var(--accent)", "∇J  — steepest ascent"], ["var(--accent-2)", "−∇J — steepest descent (GD walks this way)"]];
+    key.forEach((k, i) => {
+      svg.appendChild(E("line", { x1: 72, y1: 42 + i * 17, x2: 96, y2: 42 + i * 17,
+        stroke: k[0], "stroke-width": 3 }));
+      svg.appendChild(E("text", { x: 103, y: 46 + i * 17, "font-size": 12, fill: "var(--ink-soft)" }, k[1]));
+    });
+  })();
+
+  /* =================================================================
+     Figure 4 — the zig-zag in an ill-conditioned bowl
+     ================================================================= */
+  (function () {
+    const svg = document.getElementById("figBowl");
+    if (!svg) return;
+    const aI = document.getElementById("bwAlpha"), nI = document.getElementById("bwSteps");
+    const J = p => 0.5 * (p[0] * p[0] + 20 * p[1] * p[1]);
+
+    function draw() {
+      clear(svg);
+      const a = +aI.value, n = +nI.value;
+      const fr = frame(svg, { L: 62, R: 650, T: 34, B: 330, x0: -3, x1: 10.5, y0: -1.7, y1: 1.7,
+        xticks: [-2, 0, 2, 4, 6, 8, 10], yticks: [-1.5, -0.5, 0.5, 1.5],
+        xlabel: "θ₁  (curvature 1 — the shallow direction)",
+        ylabel: "θ₂  (curvature 20)" });
+      arrowDefs(svg, "bw-ar", "var(--accent)");
+
+      [0.5, 2, 6, 14, 26, 40, 50.5].forEach(c => {
+        svg.appendChild(E("ellipse", { cx: fr.sx(0), cy: fr.sy(0),
+          rx: fr.sx(Math.sqrt(2 * c)) - fr.sx(0),
+          ry: fr.sy(0) - fr.sy(Math.sqrt(c / 10)),
+          fill: "none", stroke: "var(--line-2)", "stroke-width": 1.1 }));
+      });
+      svg.appendChild(E("circle", { cx: fr.sx(0), cy: fr.sy(0), r: 4.5, fill: "var(--gold)" }));
+
+      let p = [9, 1]; const path = [p.slice()];
+      for (let k = 0; k < n; k++) {
+        p = [p[0] - a * p[0], p[1] - a * 20 * p[1]];
+        path.push(p.slice());
+        if (Math.abs(p[1]) > 40) break;
+      }
+      const cl = q => [SG.clamp(q[0], -3, 10.5), SG.clamp(q[1], -1.7, 1.7)];
+      const px = path.map(q => { const c = cl(q); return [fr.sx(c[0]), fr.sy(c[1])]; });
+      svg.appendChild(E("polyline", { points: P(px), fill: "none",
+        stroke: "var(--accent)", "stroke-width": 2, "marker-end": "url(#bw-ar)" }));
+      path.forEach((q, i) => {
+        const c = cl(q), esc = Math.abs(q[1]) > 1.7;
+        svg.appendChild(E("circle", { cx: fr.sx(c[0]), cy: fr.sy(c[1]), r: i === 0 ? 6 : 3.4,
+          fill: esc ? "var(--rose)" : (i === 0 ? "var(--accent-3)" : "var(--accent)"),
+          stroke: "var(--panel)", "stroke-width": 1 }));
+      });
+      svg.appendChild(E("text", { x: fr.sx(9), y: fr.sy(1) - 12, "font-size": 12,
+        fill: "var(--accent-3)", "text-anchor": "middle" }, "θ⁽⁰⁾ = (9, 1)"));
+
+      const last = path[path.length - 1];
+      const diverging = a >= 0.1;
+      svg.appendChild(E("text", { x: 356, y: 390, "font-size": 11.5,
+        fill: diverging ? "var(--rose)" : "var(--ink-mute)", "text-anchor": "middle" },
+        diverging
+          ? "α ≥ 2/20 = 0.1 → the θ₂ bounce grows every step: unstable"
+          : "after " + n + " steps: J = " + J(last).toFixed(3) +
+            "   ·   per step, θ₂ error × " + Math.abs(1 - 20 * a).toFixed(2) +
+            " but θ₁ error × " + Math.abs(1 - a).toFixed(2)));
+    }
+    aI.addEventListener("input", draw);
+    nI.addEventListener("input", draw);
+    draw();
+  })();
+
+  /* =================================================================
+     Figures 5 & 6 — reconstructed training-error curves
+     ================================================================= */
+  (function () {
+    const svgA = document.getElementById("figErrGD"),
+          svgB = document.getElementById("figErrBoth");
+    if (!svgA || !svgB) return;
+    const xmode = document.getElementById("errXmode");
+
+    function mulberry32(s) {
+      return function () {
+        s |= 0; s = s + 0x6D2B79F5 | 0;
+        let t = Math.imul(s ^ s >>> 15, 1 | s);
+        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+      };
+    }
+    let seed = 20260920, sim = null;
+
+    function simulate() {
+      const rnd = mulberry32(seed);
+      const N = 200, Phi = [], Y = [];
+      for (let i = 0; i < N; i++) {
+        const x = -2 + 4 * rnd();
+        const noise = (rnd() + rnd() + rnd() + rnd() - 2) * 0.55;   /* ≈ Gaussian */
+        Phi.push([1, x]); Y.push(0.5 + 1.7 * x + noise);
+      }
+      const loss = th => { let s = 0; for (let i = 0; i < N; i++) { const r = Y[i] - (th[0] + th[1] * Phi[i][1]); s += r * r; } return s / N; };
+      const fullGrad = th => {
+        let g0 = 0, g1 = 0;
+        for (let i = 0; i < N; i++) { const r = th[0] + th[1] * Phi[i][1] - Y[i]; g0 += 2 * r; g1 += 2 * r * Phi[i][1]; }
+        return [g0 / N, g1 / N];
+      };
+      const th0 = [-3, -3];
+
+      /* batch GD: 40 iterations, each costing N gradient computations */
+      const GD = []; let th = th0.slice();
+      GD.push({ it: 0, cost: 0, J: loss(th) });
+      for (let t = 1; t <= 40; t++) {
+        const g = fullGrad(th);
+        th = [th[0] - 0.05 * g[0], th[1] - 0.05 * g[1]];
+        GD.push({ it: t, cost: t * N, J: loss(th) });
+      }
+      /* SGD: 8000 single-sample steps = the same total gradient computations */
+      const SG_ = []; let s = th0.slice(); const aS = 0.005;
+      SG_.push({ it: 0, cost: 0, J: loss(s) });
+      for (let t = 1; t <= 40 * N; t++) {
+        const j = Math.floor(rnd() * N);
+        const r = s[0] + s[1] * Phi[j][1] - Y[j];
+        s = [s[0] - aS * 2 * r, s[1] - aS * 2 * r * Phi[j][1]];
+        if (t % 20 === 0 || t <= 40) SG_.push({ it: t, cost: t, J: loss(s) });
+      }
+      /* the optimum, for the floor line */
+      let s11 = N, s12 = 0, s22 = 0, b1 = 0, b2 = 0;
+      for (let i = 0; i < N; i++) { const x = Phi[i][1]; s12 += x; s22 += x * x; b1 += Y[i]; b2 += x * Y[i]; }
+      const det = s11 * s22 - s12 * s12;
+      const opt = [(s22 * b1 - s12 * b2) / det, (s11 * b2 - s12 * b1) / det];
+      sim = { GD, SGD: SG_, Jmin: loss(opt), J0: loss(th0), N };
+    }
+
+    function series(svg, fr, data, key, color, width, dash) {
+      const pts = data.map(d => [fr.sx(d[key]), fr.sy(Math.min(d.J, fr.top))]);
+      svg.appendChild(E("polyline", { points: P(pts), fill: "none", stroke: color,
+        "stroke-width": width, "stroke-dasharray": dash || "none",
+        "stroke-linejoin": "round" }));
+    }
+
+    function drawA() {
+      clear(svgA);
+      const top = Math.ceil(sim.J0 / 5) * 5;
+      const fr = frame(svgA, { L: 64, R: 630, T: 24, B: 238, x0: 0, x1: 40, y0: 0, y1: top,
+        xticks: [0, 10, 20, 30, 40], yticks: [0, top / 4, top / 2, 3 * top / 4, top],
+        yfmt: v => v.toFixed(0),
+        xlabel: "iteration t", ylabel: "training error J(θ)" });
+      fr.top = top;
+      svgA.appendChild(E("line", { x1: fr.L, y1: fr.sy(sim.Jmin), x2: fr.R, y2: fr.sy(sim.Jmin),
+        stroke: "var(--gold)", "stroke-dasharray": "5 4", "stroke-width": 1.4 }));
+      svgA.appendChild(E("text", { x: fr.R - 6, y: fr.sy(sim.Jmin) - 7, "font-size": 11,
+        fill: "var(--gold)", "text-anchor": "end" }, "minimum attainable error J(θ*) = " + sim.Jmin.toFixed(3)));
+      series(svgA, fr, sim.GD, "it", "var(--accent-2)", 2.4);
+      sim.GD.filter((d, i) => i % 4 === 0).forEach(d =>
+        svgA.appendChild(E("circle", { cx: fr.sx(d.it), cy: fr.sy(Math.min(d.J, top)), r: 3,
+          fill: "var(--accent-2)" })));
+      svgA.appendChild(E("text", { x: 340, y: 294, "font-size": 12, fill: "var(--ink-mute)",
+        "text-anchor": "middle" }, "batch gradient descent, α = 0.05, N = 200 — monotone by construction"));
+    }
+
+    function drawB() {
+      clear(svgB);
+      const byIter = xmode.checked;
+      const top = Math.ceil(sim.J0 / 5) * 5;
+      const xmax = byIter ? 40 : 40 * sim.N;
+      const fr = frame(svgB, { L: 64, R: 630, T: 24, B: 246, x0: 0, x1: xmax, y0: 0, y1: top,
+        xticks: byIter ? [0, 10, 20, 30, 40] : [0, 2000, 4000, 6000, 8000],
+        yticks: [0, top / 4, top / 2, 3 * top / 4, top], yfmt: v => v.toFixed(0),
+        xfmt: v => byIter ? String(v) : (v / 1000) + "k",
+        xlabel: byIter ? "iteration t  (the misleading axis)" : "per-sample gradient computations  (∝ wall-clock time)",
+        ylabel: "training error J(θ)" });
+      fr.top = top;
+      svgB.appendChild(E("line", { x1: fr.L, y1: fr.sy(sim.Jmin), x2: fr.R, y2: fr.sy(sim.Jmin),
+        stroke: "var(--gold)", "stroke-dasharray": "5 4", "stroke-width": 1.4 }));
+      const key = byIter ? "it" : "cost";
+      const sgd = byIter ? sim.SGD.filter(d => d.it <= 40) : sim.SGD;
+      series(svgB, fr, sim.GD, key, "var(--accent-2)", 2.4);
+      series(svgB, fr, sgd, key, "var(--accent)", 1.5);
+
+      const leg = [["var(--accent-2)", "batch GD (α = 0.05) — one update costs N = 200 gradients"],
+                   ["var(--accent)", "SGD (α = 0.005) — one update costs 1 gradient"],
+                   ["var(--gold)", "J(θ*), the best any θ can do on this training set"]];
+      leg.forEach((k, i) => {
+        svgB.appendChild(E("line", { x1: 340, y1: 44 + i * 17, x2: 368, y2: 44 + i * 17,
+          stroke: k[0], "stroke-width": 3 }));
+        svgB.appendChild(E("text", { x: 375, y: 48 + i * 17, "font-size": 11.5, fill: "var(--ink-soft)" }, k[1]));
+      });
+      svgB.appendChild(E("text", { x: 346, y: 308, "font-size": 12,
+        fill: byIter ? "var(--rose)" : "var(--ink-mute)", "text-anchor": "middle" },
+        byIter ? "per iteration GD looks unbeatable — but each of its iterations costs 200× more"
+               : "per unit of compute SGD reaches the floor before batch GD finishes two updates"));
+    }
+
+    function redraw() { drawA(); drawB(); }
+    document.getElementById("errRerun").onclick = () => { seed = (seed * 1664525 + 1013904223) >>> 0; simulate(); redraw(); };
+    xmode.addEventListener("change", drawB);
+    simulate(); redraw();
+  })();
+
+});
+</script>
+</body>
+</html>

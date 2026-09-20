@@ -26,5 +26,11 @@ pnpm-debug.log*
 # local Claude Code settings
 .claude/
 
-# local Spotify snapshot preview (see README)
-public/spotify.json
+# local Spotify snapshot preview (see website/README.md)
+website/public/spotify.json
+
+# python virtualenvs
+.venv/
+
+# LLMs-from-scratch working copy: 2.2 GB and contains its own nested .git
+llmtrain/

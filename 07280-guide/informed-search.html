@@ -1,0 +1,1361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Heuristics, Greedy search &amp; A* · 07-280 Field Guide</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body data-page="informed-search">
+<main>
+
+  <div class="eyebrow">Part I · Chapter 2</div>
+  <h1>Heuristics, Greedy search &amp; A*</h1>
+  <p class="subtitle">By the end of this page you can invent a heuristic for a problem you have never seen, hand-trace Greedy and A* to the last decimal, say exactly when A* is optimal and when it silently is not — and prove the blocking argument that the slides leave as “TODO”.</p>
+
+  <div data-toc></div>
+
+  <div class="box key">
+    <span class="label">Where we are</span>
+    <p><a href="search-foundations.html">Chapter 1</a> built the machinery: state spaces, the generic frontier loop, BFS, DFS and uniform-cost search. UCS is <em>complete</em> and <em>optimal</em>, and it has exactly one flaw: it has never heard of the goal. It spends its whole life expanding cheap nodes in every direction, including directly away from the thing you asked it to find. This chapter gives search a nose. Everything below assumes you already know what a frontier, a node, $g(n)$ and the explored set are; if any of those are shaky, read Chapter 1 first — this page will not re-teach them.</p>
+  </div>
+
+  <h2 id="what-ucs-is-missing">1. What UCS is missing</h2>
+
+  <p>Here is the professor's own framing, and it is worth taking literally: <strong>Donuts ASAP!</strong> You are standing somewhere in a city and you want a donut from a specific shop as fast as possible. Uniform-cost search's plan for getting there is to walk one block in <em>every</em> direction, then two blocks in every direction, then three, until one of those expanding rings happens to contain the donut shop.</p>
+
+  <p>That is not stupid. It is provably correct — the first goal UCS pops is the cheapest one, which is the entire point of <a href="search-foundations.html#why-ucs-is-optimal">Chapter 1's optimality proof</a>. But it is wasteful in a very specific and fixable way.</p>
+
+  <div class="box intuition">
+    <span class="label">Intuition</span>
+    <p>UCS's cost contours are circles around the start. If the goal is 3 km east, UCS still explores 3 km west, 3 km north and 3 km south before it gets there — because nothing in the algorithm's inputs distinguishes east from west. The information “the goal is east” exists in your head and in the map, but UCS's interface to the world is only $\text{Actions}$, $\text{Result}$, $c$ and $\text{IsGoal}$, and none of those four functions ever mentions <em>where</em> the goal is. We are going to hand the algorithm a fifth function whose entire job is to whisper “warmer / colder”.</p>
+  </div>
+
+  <p>The slide puts it as a two-column comparison:</p>
+
+  <div class="scroll-x">
+  <table>
+    <thead><tr><th></th><th>Uninformed search (Ch. 1)</th><th>Informed search (this page)</th></tr></thead>
+    <tbody>
+      <tr><td>What it knows</td><td>only cost-so-far $g(n)$</td><td>$g(n)$ <em>and</em> an estimate of cost-to-go $h(n)$</td></tr>
+      <tr><td>Algorithms</td><td>BFS, DFS, IDS, UCS</td><td>Greedy best-first, A*</td></tr>
+      <tr><td>Shape of expansion</td><td>a ball around the start</td><td>a ball squashed toward the goal</td></tr>
+      <tr><td>Extra input needed</td><td>none</td><td>a heuristic function, written by <em>you</em></td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>Notice the cost of the upgrade: informed search is not free. Somebody — you, the problem designer — has to write the heuristic, and the rest of this page is mostly about what makes a heuristic legal, what makes it good, and how to manufacture one when you have no ideas.</p>
+
+  <h2 id="heuristics">2. What a heuristic is</h2>
+
+  <div class="box defn">
+    <span class="label">Definition — heuristic</span>
+    <p>A <strong>heuristic</strong> is a function
+    $$h : \text{States} \to \R_{\ge 0}$$
+    that <strong>estimates how close a state is to a goal</strong>. It is <em>designed for a particular search problem</em> — there is no universal heuristic, the same way there is no universal state space.</p>
+    <p>Read the notation carefully: $h(n)$ is written as a function of a <em>node</em> $n$ but it only ever looks at that node's <strong>state</strong>. It does not know how you got there, it does not look at $g(n)$, and it does not get to see the future. It is a cheap guess computed from the state alone.</p>
+  </div>
+
+  <p>The two examples the course gives, both for pathing problems:</p>
+
+  <ul>
+    <li><strong>Manhattan distance</strong> between $(x_1,y_1)$ and $(x_2,y_2)$: $|x_1-x_2| + |y_1-y_2|$. The distance if you may only move along grid lines — the right estimate for a Pacman maze, where diagonal moves do not exist.</li>
+    <li><strong>Euclidean distance</strong>: $\sqrt{(x_1-x_2)^2 + (y_1-y_2)^2}$. The as-the-crow-flies distance — the right estimate when you can move in any direction, or when you are on a road map and want the straight-line distance between two towns.</li>
+  </ul>
+
+  <p>The slide's little triangle makes the point in one picture: a state that is 10 units across and 5 units up from the goal is $10+5=15$ away in Manhattan terms and $\sqrt{100+25} \approx 11.2$ away in Euclidean terms. Both are estimates of the same thing; they differ because they model different movement rules.</p>
+
+  <div class="box analogy">
+    <span class="label">Analogy</span>
+    <p>A heuristic is the <em>altitude reading on a hiker's watch</em> when the goal is the valley floor. It doesn't know the trail. It doesn't know about the cliff between you and the valley. But it's cheap to read, and “I'm at 800 m” versus “I'm at 200 m” is real information about which way is probably home.</p>
+    <p><strong>Where the analogy breaks:</strong> the watch can be badly wrong in a way that matters — if the only trail down goes <em>up</em> first, altitude will send you into a cliff. That failure mode is exactly Greedy search, and the fix (A*) is to keep track of how far you have already walked as well.</p>
+  </div>
+
+  <h3>The running example: straight-line distance to Bucharest</h3>
+
+  <p>The course uses the Romania road map from Russell &amp; Norvig. The search problem: <strong>drive from Arad to Bucharest</strong>. States are cities; actions are “take road $X$”; step costs are road lengths in kilometres; the goal test is “am I in Bucharest?”.</p>
+
+  <p>The heuristic $h_{\text{SLD}}(n)$ is the <strong>straight-line distance from city $n$ to Bucharest</strong> — the number you would get by laying a ruler on the map, ignoring that roads exist. It is computable instantly from latitude and longitude, it requires no search, and it is never an overestimate, because no road can be shorter than the straight line. Hold on to that last sentence; in §7 it becomes the definition of <em>admissible</em>.</p>
+
+  <div class="viz">
+    <div class="viz-title">Figure 1 · Romania, with road costs and $h_{\text{SLD}}$ (straight-line km to Bucharest) at every city</div>
+    <svg viewBox="0 0 780 540" role="img" aria-label="Map of Romania: twenty cities joined by roads labelled with distances, each city annotated with its straight-line distance to Bucharest. Two routes from Arad to Bucharest are highlighted.">
+      <g stroke="var(--line-2)" stroke-width="1.6">
+        <line x1="172" y1="62" x2="112" y2="124"/>
+        <line x1="112" y1="124" x2="70" y2="200"/>
+        <line x1="172" y1="62" x2="250" y2="190"/>
+        <line x1="70" y1="200" x2="250" y2="190"/>
+        <line x1="70" y1="200" x2="80" y2="306"/>
+        <line x1="80" y1="306" x2="170" y2="344"/>
+        <line x1="170" y1="344" x2="178" y2="404"/>
+        <line x1="178" y1="404" x2="168" y2="458"/>
+        <line x1="168" y1="458" x2="296" y2="474"/>
+        <line x1="296" y1="474" x2="290" y2="268"/>
+        <line x1="250" y1="190" x2="290" y2="268"/>
+        <line x1="250" y1="190" x2="372" y2="192"/>
+        <line x1="290" y1="268" x2="398" y2="332"/>
+        <line x1="296" y1="474" x2="398" y2="332"/>
+        <line x1="398" y1="332" x2="478" y2="404"/>
+        <line x1="372" y1="192" x2="478" y2="404"/>
+        <line x1="478" y1="404" x2="466" y2="490"/>
+        <line x1="478" y1="404" x2="574" y2="388"/>
+        <line x1="574" y1="388" x2="670" y2="372"/>
+        <line x1="670" y1="372" x2="694" y2="458"/>
+        <line x1="574" y1="388" x2="650" y2="226"/>
+        <line x1="650" y1="226" x2="628" y2="140"/>
+        <line x1="628" y1="140" x2="556" y2="78"/>
+      </g>
+      <g stroke="var(--accent)" stroke-width="6" stroke-linecap="round" opacity="0.5">
+        <line x1="70" y1="200" x2="250" y2="190"/>
+        <line x1="250" y1="190" x2="372" y2="192"/>
+        <line x1="372" y1="192" x2="478" y2="404"/>
+      </g>
+      <g stroke="var(--accent-2)" stroke-width="3" stroke-linecap="round" stroke-dasharray="9 6">
+        <line x1="70" y1="200" x2="250" y2="190"/>
+        <line x1="250" y1="190" x2="290" y2="268"/>
+        <line x1="290" y1="268" x2="398" y2="332"/>
+        <line x1="398" y1="332" x2="478" y2="404"/>
+      </g>
+      <g font-size="11.5" fill="var(--ink-mute)" text-anchor="middle">
+        <text x="142" y="89">71</text>
+        <text x="91" y="158">75</text>
+        <text x="211" y="122">151</text>
+        <text x="160" y="191">140</text>
+        <text x="75" y="249">118</text>
+        <text x="125" y="321">111</text>
+        <text x="174" y="370">70</text>
+        <text x="173" y="427">75</text>
+        <text x="232" y="462">120</text>
+        <text x="293" y="367">146</text>
+        <text x="270" y="225">80</text>
+        <text x="311" y="187">99</text>
+        <text x="344" y="296">97</text>
+        <text x="347" y="399">138</text>
+        <text x="438" y="364">101</text>
+        <text x="425" y="294">211</text>
+        <text x="472" y="443">90</text>
+        <text x="526" y="392">85</text>
+        <text x="622" y="376">98</text>
+        <text x="682" y="411">86</text>
+        <text x="612" y="303">142</text>
+        <text x="639" y="179">92</text>
+        <text x="592" y="105">87</text>
+      </g>
+      <g>
+        <circle cx="172" cy="62" r="5" fill="var(--panel)" stroke="var(--accent-3)" stroke-width="2.6"/>
+        <text x="182" y="66" text-anchor="start" font-size="12.5" font-weight="650" fill="var(--ink)">Oradea</text>
+        <text x="182" y="80" text-anchor="start" font-size="11.5" font-weight="700" fill="var(--accent-3)">h=380</text>
+        <circle cx="112" cy="124" r="5" fill="var(--panel)" stroke="var(--accent-3)" stroke-width="2.6"/>
+        <text x="122" y="128" text-anchor="start" font-size="12.5" font-weight="650" fill="var(--ink)">Zerind</text>
+        <text x="122" y="142" text-anchor="start" font-size="11.5" font-weight="700" fill="var(--accent-3)">h=374</text>
+        <circle cx="70" cy="200" r="5" fill="var(--panel)" stroke="var(--accent)" stroke-width="2.6"/>
+        <text x="80" y="204" text-anchor="start" font-size="12.5" font-weight="650" fill="var(--ink)">Arad</text>
+        <text x="80" y="218" text-anchor="start" font-size="11.5" font-weight="700" fill="var(--accent)">h=366</text>
+        <circle cx="80" cy="306" r="5" fill="var(--panel)" stroke="var(--accent-3)" stroke-width="2.6"/>
+        <text x="90" y="310" text-anchor="start" font-size="12.5" font-weight="650" fill="var(--ink)">Timisoara</text>
+        <text x="90" y="324" text-anchor="start" font-size="11.5" font-weight="700" fill="var(--accent-3)">h=329</text>
+        <circle cx="170" cy="344" r="5" fill="var(--panel)" stroke="var(--accent-3)" stroke-width="2.6"/>
+        <text x="160" y="348" text-anchor="end" font-size="12.5" font-weight="650" fill="var(--ink)">Lugoj</text>
+        <text x="160" y="362" text-anchor="end" font-size="11.5" font-weight="700" fill="var(--accent-3)">h=244</text>
+        <circle cx="178" cy="404" r="5" fill="var(--panel)" stroke="var(--accent-3)" stroke-width="2.6"/>
+        <text x="168" y="408" text-anchor="end" font-size="12.5" font-weight="650" fill="var(--ink)">Mehadia</text>
+        <text x="168" y="422" text-anchor="end" font-size="11.5" font-weight="700" fill="var(--accent-3)">h=241</text>
+        <circle cx="168" cy="458" r="5" fill="var(--panel)" stroke="var(--accent-3)" stroke-width="2.6"/>
+        <text x="158" y="462" text-anchor="end" font-size="12.5" font-weight="650" fill="var(--ink)">Drobeta</text>
+        <text x="158" y="476" text-anchor="end" font-size="11.5" font-weight="700" fill="var(--accent-3)">h=242</text>
+        <circle cx="296" cy="474" r="5" fill="var(--panel)" stroke="var(--accent-3)" stroke-width="2.6"/>
+        <text x="296" y="463" text-anchor="middle" font-size="12.5" font-weight="650" fill="var(--ink)">Craiova</text>
+        <text x="296" y="476" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--accent-3)">h=160</text>
+        <circle cx="250" cy="190" r="5" fill="var(--panel)" stroke="var(--accent-3)" stroke-width="2.6"/>
+        <text x="250" y="179" text-anchor="middle" font-size="12.5" font-weight="650" fill="var(--ink)">Sibiu</text>
+        <text x="250" y="192" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--accent-3)">h=253</text>
+        <circle cx="290" cy="268" r="5" fill="var(--panel)" stroke="var(--accent-3)" stroke-width="2.6"/>
+        <text x="280" y="272" text-anchor="end" font-size="12.5" font-weight="650" fill="var(--ink)">Rimnicu Vilcea</text>
+        <text x="280" y="286" text-anchor="end" font-size="11.5" font-weight="700" fill="var(--accent-3)">h=193</text>
+        <circle cx="372" cy="192" r="5" fill="var(--panel)" stroke="var(--accent-3)" stroke-width="2.6"/>
+        <text x="372" y="181" text-anchor="middle" font-size="12.5" font-weight="650" fill="var(--ink)">Fagaras</text>
+        <text x="372" y="194" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--accent-3)">h=176</text>
+        <circle cx="398" cy="332" r="5" fill="var(--panel)" stroke="var(--accent-3)" stroke-width="2.6"/>
+        <text x="408" y="336" text-anchor="start" font-size="12.5" font-weight="650" fill="var(--ink)">Pitesti</text>
+        <text x="408" y="350" text-anchor="start" font-size="11.5" font-weight="700" fill="var(--accent-3)">h=100</text>
+        <circle cx="478" cy="404" r="7" fill="var(--panel)" stroke="var(--gold)" stroke-width="2.6"/>
+        <text x="478" y="424" text-anchor="middle" font-size="12.5" font-weight="650" fill="var(--ink)">Bucharest</text>
+        <text x="478" y="438" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--gold)">h=0</text>
+        <circle cx="466" cy="490" r="5" fill="var(--panel)" stroke="var(--accent-3)" stroke-width="2.6"/>
+        <text x="456" y="494" text-anchor="end" font-size="12.5" font-weight="650" fill="var(--ink)">Giurgiu</text>
+        <text x="456" y="508" text-anchor="end" font-size="11.5" font-weight="700" fill="var(--accent-3)">h=77</text>
+        <circle cx="574" cy="388" r="5" fill="var(--panel)" stroke="var(--accent-3)" stroke-width="2.6"/>
+        <text x="574" y="377" text-anchor="middle" font-size="12.5" font-weight="650" fill="var(--ink)">Urziceni</text>
+        <text x="574" y="390" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--accent-3)">h=80</text>
+        <circle cx="670" cy="372" r="5" fill="var(--panel)" stroke="var(--accent-3)" stroke-width="2.6"/>
+        <text x="670" y="361" text-anchor="middle" font-size="12.5" font-weight="650" fill="var(--ink)">Hirsova</text>
+        <text x="670" y="374" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--accent-3)">h=151</text>
+        <circle cx="694" cy="458" r="5" fill="var(--panel)" stroke="var(--accent-3)" stroke-width="2.6"/>
+        <text x="684" y="462" text-anchor="end" font-size="12.5" font-weight="650" fill="var(--ink)">Eforie</text>
+        <text x="684" y="476" text-anchor="end" font-size="11.5" font-weight="700" fill="var(--accent-3)">h=161</text>
+        <circle cx="650" cy="226" r="5" fill="var(--panel)" stroke="var(--accent-3)" stroke-width="2.6"/>
+        <text x="660" y="230" text-anchor="start" font-size="12.5" font-weight="650" fill="var(--ink)">Vaslui</text>
+        <text x="660" y="244" text-anchor="start" font-size="11.5" font-weight="700" fill="var(--accent-3)">h=199</text>
+        <circle cx="628" cy="140" r="5" fill="var(--panel)" stroke="var(--accent-3)" stroke-width="2.6"/>
+        <text x="638" y="144" text-anchor="start" font-size="12.5" font-weight="650" fill="var(--ink)">Iasi</text>
+        <text x="638" y="158" text-anchor="start" font-size="11.5" font-weight="700" fill="var(--accent-3)">h=226</text>
+        <circle cx="556" cy="78" r="5" fill="var(--panel)" stroke="var(--accent-3)" stroke-width="2.6"/>
+        <text x="566" y="82" text-anchor="start" font-size="12.5" font-weight="650" fill="var(--ink)">Neamt</text>
+        <text x="566" y="96" text-anchor="start" font-size="11.5" font-weight="700" fill="var(--accent-3)">h=234</text>
+      </g>
+    </svg>
+    <div class="caption"><span style="color:var(--accent)">■</span> thick solid = the route <strong>Greedy</strong> takes (Arad → Sibiu → Fagaras → Bucharest, <strong>450 km</strong>). <span style="color:var(--accent-2)">■</span> dashed = the genuinely optimal route (Arad → Sibiu → Rimnicu Vilcea → Pitesti → Bucharest, <strong>418 km</strong>). Both start identically; they split at Sibiu, where Fagaras <em>looks</em> closer to Bucharest ($h=176$ vs $h=193$) and is in fact a worse move. Bucharest has $h=0$, because it <em>is</em> the goal.</div>
+  </div>
+
+  <p>Every symbol in that figure, named: the number on a road is its <strong>real</strong> length, the thing $g$ accumulates. The number under a city name is $h_{\text{SLD}}$, the <strong>guess</strong> about everything still ahead. The two kinds of number live in completely different worlds — one is measured, one is imagined — and the single best idea on this page is that you should add them together anyway.</p>
+
+  <h3>The effect of a heuristic</h3>
+
+  <p>The slide's picture of “effect of heuristics” is two blobs, and it says: <em>guide search towards the goal instead of all over the place</em>. Concretely, on the Romania map, an uninformed search sitting in Arad has no reason to prefer Sibiu ($h=253$) over Timisoara ($h=329$) or Zerind ($h=374$) — all three are just “neighbours”, and UCS orders them purely by road length, which actually makes Zerind (75 km) look <em>best</em>. It is the <em>only</em> direction that is unambiguously wrong.</p>
+
+  <p>With a heuristic, Sibiu's $253$ against Zerind's $374$ says “this way is 120 km more promising”, and the search leans east before it has spent a single kilometre finding out. That lean is the whole benefit. The rest of this page is about how far you are allowed to lean before you lean over.</p>
+
+  <div class="box warn">
+    <span class="label">Common mistake</span>
+    <p>“$h$ is the distance to the goal.” No — $h$ is an <strong>estimate</strong> of the distance to the goal, and the entire theory below exists because it can be wrong. The true distance has its own name, $h^*(n)$, and if you could compute $h^*$ cheaply you would not need to search at all: you would just walk downhill on $h^*$ and arrive. (A* with $h = h^*$ expands only the nodes on an optimal path. See §15.)</p>
+  </div>
+
+  <h2 id="greedy">3. Greedy best-first search</h2>
+
+  <p>The most obvious way to use a heuristic is also the most reckless one.</p>
+
+  <div class="box defn">
+    <span class="label">Definition — Greedy (best-first) search</span>
+    <p><strong>Greedy search</strong> is the generic search algorithm with a priority-queue frontier ordered by $h(n)$ <em>alone</em>. At every step it expands the node that <em>looks</em> closest to the goal, and it never once consults how much that node already cost to reach.</p>
+    <p>In other words: take UCS's pseudocode and replace the priority $g(n)$ with $h(n)$. That is the entire algorithm.</p>
+  </div>
+
+  <div class="box analogy">
+    <span class="label">Analogy</span>
+    <p>Greedy is the friend who navigates by pointing at the destination and walking that way. In an open field they are unbeatable and you will feel foolish for having opened a map. In a city with a river through it, they will march you to the riverbank, and then along the riverbank, and then — after you have burned an hour — back the way you came to the bridge you passed in minute two.</p>
+  </div>
+
+  <h3>Case 1 — where Greedy wins big</h3>
+
+  <p>Take the Romania problem, Arad → Bucharest. Greedy expands Arad, looks at $\{$Zerind 374, Sibiu 253, Timisoara 329$\}$, and pops Sibiu. From Sibiu it sees $\{$Arad 366, Oradea 380, Fagaras 176, Rimnicu Vilcea 193$\}$ and pops Fagaras. From Fagaras it sees Bucharest, $h=0$, pops it — goal.</p>
+
+  <p><strong>Three expansions. Zero wasted nodes.</strong> UCS on the same problem expands Zerind, Timisoara, Sibiu, Rimnicu Vilcea, Fagaras, Pitesti, Craiova and more before it dares return an answer. For the price of one ruler measurement per city, Greedy found a perfectly usable 450 km route almost instantly. When you need <em>a</em> route rather than <em>the</em> route, this is a genuinely excellent trade.</p>
+
+  <h3>Case 2 — where Greedy returns a worse path</h3>
+
+  <p>That same 450 km route is <strong>not optimal</strong>. The optimal route is 418 km, through Rimnicu Vilcea and Pitesti. Watch exactly where Greedy lost it, because the mechanism is always the same:</p>
+
+  <div class="scroll-x">
+  <table class="center">
+    <thead><tr><th>At Sibiu, the choice</th><th>$h$ (what Greedy sees)</th><th>road cost from Sibiu</th><th>true remaining cost $h^*$</th></tr></thead>
+    <tbody>
+      <tr><td>go to Fagaras</td><td><strong>176</strong> ← smaller, so Greedy picks it</td><td>99</td><td>$99 + 211 = 310$</td></tr>
+      <tr><td>go to Rimnicu Vilcea</td><td>193</td><td>80</td><td>$80 + 97 + 101 = 278$</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>Fagaras is closer to Bucharest <em>in a straight line</em> and further from Bucharest <em>by road</em>, because the only road out of Fagaras is a single 211 km haul. Greedy cannot see that, because $h$ is an estimate of a quantity it never checks, and because Greedy never compares total plans — only next steps. The estimate was not even a bad one (176 is a fine estimate of 310's straight-line component); it simply ranked two options in the wrong order, which is all it takes.</p>
+
+  <h3>Case 3 — where Greedy thrashes, or never terminates</h3>
+
+  <p>Now put Greedy in Iasi and ask for Fagaras. Iasi's neighbours are Neamt and Vaslui. Neamt is <em>geometrically</em> closer to Fagaras, so Greedy drives to Neamt — which is a dead end whose only road goes back to Iasi.</p>
+
+  <ul>
+    <li>In <strong>graph search</strong> (with an explored set) Greedy now backs out, expands Vaslui, and eventually gets there — having wasted the entire detour.</li>
+    <li>In <strong>tree search</strong> (no explored set) Greedy goes Iasi → Neamt → Iasi → Neamt → … <strong>forever</strong>, because from Neamt the best-looking neighbour is Iasi and from Iasi the best-looking neighbour is Neamt. The search never terminates on a finite graph. That is the technical meaning of “Greedy is not complete”.</li>
+  </ul>
+
+  <div class="box key">
+    <span class="label">Verdict — Greedy search</span>
+    <ul>
+      <li><strong>Complete?</strong> <em>No</em> as tree search — it can loop between two states forever (Iasi ↔ Neamt). <em>Yes</em> as graph search on a finite state space — the explored set stops repeats, so it must eventually run out of new states to expand.</li>
+      <li><strong>Optimal?</strong> <strong>No</strong>, in either form, for any interesting $h$. It chooses by $h$ alone, so it has literally no representation of path cost; there is nothing in the algorithm that could prefer a cheaper plan. Arad → Bucharest returns 450 when 418 exists.</li>
+      <li><strong>Worst case</strong> is the same as DFS — $O(b^m)$ time and space, where $b$ is the branching factor and $m$ the maximum depth — because a bad heuristic can send it down one wrong branch forever.</li>
+      <li><strong>Best case</strong> is spectacular: with a perfect heuristic it walks straight to the goal in $d$ expansions.</li>
+    </ul>
+  </div>
+
+  <div class="quiz" data-answer="1">
+    <div class="q">Greedy search with $h(n) = 0$ for every $n$ behaves like which algorithm?</div>
+    <button class="opt">Uniform-cost search</button>
+    <button class="opt">Whatever the tie-breaking rule says — typically BFS or DFS, not UCS</button>
+    <button class="opt">A*</button>
+    <button class="opt">It refuses to run, since all priorities are equal</button>
+    <div class="why"><strong>Why:</strong> if every node has priority 0, the priority queue is entirely ties, so behaviour is decided by the tie-break: pop the oldest and you get BFS, pop the newest and you get DFS. It is <em>not</em> UCS, because Greedy's priority is $h$ and never $g$ — with $h \equiv 0$, Greedy throws away the only information it had. Contrast this with <em>A*</em> with $h \equiv 0$, whose priority is $g + 0 = g$, and which therefore <em>is</em> exactly UCS (§11).</div>
+  </div>
+
+  <h2 id="a-star">4. A*: combining UCS and Greedy</h2>
+
+  <p>Put the two failures side by side.</p>
+
+  <ul>
+    <li><strong>UCS orders by path cost, or <em>backward</em> cost $g(n)$</strong> — the money already spent getting to $n$. It is a fact, and it is completely blind to the future.</li>
+    <li><strong>Greedy orders by goal proximity, or <em>forward</em> cost $h(n)$</strong> — the estimated money still to spend. It is a guess, and it is completely blind to the past.</li>
+  </ul>
+
+  <p>Each one throws away exactly the half of the problem the other one keeps. So keep both halves.</p>
+
+  <div class="box defn">
+    <span class="label">Definition — A* search</span>
+    <p><strong>A\* search</strong> is the generic search algorithm with a priority-queue frontier ordered by
+    $$f(n) \;=\; g(n) \;+\; h(n).$$</p>
+    <ul>
+      <li>$g(n)$ — the cost of the path from the start state to $n$ along the branch we actually took. Known exactly.</li>
+      <li>$h(n)$ — our estimate of the cheapest remaining cost from $n$'s state to a goal. A guess.</li>
+      <li>$f(n)$ — therefore an <strong>estimate of the total cost of the best complete solution that goes through $n$</strong>. That sentence is the whole algorithm: A* always works on the plan that currently looks cheapest <em>end to end</em>.</li>
+    </ul>
+  </div>
+
+  <div class="box intuition">
+    <span class="label">Intuition</span>
+    <p>$f$ is a <em>price tag on a whole journey</em>, not on a node. When A* pops the node with the smallest $f$, it is saying: “of all the half-finished plans on my desk, this one has the lowest projected total bill, so it deserves the next hour of my time.” UCS ranks half-finished plans by what they have cost so far — which favours plans that have barely started. Greedy ranks them by how close they claim to be to done — which favours plans that got there expensively. A* ranks them by projected total, which is the only ranking a person budgeting a project would ever use.</p>
+  </div>
+
+  <h3>The slide's worked example, in full</h3>
+
+  <p>This is the “Combining UCS and Greedy” graph (originally Teg Grenager's). Seven states, $S$ through $G$, with $h$ printed under every state.</p>
+
+  <div class="viz">
+    <div class="viz-title">Figure 2a · The state space graph. Edge labels are step costs; $h$ is printed under each state</div>
+    <svg viewBox="0 0 540 290" role="img" aria-label="State graph with nodes S, a, b, c, d, e and goal G, edge costs and heuristic values">
+      <g stroke="var(--line-2)" stroke-width="2">
+        <line x1="78" y1="130" x2="162" y2="130"/>
+        <line x1="198" y1="130" x2="302" y2="130"/>
+        <line x1="338" y1="130" x2="442" y2="130"/>
+        <line x1="190" y1="116" x2="240" y2="66"/>
+        <line x1="262" y1="66" x2="310" y2="115"/>
+        <line x1="180" y1="148" x2="180" y2="207"/>
+        <line x1="162" y1="225" x2="78" y2="225"/>
+      </g>
+      <g font-size="14" font-weight="700" fill="var(--accent)" text-anchor="middle">
+        <text x="120" y="122">1</text>
+        <text x="250" y="122">3</text>
+        <text x="390" y="122">2</text>
+        <text x="196" y="88">8</text>
+        <text x="296" y="86">1</text>
+        <text x="192" y="182" text-anchor="start">1</text>
+        <text x="120" y="217">1</text>
+      </g>
+      <g stroke-width="2.6" fill="var(--panel)">
+        <circle cx="60" cy="130" r="18" stroke="var(--accent-2)"/>
+        <circle cx="180" cy="130" r="18" stroke="var(--line-2)"/>
+        <circle cx="320" cy="130" r="18" stroke="var(--line-2)"/>
+        <circle cx="460" cy="130" r="20" stroke="var(--gold)"/>
+        <circle cx="251" cy="50" r="18" stroke="var(--line-2)"/>
+        <circle cx="180" cy="225" r="18" stroke="var(--line-2)"/>
+        <circle cx="60" cy="225" r="18" stroke="var(--line-2)"/>
+      </g>
+      <g text-anchor="middle" font-size="15" font-weight="700" fill="var(--ink)">
+        <text x="60" y="136">S</text><text x="180" y="136">a</text><text x="320" y="136">d</text>
+        <text x="460" y="137">G</text><text x="251" y="56">e</text><text x="180" y="231">b</text>
+        <text x="60" y="231">c</text>
+      </g>
+      <g text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-3)">
+        <text x="60" y="168">h=6</text>
+        <text x="152" y="112" text-anchor="end">h=5</text>
+        <text x="320" y="110">h=2</text>
+        <text x="460" y="168">h=0</text>
+        <text x="251" y="26">h=1</text>
+        <text x="204" y="248" text-anchor="start">h=6</text>
+        <text x="60" y="262">h=7</text>
+      </g>
+    </svg>
+    <div class="caption">Edges (undirected, but a search never generates its own parent): $S\!-\!a=1$, $a\!-\!b=1$, $b\!-\!c=1$, $a\!-\!d=3$, $a\!-\!e=8$, $e\!-\!d=1$, $d\!-\!G=2$. The optimal solution is $S\!-\!a\!-\!d\!-\!G$ at cost $1+3+2 = 6$; the decoy is $S\!-\!a\!-\!e\!-\!d\!-\!G$ at cost $1+8+1+2 = 12$.</div>
+  </div>
+
+  <p>Expanding that graph from $S$ without ever regenerating a node's own parent gives exactly the search tree the slide draws. Every node carries the two numbers that matter:</p>
+
+  <div class="viz">
+    <div class="viz-title">Figure 2b · The search tree, with $g$ and $h$ on every node (the slide's tree, reproduced)</div>
+    <svg viewBox="0 0 640 340" role="img" aria-label="Search tree rooted at S with children a, then b, d, e, then c, G, d and finally G, each annotated with g and h values">
+      <g stroke="var(--line-2)" stroke-width="1.8">
+        <line x1="320" y1="46" x2="320" y2="76"/>
+        <line x1="306" y1="104" x2="154" y2="148"/>
+        <line x1="320" y1="108" x2="320" y2="148"/>
+        <line x1="334" y1="104" x2="506" y2="148"/>
+        <line x1="140" y1="178" x2="140" y2="218"/>
+        <line x1="320" y1="178" x2="320" y2="218"/>
+        <line x1="520" y1="178" x2="520" y2="218"/>
+        <line x1="520" y1="248" x2="520" y2="288"/>
+      </g>
+      <g stroke-width="2.4" fill="var(--panel)">
+        <circle cx="320" cy="30" r="16" stroke="var(--accent-2)"/>
+        <circle cx="320" cy="92" r="16" stroke="var(--accent)"/>
+        <circle cx="140" cy="162" r="16" stroke="var(--line-2)"/>
+        <circle cx="320" cy="162" r="16" stroke="var(--accent)"/>
+        <circle cx="520" cy="162" r="16" stroke="var(--line-2)"/>
+        <circle cx="140" cy="232" r="16" stroke="var(--line-2)"/>
+        <circle cx="320" cy="232" r="17" stroke="var(--accent)"/>
+        <circle cx="520" cy="232" r="16" stroke="var(--line-2)"/>
+        <circle cx="520" cy="302" r="17" stroke="var(--line-2)"/>
+      </g>
+      <g text-anchor="middle" font-size="14.5" font-weight="700" fill="var(--ink)">
+        <text x="320" y="35">S</text><text x="320" y="97">a</text>
+        <text x="140" y="167">b</text><text x="320" y="167">d</text><text x="520" y="167">e</text>
+        <text x="140" y="237">c</text><text x="320" y="238">G</text><text x="520" y="237">d</text>
+        <text x="520" y="308">G</text>
+      </g>
+      <g font-size="12" font-weight="650" fill="var(--ink-mute)">
+        <text x="342" y="24">g=0</text><text x="342" y="38">h=6</text>
+        <text x="342" y="86">g=1</text><text x="342" y="100">h=5</text>
+        <text x="162" y="156">g=2</text><text x="162" y="170">h=6</text>
+        <text x="342" y="156">g=4</text><text x="342" y="170">h=2</text>
+        <text x="542" y="156">g=9</text><text x="542" y="170">h=1</text>
+        <text x="162" y="226">g=3</text><text x="162" y="240">h=7</text>
+        <text x="342" y="226">g=6</text><text x="342" y="240">h=0</text>
+        <text x="542" y="226">g=10</text><text x="542" y="240">h=2</text>
+        <text x="542" y="296">g=12</text><text x="542" y="310">h=0</text>
+      </g>
+      <g font-size="12" font-weight="750" fill="var(--accent)" text-anchor="end">
+        <text x="298" y="34">f=6</text>
+        <text x="298" y="96">f=6</text>
+        <text x="118" y="166">f=8</text>
+        <text x="298" y="166">f=6</text>
+        <text x="498" y="166">f=10</text>
+        <text x="118" y="236">f=10</text>
+        <text x="298" y="236">f=6</text>
+        <text x="498" y="236">f=12</text>
+        <text x="498" y="306">f=12</text>
+      </g>
+      <text x="320" y="332" text-anchor="middle" font-size="12" fill="var(--ink-mute)">orange outline = the four nodes A* actually expands</text>
+    </svg>
+    <div class="caption">$g$ is measured along the branch; $h$ is read off the state; $f=g+h$ is in orange on the left of each node. A* pops in increasing $f$ order and stops the first time it <em>pops</em> a goal.</div>
+  </div>
+
+  <h3>The expansion order, pop by pop</h3>
+
+  <div class="scroll-x">
+  <table>
+    <thead><tr><th>#</th><th>Popped (lowest $f$)</th><th>Children generated</th><th>Frontier after, as $\langle$node$,f\rangle$</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>$S$, $f = 0+6 = 6$</td><td>$a$ with $g=1,\,h=5$</td><td>$\langle a,6\rangle$</td></tr>
+      <tr><td>2</td><td>$a$, $f = 1+5 = 6$</td><td>$b\,(g{=}2,h{=}6)$, $d\,(g{=}4,h{=}2)$, $e\,(g{=}9,h{=}1)$</td><td>$\langle d,6\rangle,\ \langle b,8\rangle,\ \langle e,10\rangle$</td></tr>
+      <tr><td>3</td><td>$d$, $f = 4+2 = 6$</td><td>$G$ with $g=6,\,h=0$</td><td>$\langle G,6\rangle,\ \langle b,8\rangle,\ \langle e,10\rangle$</td></tr>
+      <tr><td>4</td><td>$G$, $f = 6+0 = 6$</td><td>— goal test passes</td><td>return $S\!-\!a\!-\!d\!-\!G$, cost <strong>6</strong></td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p><strong>Four expansions, and the answer is optimal.</strong> Now compare what the other two do on the identical graph:</p>
+
+  <div class="scroll-x">
+  <table class="center">
+    <thead><tr><th>Algorithm</th><th>Priority</th><th>Pop order</th><th>Nodes expanded</th><th>Path returned</th><th>Cost</th></tr></thead>
+    <tbody>
+      <tr><td>UCS</td><td>$g$</td><td>$S_0, a_1, b_2, c_3, d_4, G_6$</td><td>6</td><td>$S\!-\!a\!-\!d\!-\!G$</td><td>6 ✔ optimal</td></tr>
+      <tr><td>Greedy</td><td>$h$</td><td>$S_6, a_5, e_1, d_2, G_0$</td><td>5</td><td>$S\!-\!a\!-\!e\!-\!d\!-\!G$</td><td><strong>12</strong> ✘</td></tr>
+      <tr><td>A*</td><td>$g+h$</td><td>$S_6, a_6, d_6, G_6$</td><td><strong>4</strong></td><td>$S\!-\!a\!-\!d\!-\!G$</td><td>6 ✔ optimal</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>Read the middle row slowly, because it is the clearest picture of greedy failure in the course. After expanding $a$, Greedy's frontier holds $b\,(h{=}6)$, $d\,(h{=}4{+}?)$ — no: Greedy does not see $g$ at all, so it holds $b$ at $h=6$, $d$ at $h=2$ and $e$ at $h=1$. It pops $e$. To buy that one-unit improvement in the estimate ($2 \to 1$) it paid <strong>eight units of real cost</strong> — the $a\!-\!e$ edge — and it never noticed, because the number 8 does not appear anywhere in Greedy's priority. UCS, by contrast, sees $g$ and nothing else, which is why it wanders into $b$ and $c$ (cheap, useless) before getting to work.</p>
+
+  <div class="box warn">
+    <span class="label">Common mistake — the tie at $d$</span>
+    <p>After Greedy pops $e$, its frontier holds <em>two</em> nodes for state $d$, both with $h = 2$: the good one ($g=4$) and the terrible one ($g=10$). Greedy has no way to prefer either — they tie on its only criterion — so the answer depends entirely on the tie-break, and the returned cost is 6 or 12 depending on an implementation detail that has nothing to do with the problem. That uncertainty <em>is</em> what “no optimality guarantee” feels like in practice. A* has no such ambiguity: $f(d_{g=4}) = 6$ and $f(d_{g=10}) = 12$ are nowhere near tied.</p>
+  </div>
+
+  <div class="guided">
+    <div class="g-head"><span class="tag">Guided problem 1</span>Hand-run A* and list the pop order with $f$ values</div>
+    <div class="g-body">
+      <p>Run <strong>A* tree search</strong> (goal-test on pop, never regenerate a node's parent) on this graph. Give, in order, every node you pop, with its $g$, $h$ and $f$. Then give the solution and its cost. Finally: is this $h$ admissible?</p>
+      <div class="scroll-x">
+      <table class="center tight">
+        <thead><tr><th>Edge</th><th>$S\!-\!A$</th><th>$S\!-\!B$</th><th>$A\!-\!C$</th><th>$B\!-\!C$</th><th>$B\!-\!D$</th><th>$C\!-\!G$</th><th>$D\!-\!G$</th></tr></thead>
+        <tbody><tr><td>cost</td><td>2</td><td>1</td><td>2</td><td>5</td><td>3</td><td>4</td><td>6</td></tr></tbody>
+      </table>
+      <table class="center tight">
+        <thead><tr><th>State</th><th>$S$</th><th>$A$</th><th>$B$</th><th>$C$</th><th>$D$</th><th>$G$</th></tr></thead>
+        <tbody><tr><td>$h$</td><td>7</td><td>4</td><td>6</td><td>3</td><td>5</td><td>0</td></tr></tbody>
+      </table>
+      </div>
+    </div>
+    <details class="step"><summary>Step 1 — Set up: what does the frontier hold at the start?</summary><div>
+      <p>One node: $S$ with $g=0$, $h=7$, so $f = 0 + 7 = 7$. Do <strong>not</strong> goal-test it on insertion; A* tests on <em>pop</em>. (Testing on insertion is the classic way to break A* — you would return the first goal <em>found</em> rather than the first goal <em>proved cheapest</em>.)</p>
+    </div></details>
+    <details class="step"><summary>Step 2 — The first two pops</summary><div>
+      <p><strong>Pop 1: $S$, $g=0$, $h=7$, $f=7$.</strong> Not a goal. Children:</p>
+      <ul>
+        <li>$A$: $g = 0+2 = 2$, $h = 4$, $f = 6$.</li>
+        <li>$B$: $g = 0+1 = 1$, $h = 6$, $f = 7$.</li>
+      </ul>
+      <p>Frontier: $\langle A,6\rangle, \langle B,7\rangle$. Note that $B$ is the <em>cheaper</em> child ($g=1$ vs $2$) — UCS would take it — and A* still prefers $A$, because $A$'s whole projected journey is cheaper.</p>
+      <p><strong>Pop 2: $A$, $g=2$, $h=4$, $f=6$.</strong> Not a goal. Only child (excluding its parent $S$): $C$ with $g = 2+2 = 4$, $h = 3$, $f = 7$.</p>
+      <p>Frontier: $\langle B,7\rangle, \langle C,7\rangle$ — a genuine tie at $f=7$.</p>
+    </div></details>
+    <details class="step"><summary>Step 3 — Break the tie and finish</summary><div>
+      <p>Ties at equal $f$ may be broken any way; a standard rule is “prefer the smaller $h$”, i.e. prefer nodes that look closer to done, which here means $C$ ($h=3$) over $B$ ($h=6$). Take that rule.</p>
+      <p><strong>Pop 3: $C$, $g=4$, $h=3$, $f=7$.</strong> Not a goal. Children: $G$ with $g = 4+4 = 8$, $h=0$, $f = 8$; and $B$ with $g = 4+5 = 9$, $h=6$, $f=15$ (a second, dreadful node for state $B$ — tree search keeps it).</p>
+      <p>Frontier: $\langle B,7\rangle, \langle G,8\rangle, \langle B,15\rangle$.</p>
+      <p><strong>Pop 4: $B$, $g=1$, $h=6$, $f=7$.</strong> Not a goal — and notice A* refuses to return the goal node sitting right there at $f=8$, because something with $f=7$ is still pending. Children: $C$ with $g = 1+5 = 6$, $h=3$, $f=9$; $D$ with $g = 1+3 = 4$, $h=5$, $f=9$.</p>
+      <p>Frontier: $\langle G,8\rangle, \langle C,9\rangle, \langle D,9\rangle, \langle B,15\rangle$.</p>
+      <p><strong>Pop 5: $G$, $g=8$, $h=0$, $f=8$.</strong> Goal test passes → return.</p>
+    </div></details>
+    <details class="step"><summary>Answer &amp; the takeaway</summary><div>
+      <p><strong>Pop order: $S_{f=7},\ A_{f=6},\ C_{f=7},\ B_{f=7},\ G_{f=8}$. Solution $S\!-\!A\!-\!C\!-\!G$, cost $2+2+4 = 8$.</strong></p>
+      <p>Check by brute force: $S\!-\!A\!-\!C\!-\!G = 8$; $S\!-\!B\!-\!C\!-\!G = 1{+}5{+}4 = 10$; $S\!-\!B\!-\!D\!-\!G = 1{+}3{+}6 = 10$. So 8 is optimal. ✔</p>
+      <p><strong>Is $h$ admissible?</strong> Compute the true costs: $h^*(S)=8$, $h^*(A)=6$, $h^*(B)=9$, $h^*(C)=4$, $h^*(D)=6$, $h^*(G)=0$. Compare with $h$: $7\le 8$ ✔, $4\le 6$ ✔, $6\le 9$ ✔, $3\le 4$ ✔, $5\le 6$ ✔, $0\le 0$ ✔. Admissible — which is exactly why the answer came out optimal.</p>
+      <p><strong>Takeaway:</strong> the $f$ values along the pop sequence were $7, 6, 7, 7, 8$ — they went <em>down</em> once, from $S$'s 7 to $A$'s 6. That dip is legal for an admissible heuristic but it is a symptom: this $h$ is admissible and <strong>not consistent</strong> (check the edge $S\!\to\!A$: $h(S) - h(A) = 7-4 = 3 > 2 = \text{cost}$). Keep that in your pocket until §10.</p>
+    </div></details>
+  </div>
+
+  <h2 id="watch-them-run">5. Watch all three run on the same maze</h2>
+
+  <p>Graphs with seven nodes are good for proofs and terrible for intuition about <em>cost</em>. Picture the same three-way comparison on a large Pacman-style maze, with Manhattan distance as the heuristic: every free square is a state, every move costs 1, and the walls make the straight-line guess wrong in interesting places.</p>
+
+
+  <div class="box key">
+    <span class="label">Key idea — the shape each one explores</span>
+    <p>Run all three and the regions they expand have three recognisable shapes. UCS's is a <em>diamond centred on the start</em> (a Manhattan-metric circle). A*'s expanded region is that same diamond <em>squashed along the line to the goal</em>. Greedy's is a narrow finger reaching straight for the goal — beautifully economical, and aimed with no guarantee whatsoever that the finger is pointing down the shortest corridor.</p>
+  </div>
+
+  <h2 id="a-star-gone-wrong">6. Why A* can still be wrong: a bad heuristic</h2>
+
+  <p>A* is not magic, and the slide makes the point with a three-node graph. Here it is exactly:</p>
+
+  <div class="viz">
+    <div class="viz-title">Figure 4 · “Is A* optimal?” — the counterexample from the slides</div>
+    <svg viewBox="0 0 520 220" role="img" aria-label="Three node graph: S to A costs 1, A to G costs 3, S to G costs 5, with h of S equal to 7, h of A equal to 6, h of G equal to 0">
+      <g stroke="var(--line-2)" stroke-width="2">
+        <line x1="82" y1="58" x2="228" y2="58"/>
+        <line x1="272" y1="58" x2="418" y2="58"/>
+        <path d="M 66 82 Q 250 190 434 82" fill="none"/>
+      </g>
+      <g font-size="14" font-weight="700" fill="var(--accent)" text-anchor="middle">
+        <text x="155" y="48">1</text>
+        <text x="345" y="48">3</text>
+        <text x="250" y="163">5</text>
+      </g>
+      <g stroke-width="2.6" fill="var(--panel)">
+        <circle cx="60" cy="58" r="20" stroke="var(--accent-2)"/>
+        <circle cx="250" cy="58" r="20" stroke="var(--rose)"/>
+        <circle cx="440" cy="58" r="21" stroke="var(--gold)"/>
+      </g>
+      <g text-anchor="middle" font-size="15" font-weight="700" fill="var(--ink)">
+        <text x="60" y="64">S</text><text x="250" y="64">A</text><text x="440" y="65">G</text>
+      </g>
+      <g text-anchor="middle" font-size="12.5" font-weight="700">
+        <text x="60" y="26" fill="var(--accent-3)">h=7</text>
+        <text x="250" y="26" fill="var(--rose)">h=6</text>
+        <text x="440" y="26" fill="var(--accent-3)">h=0</text>
+        <text x="250" y="200" fill="var(--ink-mute)" font-weight="600">true costs: $h^*(S)=4$, $h^*(A)=3$, $h^*(G)=0$ — both $h(S)$ and $h(A)$ are overestimates</text>
+      </g>
+    </svg>
+    <div class="caption">The optimal plan is $S \to A \to G$ at cost $1+3 = 4$. A* returns $S \to G$ at cost 5. Nothing is wrong with A*; everything is wrong with $h(A) = 6$.</div>
+  </div>
+
+  <h3>Exactly what A* does here</h3>
+
+  <ol>
+    <li>Frontier: $\langle S,\ f = 0 + 7 = 7\rangle$. Pop $S$. Not a goal.</li>
+    <li>Generate children:
+      <ul>
+        <li>$A$: $g = 1$, $h = 6$, so $f(A) = 1 + 6 = \mathbf{7}$.</li>
+        <li>$G$ (via the direct road): $g = 5$, $h = 0$, so $f(G) = 5 + 0 = \mathbf{5}$.</li>
+      </ul>
+    </li>
+    <li>Frontier: $\langle G,5\rangle, \langle A,7\rangle$. The minimum is $G$ at 5. Pop it. <strong>Goal test passes — A* returns $S\!-\!G$, cost 5.</strong></li>
+    <li>It never expands $A$. It never discovers that going through $A$ costs 4.</li>
+  </ol>
+
+  <p>Why did the priority queue rank them that way? Because $f(A) = 7$ claims “any plan through $A$ will end up costing about 7”, and that claim is a <strong>lie</strong>: the best plan through $A$ costs 4. The lie came from $h(A) = 6$, an estimate of a true remaining cost of $h^*(A) = 3$. A* trusted it, concluded $A$ was a bad neighbourhood, and stopped looking.</p>
+
+  <div class="box key">
+    <span class="label">Key idea — the one-line diagnosis from the slide</span>
+    <p><strong>Estimated goal cost &gt; actual future cost.</strong> When $h$ <em>over</em>estimates, A* becomes pessimistic about a region and prunes it away — and pruning without proof is exactly how you lose the optimum. So: <em>we need estimates to be less than actual costs.</em></p>
+    <p>The asymmetry is worth pausing on. <strong>Under</strong>estimating is harmless to correctness: it makes A* too optimistic about a region, so it looks there, wastes time, and discovers the truth. <strong>Over</strong>estimating is fatal: it makes A* too pessimistic, so it never looks, and never discovers anything. Being too keen costs you time; being too dismissive costs you the answer.</p>
+  </div>
+
+  <h2 id="admissibility">7. Admissibility</h2>
+
+  <div class="box defn">
+    <span class="label">Definition — admissible (optimistic) heuristic</span>
+    <p>A heuristic $h$ is <strong>admissible</strong> if for every node $n$
+    $$0 \;\le\; h(n) \;\le\; h^*(n),$$
+    where $h^*(n)$ is the <strong>true cost of a cheapest path from $n$ to a nearest goal</strong> (and $h^*(n) = \infty$ if no goal is reachable from $n$).</p>
+    <p>Both inequalities carry weight. The right one says <em>never overestimate</em>. The left one says <em>never hand the search a negative estimate</em>, which would make $f$ look cheaper than a path that already exists and breaks the same guarantees from the other side.</p>
+  </div>
+
+  <p>The word the course uses for this is <strong>optimistic</strong>, and it is the right word. An admissible heuristic is the friend who always says “oh, it's only about twenty minutes away” — sometimes right, never pessimistic, occasionally wildly hopeful. $h \equiv 0$ is the most optimistic heuristic of all (“we're basically there”), and it is admissible for every problem, which is why UCS is a special case of A*.</p>
+
+  <div class="box intuition">
+    <span class="label">Intuition — why optimism is the safe direction</span>
+    <p>A* only ever <em>discards</em> a plan by saying “its $f$ is too big”. If every $f$ is an underestimate of the truth, then a plan whose $f$ is too big has a truth that is even bigger — so discarding it was safe. Admissibility is precisely the licence to trust A*'s dismissals. An optimistic estimate can only ever cause A* to <em>look</em> somewhere it did not need to; it can never cause A* to <em>skip</em> somewhere it did need to.</p>
+  </div>
+
+  <p>Two sanity conditions fall straight out of the definition and you should check them reflexively:</p>
+
+  <ul>
+    <li><strong>$h(\text{goal}) = 0$.</strong> At a goal, $h^*=0$, so $0 \le h \le 0$ forces $h = 0$. Every proof below uses this line.</li>
+    <li><strong>Admissibility is a claim about every state, not most states.</strong> One overestimating node is enough to destroy optimality, as Figure 4 shows with exactly one guilty node.</li>
+  </ul>
+
+  <div class="box example">
+    <span class="label">Example — the ones you already believe</span>
+    <ul>
+      <li><strong>Straight-line distance</strong> on a road map: admissible, because a road between two towns cannot be shorter than the segment joining them. (The slide's “15” arrow and the Romania map's “366” at Arad are both instances of this.)</li>
+      <li><strong>Manhattan distance</strong> in a 4-connected grid with unit step costs: admissible, because every move changes exactly one coordinate by exactly 1, so you need at least $|\Delta x| + |\Delta y|$ moves — and walls only make it worse.</li>
+      <li><strong>Euclidean distance</strong> in that same grid: still admissible (it is $\le$ Manhattan), but <em>weaker</em> — it underestimates by more, so it prunes less. See §15 on dominance.</li>
+      <li><strong>Manhattan distance when diagonal moves cost 1</strong>: <strong>not</strong> admissible. One diagonal move covers $|\Delta x| + |\Delta y| = 2$ of Manhattan distance at a cost of 1, so the estimate can be double the truth. Always re-check admissibility when you change the action set.</li>
+    </ul>
+  </div>
+
+  <p>And a sentence from the slides that is easy to skim past and is really career advice: <em>“coming up with admissible heuristics is most of what's involved in using A* in practice.”</em> The algorithm is twenty lines and will not change for the rest of your life. The heuristic is where the work is. §14 is about manufacturing them.</p>
+
+  <h2 id="optimality-proof">8. The optimality of A* tree search — the full blocking argument</h2>
+
+  <p>The slides state the theorem, draw the picture, and write “TODO” where the three steps go. Here are the three steps, with every justification spelled out.</p>
+
+  <div class="box defn">
+    <span class="label">Theorem — A* tree search is optimal</span>
+    <p>If $h$ is admissible, then A* tree search (goal test on pop, frontier ordered by $f = g+h$) returns an optimal solution.</p>
+  </div>
+
+  <p><strong>Setup, exactly as on the slide.</strong> Assume:</p>
+
+  <ul>
+    <li>$A$ is an <strong>optimal goal node</strong> — a node whose state is a goal, reached along a cheapest possible path, so $g(A) = C^*$, the optimal solution cost;</li>
+    <li>$B$ is a <strong>suboptimal goal node</strong> — its state is a goal too, but $g(B) &gt; C^*$;</li>
+    <li>$h$ is admissible.</li>
+  </ul>
+
+  <p><strong>Claim:</strong> $A$ will be chosen for expansion (popped off the frontier) <em>before</em> $B$.</p>
+
+  <p>Why that claim is enough: A* returns the first goal node it <em>pops</em>. If every optimal goal node beats every suboptimal goal node to the front of the queue, then the first goal popped cannot be suboptimal. So the returned solution is optimal. All the work is in the claim.</p>
+
+  <h3>The picture: blocking</h3>
+
+  <div class="viz">
+    <div class="viz-title">Figure 5 · The blocking argument — an ancestor $n$ of $A$ stands in front of $B$ in the queue</div>
+    <svg viewBox="0 0 580 320" role="img" aria-label="Search tree showing the root, an ancestor node n on the path to optimal goal A, and a suboptimal goal B off to the right, annotated with the three inequalities">
+      <text x="196" y="36" font-size="20" font-weight="700" fill="var(--ink-mute)" text-anchor="middle">…</text>
+      <text x="196" y="52" font-size="11.5" fill="var(--ink-mute)" text-anchor="middle">already expanded</text>
+      <g stroke="var(--line-2)" stroke-width="1.8">
+        <line x1="190" y1="60" x2="172" y2="86"/>
+      </g>
+      <g stroke="var(--line-2)" stroke-width="1.8" stroke-dasharray="6 5">
+        <line x1="166" y1="122" x2="140" y2="196"/>
+        <path d="M 214 56 Q 380 80 448 148" fill="none"/>
+      </g>
+      <g stroke-width="2.6" fill="var(--panel)">
+        <circle cx="168" cy="104" r="18" stroke="var(--accent)"/>
+        <circle cx="134" cy="218" r="20" stroke="var(--accent-2)"/>
+        <circle cx="462" cy="168" r="20" stroke="var(--rose)"/>
+      </g>
+      <g text-anchor="middle" font-size="15" font-weight="700" fill="var(--ink)">
+        <text x="168" y="110">n</text><text x="134" y="224">A</text><text x="462" y="174">B</text>
+      </g>
+      <g font-size="12" fill="var(--ink-mute)">
+        <text x="192" y="100">on the frontier, on an optimal path to $A$</text>
+        <text x="134" y="262" text-anchor="middle" fill="var(--accent-2)" font-weight="700">optimal goal</text>
+        <text x="134" y="278" text-anchor="middle">$g(A) = C^*$</text>
+        <text x="462" y="212" text-anchor="middle" fill="var(--rose)" font-weight="700">suboptimal goal</text>
+        <text x="462" y="228" text-anchor="middle">$g(B) &gt; C^*$</text>
+        <text x="150" y="168" fill="var(--ink-mute)">rest of the</text>
+        <text x="150" y="182" fill="var(--ink-mute)">optimal path</text>
+      </g>
+      <g font-size="13" font-weight="700">
+        <text x="300" y="296" fill="var(--accent)">1. $f(n) \le f(A)$</text>
+        <text x="300" y="276" fill="var(--accent-2)">2. $f(A) &lt; f(B)$</text>
+        <text x="300" y="316" fill="var(--ink)">3. $\Rightarrow f(n) &lt; f(B)$, so $n$ pops before $B$</text>
+      </g>
+    </svg>
+    <div class="caption">$n$ is any node on the frontier that lies on an optimal path to $A$ — possibly the start state, possibly $A$ itself. The argument shows $n$ always jumps the queue ahead of $B$, so $B$ can never be popped while any such $n$ is waiting. $B$ is <em>blocked</em>.</div>
+  </div>
+
+  <h3>Why there is always such an $n$</h3>
+
+  <p>This is the step the slide compresses into one parenthesis — “(maybe the start state; maybe $A$ itself!)” — and it deserves a paragraph, because the whole proof rests on it.</p>
+
+  <p>Fix an optimal path $S = n_0 \to n_1 \to \dots \to n_k = A$. I claim that <strong>at every moment before $A$ is popped, at least one $n_i$ on that path is sitting on the frontier.</strong> Induct on time:</p>
+
+  <ul>
+    <li><em>Initially</em> the frontier is $\{S\} = \{n_0\}$, and $n_0$ is on the path. ✔</li>
+    <li><em>Inductively</em>, suppose some $n_i$ is on the frontier. The only way it leaves the frontier is by being popped and expanded. But expanding $n_i$ generates <em>all</em> its children, one of which is $n_{i+1}$ — which is therefore pushed onto the frontier at that very moment. So the property is restored immediately, with $i$ increased by 1. ✔</li>
+    <li>The index can only climb to $k$, at which point the frontier node <em>is</em> $A$ — and we have stopped, because popping $A$ is the event we were waiting for. ✔</li>
+  </ul>
+
+  <p>So the frontier always contains an unexpanded “front” of the optimal path. That is the general fact that the frontier <strong>separates</strong> the explored region from the unexplored region: you cannot get from $S$ to $A$ without crossing it.</p>
+
+  <h3>Step 1: $f(n) \le f(A)$</h3>
+
+  <div class="box proof">
+    <span class="label">Proof — step 1</span>
+    <p>$$
+    \begin{aligned}
+    f(n) &amp;= g(n) + h(n) &amp;&amp;\text{definition of the $f$-cost} \\
+         &amp;\le g(n) + h^*(n) &amp;&amp;\text{admissibility of $h$: } h(n) \le h^*(n) \\
+         &amp;= g(A) &amp;&amp;\text{$n$ lies on an optimal path to $A$} \\
+         &amp;= f(A) &amp;&amp;\text{$h = 0$ at a goal, so } f(A) = g(A) + 0
+    \end{aligned}
+    $$</p>
+    <p><strong>Line by line.</strong></p>
+    <ul>
+      <li><em>Line 1</em> is just the definition; nothing is assumed.</li>
+      <li><em>Line 2</em> replaces the guess $h(n)$ by the truth $h^*(n)$. The inequality points this way — and only this way — because $h$ is admissible. This is the only place admissibility is used, and it is the hinge of the whole theorem.</li>
+      <li><em>Line 3</em> is the subtle one. $g(n)$ is the cost from $S$ to $n$ <em>along the optimal path we fixed</em>, and $h^*(n)$ is the cheapest cost from $n$ onward. Since $n$ sits on an optimal path to $A$, the cheapest completion from $n$ is the rest of that very path, so $g(n) + h^*(n)$ is the cost of a complete optimal path: $g(n) + h^*(n) = C^* = g(A)$. <em>(If $n$ were an arbitrary node this line would fail — it is why we insisted $n$ be on the optimal path.)</em></li>
+      <li><em>Line 4</em> uses $h(A) = 0$, which we proved is forced by admissibility at any goal node.</li>
+    </ul>
+    <p>In words: <strong>the $f$-value of a node on an optimal path never exceeds the cost of that optimal path.</strong> An optimistic estimate cannot inflate an honest partial plan past its own true total.</p>
+  </div>
+
+  <h3>Step 2: $f(A) &lt; f(B)$</h3>
+
+  <div class="box proof">
+    <span class="label">Proof — step 2</span>
+    <p>$$
+    \begin{aligned}
+    f(A) &amp;= g(A) + h(A) = g(A) &amp;&amp;\text{definition of $f$; } h = 0 \text{ at a goal} \\
+    f(B) &amp;= g(B) + h(B) = g(B) &amp;&amp;\text{identically, since $B$ is a goal node too} \\
+    g(A) &amp;&lt; g(B) &amp;&amp;\text{$B$ is suboptimal and $A$ is optimal} \\
+    \therefore\quad f(A) &amp;&lt; f(B)
+    \end{aligned}
+    $$</p>
+    <p>Notice there is no heuristic left in this step at all: at goal nodes $f$ collapses to $g$, so comparing two goals by $f$ <em>is</em> comparing two solutions by their real cost. The inequality is strict because “suboptimal” means strictly more expensive than the optimum. (If $g(B) = g(A)$ then $B$ is <em>also</em> optimal, and returning it would be perfectly fine — the theorem only promises optimal cost, not a unique path.)</p>
+  </div>
+
+  <h3>Step 3: therefore $n$ — and then $A$ — is expanded before $B$</h3>
+
+  <div class="box proof">
+    <span class="label">Proof — step 3 and the conclusion</span>
+    <p>Chain steps 1 and 2:
+    $$f(n) \;\le\; f(A) \;&lt;\; f(B) \qquad \Longrightarrow \qquad f(n) &lt; f(B).$$</p>
+    <p>A* always pops the frontier node of minimum $f$. While both $n$ and $B$ sit on the frontier, $n$'s key is strictly smaller, so $B$ <strong>cannot</strong> be selected: some strictly better node is always available. $n$ is expanded first.</p>
+    <p>Now iterate. Expanding $n$ puts the next node of the optimal path, $n_{i+1}$, on the frontier — and $n_{i+1}$ is <em>also</em> an ancestor of $A$ on the optimal path, so the identical argument applies to it. One after another, <strong>all ancestors of $A$ are expanded before $B$</strong>. The chain is finite and ends at $A$ itself, so <strong>$A$ is expanded before $B$</strong>.</p>
+    <p>$B$ was an arbitrary suboptimal goal node, so no suboptimal goal can be popped while any optimal goal's path is still pending. Hence the first goal node A* pops has cost $C^*$. <strong>A* tree search is optimal.</strong> $\blacksquare$</p>
+  </div>
+
+  <div class="box intuition">
+    <span class="label">What the argument is really doing, in plain English</span>
+    <p>Think of the frontier as a queue at a ticket window where the number on your ticket is $f$, and lower numbers are served first. The bad goal $B$ is standing in that queue holding a ticket numbered $g(B)$ — its true, honest, inflated cost, because heuristics vanish at goals and cannot hide it.</p>
+    <p>Meanwhile the good path to $A$ always has <em>somebody</em> standing in the same queue — you cannot reach $A$ without crossing the frontier, and whenever that person is served, the next person on the good path immediately takes their place. And that person's ticket number is at most $C^*$, because an optimistic heuristic cannot inflate a partial optimal plan beyond the true cost of the whole thing.</p>
+    <p>So there is a permanent relay of people holding tickets $\le C^* &lt; g(B)$ standing in front of $B$. $B$ never gets served until the relay has run all the way to $A$ — and the moment $A$ is served, the search is over. That relay is what “blocking” means.</p>
+  </div>
+
+  <div class="box warn">
+    <span class="label">Common mistake — three, actually</span>
+    <ol>
+      <li><strong>Goal-testing on insertion.</strong> If you return a goal the moment you <em>generate</em> it, the blocking argument evaporates: $B$ never had to win the queue. Test on <strong>pop</strong>. In Figure 4's counterexample and in Guided problem 1 this is the difference between right and wrong answers.</li>
+      <li><strong>Assuming $n$ can be any node.</strong> Step 1's third line needs $n$ on an optimal path to $A$. For a general node, $g(n) + h^*(n)$ is the cost of the best path <em>through $n$</em>, which may be worse than $C^*$.</li>
+      <li><strong>Thinking this proves anything about graph search.</strong> It does not — the proof never mentions an explored set, and §9 shows an admissible heuristic that breaks graph search on a four-node example.</li>
+    </ol>
+  </div>
+
+  <div class="quiz" data-answer="2">
+    <div class="q">In step 1, where <em>exactly</em> is admissibility used?</div>
+    <button class="opt">In $f(n) = g(n)+h(n)$ — the definition of $f$</button>
+    <button class="opt">In $f(A) = g(A)$, because $h=0$ at a goal</button>
+    <button class="opt">In $g(n)+h(n) \le g(n)+h^*(n)$ — swapping the estimate for the truth</button>
+    <button class="opt">Nowhere; it is only used in step 2</button>
+    <div class="why"><strong>Why:</strong> admissibility is precisely the statement $h(n) \le h^*(n)$, which is what licenses that one inequality. Everything else is definitions and the assumption that $B$ is suboptimal. That is why an <em>in</em>admissible heuristic kills the theorem instantly: without that line, $f(n)$ can exceed $f(A)$, the relay in front of $B$ collapses, and Figure 4 happens. (Option B is true, but it is an <em>consequence</em> of admissibility at goals, used in the last line, not the inequality that does the work.)</div>
+  </div>
+
+  <h2 id="graph-search">9. A* graph search, and why admissibility is not enough</h2>
+
+  <p>Everything above was about <strong>tree search</strong>: no explored set, states may be re-generated as often as they like. Real implementations use <strong>graph search</strong> — keep an explored (closed) set, never expand the same state twice — because otherwise a maze with a cycle in it will drown you. The slide's definition is deliberately minimal:</p>
+
+  <ul>
+    <li><strong>A* tree search</strong> = the tree search algorithm from Chapter 1, frontier = priority queue keyed by $f(n) = g(n)+h(n)$.</li>
+    <li><strong>A* graph search</strong> = the UCS <em>graph</em> search algorithm from Chapter 1, frontier = priority queue keyed by $f(n) = g(n)+h(n)$.</li>
+  </ul>
+
+  <p>One word changed and the optimality theorem broke. Here is the four-node counterexample that shows it.</p>
+
+  <div class="viz">
+    <div class="viz-title">Figure 6 · “A* Graph Search Gone Wrong” — an admissible $h$ that graph search still ruins</div>
+    <svg viewBox="0 0 520 260" role="img" aria-label="Graph with S, A, C and G: S to A costs 1, A to C costs 1, S to C costs 3, C to G costs 3, with heuristic values 2, 4, 1 and 0">
+      <g stroke="var(--line-2)" stroke-width="2">
+        <line x1="76" y1="126" x2="192" y2="66"/>
+        <line x1="228" y1="66" x2="344" y2="126"/>
+        <line x1="82" y1="140" x2="338" y2="140"/>
+        <line x1="373" y1="152" x2="447" y2="196"/>
+      </g>
+      <g font-size="14" font-weight="700" fill="var(--accent)" text-anchor="middle">
+        <text x="120" y="88">1</text>
+        <text x="300" y="88">1</text>
+        <text x="210" y="160">3</text>
+        <text x="398" y="166">3</text>
+      </g>
+      <g stroke-width="2.6" fill="var(--panel)">
+        <circle cx="60" cy="140" r="20" stroke="var(--accent-2)"/>
+        <circle cx="210" cy="56" r="20" stroke="var(--line-2)"/>
+        <circle cx="360" cy="140" r="20" stroke="var(--rose)"/>
+        <circle cx="462" cy="206" r="21" stroke="var(--gold)"/>
+      </g>
+      <g text-anchor="middle" font-size="15" font-weight="700" fill="var(--ink)">
+        <text x="60" y="146">S</text><text x="210" y="62">A</text><text x="360" y="146">C</text><text x="462" y="212">G</text>
+      </g>
+      <g text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-3)">
+        <text x="60" y="178">h=2</text>
+        <text x="210" y="28">h=4</text>
+        <text x="392" y="122" text-anchor="start">h=1</text>
+        <text x="462" y="244">h=0</text>
+      </g>
+    </svg>
+    <div class="caption">Check admissibility first: $h^*(S)=5$ (via $A$), $h^*(A)=4$, $h^*(C)=3$, $h^*(G)=0$. Against $h = 2,4,1,0$: every one is $\le$ the truth, so <strong>$h$ is admissible</strong>. Tree search gets 5; graph search gets 6.</div>
+  </div>
+
+  <h3>The two traces, side by side</h3>
+
+  <div class="scroll-x">
+  <table>
+    <thead><tr><th>#</th><th>A* <strong>tree</strong> search</th><th>A* <strong>graph</strong> search (explored set)</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Frontier: <code>S (0+2)=2</code>. Pop $S$. Push <code>S-A (1+4)=5</code>, <code>S-C (3+1)=4</code>.</td><td>Same. Explored $=\{S\}$. Frontier: <code>S-A:5</code>, <code>S-C:4</code>.</td></tr>
+      <tr><td>2</td><td>Pop <code>S-C</code> ($f=4$). Push <code>S-C-G (6+0)=6</code>.</td><td>Pop <code>S-C</code> ($f=4$). <strong>Explored $=\{S,C\}$ — $C$ is now closed forever.</strong> Push <code>S-C-G:6</code>.</td></tr>
+      <tr><td>3</td><td>Pop <code>S-A</code> ($f=5$). Push <code>S-A-C (2+1)=3</code>. <em>Nothing stops a second node for state $C$.</em></td><td>Pop <code>S-A</code> ($f=5$). Its child is $C$ with $g=2$ — but $C \in$ explored, so the child is <strong>discarded</strong>.</td></tr>
+      <tr><td>4</td><td>Pop <code>S-A-C</code> ($f=3$). Push <code>S-A-C-G (5+0)=5</code>.</td><td>Frontier holds only <code>S-C-G:6</code>. Pop it — goal.</td></tr>
+      <tr><td>5</td><td>Pop <code>S-A-C-G</code> ($f=5$) — goal. <strong>Return $S\!-\!A\!-\!C\!-\!G$, cost 5.</strong> ✔</td><td><strong>Return $S\!-\!C\!-\!G$, cost 6.</strong> ✘ suboptimal</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>The slide's own summary of the bug is exact and worth memorising: <em>“$C$ (specifically $S\!-\!C$) is no longer on the frontier, so it can't be replaced with the better $S\!-\!A\!-\!C$ option.”</em></p>
+
+  <h3>Why this is not the same bug as Chapter 1's</h3>
+
+  <p>In <a href="search-foundations.html#ucs-walkthrough">UCS</a> you met a node getting <em>replaced</em> on the frontier by a cheaper route to the same state, and everything was fine. The replacement rule only works on nodes that are <strong>still on the frontier</strong>. Once a state is popped and moved to the explored set, graph search regards it as settled: “I already found the best way here.”</p>
+
+  <p>For UCS that belief is <em>true</em>. UCS pops in increasing $g$, so the first time a state is popped, its $g$ is the minimum possible — nothing cheaper can appear later. For A*, the pop order is by $f$, and $f$ mixes in a guess. Here A* popped $C$ with $g=3$ because $h(C)=1$ made that route look finished ($f=4$), while the genuinely better route to $C$ was still hiding behind $A$, whose $h(A) = 4$ made it look expensive ($f = 5$). The heuristic told A* to settle $C$ too early.</p>
+
+  <div class="box key">
+    <span class="label">Key idea</span>
+    <p>Admissibility guarantees that A* pops <em>goal</em> nodes in a safe order. It says nothing about the order in which A* pops <em>ordinary</em> nodes. Graph search's closed set is a bet that the first pop of every state is its best pop — and that bet needs a stronger property than admissibility. The property is called <strong>consistency</strong>.</p>
+  </div>
+
+  <p>Two other repairs exist, and you should know they exist so that you recognise them in code you read: <span class="pill">beyond syllabus</span> (i) <em>reopening</em> — when a closed state is rediscovered with smaller $g$, pull it back out of the explored set and re-push it; this restores optimality with a merely admissible $h$ at the cost of possibly re-expanding states many times. (ii) Run tree search and eat the duplicates. The course's route is different and better: fix the heuristic instead.</p>
+
+  <div class="quiz" data-answer="0">
+    <div class="q">Poll from the slides — in Figure 6, which paths does <strong>A* graph search</strong> ever place on the frontier?</div>
+    <button class="opt">S, S-A, S-C, S-C-G</button>
+    <button class="opt">S, S-A, S-C, S-A-C, S-C-G</button>
+    <button class="opt">S, S-A, S-A-C, S-A-C-G</button>
+    <button class="opt">S, S-A, S-C, S-A-C, S-A-C-G</button>
+    <div class="why"><strong>Why:</strong> $S$ goes on first; expanding it pushes <code>S-A</code> ($f=5$) and <code>S-C</code> ($f=4$); popping <code>S-C</code> closes state $C$ and pushes <code>S-C-G</code> ($f=6$); popping <code>S-A</code> generates $C$ again with $g=2$, but $C$ is in the explored set so <strong>that node is never created</strong> — which is why <code>S-A-C</code> (and therefore <code>S-A-C-G</code>) never appears. Options B and D describe <em>tree</em> search, which does build <code>S-A-C</code> and finishes with the optimal <code>S-A-C-G</code> at cost 5.</div>
+  </div>
+
+  <div class="box warn">
+    <span class="label">A slip on the slide, so it does not confuse you</span>
+    <p>The slide's frontier column reads <code>S: 0+2 = 2</code>, <code>S-A: 1+4 = 5</code>, <code>S-C: 2+1 = 3</code>, <code>S-C-G: 6+0 = 6</code>. The third line mixes the $g$ of the <em>good</em> route to $C$ ($g=2$, through $A$) with the label <code>S-C</code>. The node actually on the frontier at that moment is the direct route, $g = 3$, $f = 3+1 = 4$. Nothing downstream changes — with either number $C$ is popped second, before $S\!-\!A$, and the algorithm still returns cost 6 — but write $f(\texttt{S-C}) = 4$ in your own work.</p>
+  </div>
+
+  <h2 id="consistency">10. Consistency (the triangle inequality)</h2>
+
+  <p>Admissibility constrains $h$ at each node <em>relative to the goal</em>. Consistency constrains $h$ across each <em>edge</em>, so that the estimate cannot drop faster than you can actually travel.</p>
+
+  <div class="box defn">
+    <span class="label">Definition — consistent (monotone) heuristic</span>
+    <p>$h$ is <strong>consistent</strong> if for every node $A$ and every successor $C$ of $A$,
+    $$h(A) - h(C) \;\le\; \text{cost}(A \to C), \qquad\text{equivalently}\qquad h(A) \;\le\; \text{cost}(A, C) + h(C),$$
+    and $h(g) = 0$ at every goal $g$.</p>
+    <p>In the slide's words: the <strong>“heuristic step cost” must be $\le$ the actual cost, for each step</strong>. The second form is a <strong>triangle inequality</strong> — “kind of”, as the slide says — with the three sides being $A \to$ goal (estimated), $A \to C$ (real), $C \to$ goal (estimated).</p>
+  </div>
+
+  <div class="box analogy">
+    <span class="label">Analogy</span>
+    <p>$h$ is a sign at each junction reading “Bucharest: about 190 km”. Consistency says the signs must be <em>mutually believable</em>: if you drive 80 km down one road and the next sign claims “Bucharest: about 60 km”, the pair of signs is lying, because together they assert you covered 130 km of distance-to-go by driving 80 km. A consistent set of signs never decreases by more than the distance you actually drove.</p>
+    <p><strong>Where the analogy breaks:</strong> signs may <em>increase</em> by as much as they like — driving 80 km away from the goal may legally raise the estimate by 80. The constraint is one-sided.</p>
+  </div>
+
+  <h3>Consequence 1 — $f$ never decreases along a path</h3>
+
+  <div class="box proof">
+    <span class="label">Proof — consistency $\Rightarrow$ $f$ is non-decreasing along any path</span>
+    <p>Let $C$ be a successor of $A$ on some path, so that $g(C) = g(A) + \text{cost}(A,C)$ (the definition of $g$ along a branch). Then
+    $$
+    \begin{aligned}
+    f(C) &amp;= g(C) + h(C) &amp;&amp;\text{definition of $f$}\\
+         &amp;= g(A) + \text{cost}(A,C) + h(C) &amp;&amp;\text{definition of $g$ along the branch}\\
+         &amp;\ge g(A) + h(A) &amp;&amp;\text{consistency: } \text{cost}(A,C) + h(C) \ge h(A)\\
+         &amp;= f(A). &amp;&amp;\text{definition of $f$}
+    \end{aligned}
+    $$
+    So $f(C) \ge f(A)$: as you walk down any branch of the search tree, $f$ is monotone non-decreasing. (Hence the other name for consistency: <em>monotonicity</em>.) $\blacksquare$</p>
+  </div>
+
+  <p>Why that matters so much: if $f$ never decreases along a path, then the $f$-value of the node A* pops never decreases over time either. A* sweeps outward in bands of increasing $f$ — exactly the way UCS sweeps outward in bands of increasing $g$ — and <strong>the first time a state is popped, its $g$ is already optimal</strong>. Nothing better can arrive later, because anything arriving later arrives with an $f$ that is at least as large. That is precisely the bet the explored set makes, so:</p>
+
+  <div class="box key">
+    <span class="label">Consequence 2 — A* graph search is optimal when $h$ is consistent</span>
+    <p>With consistency, closing a state is safe: the route by which a state was first popped is a cheapest route to it. The discard in row 3 of the Figure 6 trace can then never throw away anything valuable, because a discarded rediscovery is never an improvement.</p>
+    <p>Sanity-check Figure 6 against the definition: the edge $A \to C$ has $h(A) - h(C) = 4 - 1 = 3$, while $\text{cost}(A,C) = 1$. Since $3 &gt; 1$, <strong>that edge violates consistency</strong> — and it is exactly the edge whose rediscovery got discarded. The counterexample was not bad luck; it was built on the single inconsistent edge.</p>
+  </div>
+
+  <h3>Consistency implies admissibility</h3>
+
+  <div class="box proof">
+    <span class="label">Proof — every consistent heuristic is admissible</span>
+    <p>Take any node $n$ and let $n = m_0 \to m_1 \to \dots \to m_k = \gamma$ be a <em>cheapest</em> path from $n$ to a nearest goal $\gamma$, so that by definition
+    $$h^*(n) = \sum_{i=0}^{k-1} \text{cost}(m_i, m_{i+1}).$$
+    Induct on $k$, the number of steps on that path.</p>
+    <p><strong>Base case $k = 0$.</strong> Then $n$ is itself a goal, $h^*(n) = 0$, and consistency requires $h(n) = 0$. So $h(n) \le h^*(n)$. ✔</p>
+    <p><strong>Inductive step.</strong> Suppose the claim holds for every node whose cheapest path to a goal has $k-1$ steps. The suffix $m_1 \to \dots \to m_k$ is a cheapest path from $m_1$ to a goal (a suffix of a cheapest path is a cheapest path — otherwise splice in the cheaper suffix and beat $h^*(n)$), and it has $k-1$ steps, so the hypothesis gives $h(m_1) \le h^*(m_1)$. Then
+    $$
+    \begin{aligned}
+    h(n) &amp;\le \text{cost}(n, m_1) + h(m_1) &amp;&amp;\text{consistency across the first edge}\\
+         &amp;\le \text{cost}(n, m_1) + h^*(m_1) &amp;&amp;\text{inductive hypothesis}\\
+         &amp;= h^*(n). &amp;&amp;\text{the path is cheapest, so its cost splits this way}
+    \end{aligned}
+    $$
+    ✔ By induction, $h(n) \le h^*(n)$ for every $n$; together with $h \ge 0$ that is admissibility. $\blacksquare$</p>
+    <p><strong>The converse is false</strong>, and you have already seen the witness: Figure 6's $h = (2,4,1,0)$ is admissible and inconsistent. So <em>consistent</em> is strictly stronger than <em>admissible</em>.</p>
+  </div>
+
+  <div class="box intuition">
+    <span class="label">Intuition — why the implication goes that way</span>
+    <p>Consistency is a <em>local</em> promise: “I never shrink faster than you can walk.” Admissibility is a <em>global</em> promise: “I never exceed the true remaining distance.” Chaining a local promise all the way to the goal produces the global one — each step gives up at most the real cost of that step, and after the last step the estimate is 0, so the total given up is at most the real total. Going the other direction fails because a global bound says nothing about how wildly the estimate may bounce around between two neighbours.</p>
+  </div>
+
+  <div class="guided">
+    <div class="g-head"><span class="tag">Guided problem 2</span>Is this $h$ admissible? Is it consistent? Name the violating edge</div>
+    <div class="g-body">
+      <p>Directed graph, start $S$, single goal $G$:</p>
+      <div class="scroll-x">
+      <table class="center tight">
+        <thead><tr><th>Edge</th><th>$S\!\to\!A$</th><th>$S\!\to\!B$</th><th>$A\!\to\!D$</th><th>$B\!\to\!D$</th><th>$D\!\to\!G$</th><th>$B\!\to\!G$</th></tr></thead>
+        <tbody><tr><td>cost</td><td>1</td><td>4</td><td>1</td><td>1</td><td>2</td><td>7</td></tr></tbody>
+      </table>
+      <table class="center tight">
+        <thead><tr><th>State</th><th>$S$</th><th>$A$</th><th>$B$</th><th>$D$</th><th>$G$</th></tr></thead>
+        <tbody><tr><td>$h$</td><td>4</td><td>3</td><td>3</td><td>2</td><td>0</td></tr></tbody>
+      </table>
+      </div>
+      <p>(a) Compute $h^*$ for every state and decide admissibility. (b) Check consistency on every edge. (c) If it is inconsistent, does A* graph search still return the optimal answer here?</p>
+    </div>
+    <details class="step"><summary>Step 1 — Compute $h^*$ by working backwards from $G$</summary><div>
+      <p>$h^*(G) = 0$. $h^*(D) = 2$ (only edge $D\!\to\!G$). $h^*(A) = 1 + h^*(D) = 3$. $h^*(B) = \min(1 + h^*(D),\ 7) = \min(3, 7) = 3$. $h^*(S) = \min(1 + h^*(A),\ 4 + h^*(B)) = \min(4, 7) = 4$.</p>
+      <p>Always do this from the goal backwards; computing $h^*$ forwards from $S$ is a different (and harder) question.</p>
+    </div></details>
+    <details class="step"><summary>Step 2 — Admissibility: compare $h$ with $h^*$ state by state</summary><div>
+      <div class="scroll-x"><table class="center tight">
+        <thead><tr><th></th><th>$S$</th><th>$A$</th><th>$B$</th><th>$D$</th><th>$G$</th></tr></thead>
+        <tbody>
+          <tr><td>$h$</td><td>4</td><td>3</td><td>3</td><td>2</td><td>0</td></tr>
+          <tr><td>$h^*$</td><td>4</td><td>3</td><td>3</td><td>2</td><td>0</td></tr>
+          <tr><td>$h \le h^*$?</td><td>✔</td><td>✔</td><td>✔</td><td>✔</td><td>✔</td></tr>
+        </tbody>
+      </table></div>
+      <p><strong>Admissible</strong> — in fact $h = h^*$ exactly, the <em>perfect</em> heuristic. Hold that thought, because it makes the next step surprising.</p>
+    </div></details>
+    <details class="step"><summary>Step 3 — Consistency: test $h(X) - h(Y) \le \text{cost}(X \to Y)$ on every edge</summary><div>
+      <div class="scroll-x"><table class="center tight">
+        <thead><tr><th>Edge</th><th>$h(X)-h(Y)$</th><th>cost</th><th>OK?</th></tr></thead>
+        <tbody>
+          <tr><td>$S\!\to\!A$</td><td>$4-3 = 1$</td><td>1</td><td>✔ (equality is allowed)</td></tr>
+          <tr><td>$S\!\to\!B$</td><td>$4-3 = 1$</td><td>4</td><td>✔</td></tr>
+          <tr><td>$A\!\to\!D$</td><td>$3-2 = 1$</td><td>1</td><td>✔</td></tr>
+          <tr><td>$B\!\to\!D$</td><td>$3-2 = 1$</td><td>1</td><td>✔</td></tr>
+          <tr><td>$D\!\to\!G$</td><td>$2-0 = 2$</td><td>2</td><td>✔</td></tr>
+          <tr><td>$B\!\to\!G$</td><td>$3-0 = 3$</td><td>7</td><td>✔</td></tr>
+        </tbody>
+      </table></div>
+      <p>All six pass, so this one <strong>is</strong> consistent. That is no accident: $h^*$ itself is always consistent, because $h^*(X) \le \text{cost}(X,Y) + h^*(Y)$ is just the statement “the best route from $X$ is no worse than the route that goes via $Y$”.</p>
+    </div></details>
+    <details class="step"><summary>Step 4 — Now break it, and find the violating edge</summary><div>
+      <p>Change a single number: let $h(A) = 1$ instead of 3 (everything else unchanged). Admissibility survives — $1 \le 3$ ✔, and every other state is untouched. Consistency does not:</p>
+      <ul>
+        <li>$S \to A$: $h(S) - h(A) = 4 - 1 = 3$ but $\text{cost} = 1$. $3 &gt; 1$ → <strong>violated</strong>.</li>
+        <li>$A \to D$: $h(A) - h(D) = 1 - 2 = -1 \le 1$ ✔ (a drop of $-1$ means the estimate went <em>up</em>, always legal).</li>
+      </ul>
+      <p><strong>The violating edge is $S \to A$.</strong> The recipe for finding one: for each edge, compute $h(\text{tail}) - h(\text{head}) - \text{cost}$; any strictly positive value names a violation. You are looking for a place where the estimate <em>collapses</em> faster than the road allows — here the estimate falls by 3 over a 1-cost road.</p>
+    </div></details>
+    <details class="step"><summary>Answer &amp; the takeaway</summary><div>
+      <p>(a) Admissible (with room to spare after the change). (b) Consistent as given; after setting $h(A)=1$, inconsistent, violating edge $S \to A$. (c) <strong>Yes — A* graph search still gets the optimal answer on this particular graph</strong>, even with the inconsistent $h(A) = 1$: run it and you pop $S(f{=}4)$, $A(f{=}2)$, $D(f{=}4)$, $G(f{=}4)$ and return $S\!-\!A\!-\!D\!-\!G$ at cost 4, which is optimal.</p>
+      <p><strong>That is the real lesson.</strong> Inconsistency does not <em>guarantee</em> failure; it merely withdraws the guarantee of success. Optimality theorems are promises about <em>all</em> inputs. “It worked on my graph” is not a counterexample to anything, and it is not a proof of anything either.</p>
+    </div></details>
+  </div>
+
+  <h2 id="optimality-summary">11. The optimality summary you must memorise</h2>
+
+  <div class="scroll-x">
+  <table>
+    <thead><tr><th></th><th>Tree search</th><th>Graph search (explored set)</th></tr></thead>
+    <tbody>
+      <tr><td><strong>A*</strong></td><td>optimal if $h$ is <strong>admissible</strong></td><td>optimal if $h$ is <strong>consistent</strong></td></tr>
+      <tr><td><strong>UCS</strong></td><td>optimal — the special case $h \equiv 0$, and $0 \le h^*$ always</td><td>optimal — and $h \equiv 0$ is consistent, since $0 - 0 = 0 \le \text{cost}$ for every edge</td></tr>
+      <tr><td><strong>Greedy</strong></td><td>never guaranteed</td><td>never guaranteed</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>Four things to carry away from that table:</p>
+
+  <ol>
+    <li><strong>UCS is not a different algorithm.</strong> It is A* with the laziest possible heuristic. Every theorem about A* specialises to a theorem about UCS by substituting $h = 0$ — including Chapter 1's optimality proof, which is the blocking argument with all the $h$'s crossed out.</li>
+    <li><strong>The requirement gets stronger when you add the explored set.</strong> Graph search buys you a bound on memory and time and pays for it with a stronger obligation on $h$.</li>
+    <li><strong>Consistency implies admissibility</strong> (§10), so the graph-search row implies the tree-search row. A consistent $h$ is safe everywhere; an admissible $h$ is safe only in a tree.</li>
+    <li>And the practical reassurance from the slides: <strong>“in general, most natural admissible heuristics tend to be consistent, especially if from relaxed problems.”</strong> That is not a theorem, it is an empirical observation — but it is the reason nobody worries much in practice, and §14 explains the mechanism behind it.</li>
+  </ol>
+
+  <div class="box example">
+    <span class="label">Example — why relaxation tends to hand you consistency for free</span>
+    <p>Suppose $h(n)$ is the exact optimal cost of $n$ in a <em>relaxed</em> problem: same states, same or cheaper edges, possibly extra edges. In the relaxed problem, $h$ is a true optimal-cost function, so it obeys its own triangle inequality: $h(A) \le \text{cost}_{\text{relaxed}}(A,C) + h(C)$ for every relaxed edge. Since every real edge $A \to C$ is also a relaxed edge with $\text{cost}_{\text{relaxed}}(A,C) \le \text{cost}(A,C)$, we get $h(A) \le \text{cost}(A,C) + h(C)$ — consistency, in one line. Both 8-puzzle heuristics below are of exactly this form.</p>
+  </div>
+
+  <h2 id="pseudocode">12. The two algorithms, written out</h2>
+
+  <p>Here are both blocks from the slides, faithfully. Read them <em>together</em>: the only textual difference is which key the priority queue uses, and yet that one word is the difference between blind and informed search.</p>
+
+<pre><code>function UNIFORM-COST-SEARCH(problem) returns a solution, or failure
+   initialize the explored set to be empty
+   initialize the frontier as a priority queue using g(n) as the priority
+   add initial state of problem to frontier with priority g(S) = 0
+   loop do
+         if the frontier is empty then
+              return failure
+         choose a node and remove it from the frontier
+         if the node contains a goal state then
+              return the corresponding solution
+         add the node state to the explored set
+         for each resulting child from node
+              if the child state is not already in the frontier or explored set then
+                   add child to the frontier
+              else if the child is already in the frontier with higher g(n) then
+                   replace that frontier node with child</code></pre>
+
+<pre><code>function A-STAR-SEARCH(problem) returns a solution, or failure
+   initialize the explored set to be empty
+   initialize the frontier as a priority queue using f(n) = g(n) + h(n) as the priority
+   add initial state of problem to frontier with priority f(S) = 0 + h(S)
+   loop do
+         if the frontier is empty then
+              return failure
+         choose a node and remove it from the frontier
+         if the node contains a goal state then
+              return the corresponding solution
+         add the node state to the explored set
+         for each resulting child from node
+              if the child state is not already in the frontier or explored set then
+                   add child to the frontier
+              else if the child is already in the frontier with higher f(n) then
+                   replace that frontier node with child</code></pre>
+
+  <p>Five lines worth annotating, because each one is an exam question waiting to happen:</p>
+
+  <ul>
+    <li><code>choose a node and remove it from the frontier</code> — “choose” means <em>choose the minimum-priority node</em>. This is the only place the priority is consulted, and it is why swapping the key is the only edit needed.</li>
+    <li><code>if the node contains a goal state then return</code> sits <strong>after</strong> the pop and <strong>before</strong> the expansion. Goal-test-on-pop. Move it up into the child loop and both algorithms lose optimality.</li>
+    <li><code>add the node state to the explored set</code> is the line that makes these <em>graph</em> search. Delete it (and the corresponding membership check) and you have tree search, which is what §8's proof is about.</li>
+    <li><code>if the child state is not already in the frontier or explored set</code> — <em>state</em>, not node. Two different nodes with the same state are the thing we are policing.</li>
+    <li><code>else if the child is already in the frontier with higher f(n) then replace that frontier node with child</code> — the repair branch. It handles only the <strong>frontier</strong> case. There is deliberately no branch for “already in the explored set with higher $f$”, and that missing branch is exactly the bug in Figure 6. Replacement also rewrites the node's parent pointer, or the recovered path will not match the recovered cost.</li>
+  </ul>
+
+  <div class="box warn">
+    <span class="label">Common mistake — comparing $f$ when you should compare $g$</span>
+    <p>In the A* version the replacement test is written on $f$. For two nodes with the <em>same state</em> that is equivalent to testing $g$, because they share the same $h$: $f_1 &gt; f_2 \iff g_1 + h &gt; g_2 + h \iff g_1 &gt; g_2$. So both phrasings are correct here — but only because the states match. Never compare $f$ across <em>different</em> states to decide which path is cheaper; that comparison is meaningless.</p>
+  </div>
+
+  <h2 id="contours">13. UCS vs A* contours</h2>
+
+  <p>The clearest mental image of what the heuristic buys you is the shape of the region the algorithm expands.</p>
+
+  <div class="viz">
+    <div class="viz-title">Figure 7 · Cost contours — UCS expands circles around the start, A* expands ellipses stretched toward the goal</div>
+    <svg viewBox="0 0 700 330" role="img" aria-label="Left: concentric circles centred on the start, the outermost just reaching the goal. Right: nested ellipses with foci at the start and the goal, elongated along the line joining them.">
+      <g fill="none" stroke="var(--accent)" stroke-width="1.6" opacity="0.75">
+        <circle cx="120" cy="170" r="24"/>
+        <circle cx="120" cy="170" r="48"/>
+        <circle cx="120" cy="170" r="72"/>
+        <circle cx="120" cy="170" r="96"/>
+        <circle cx="120" cy="170" r="120" stroke-width="2.6"/>
+      </g>
+      <g fill="none" stroke="var(--accent-2)" stroke-width="1.6" opacity="0.8">
+        <line x1="475" y1="170" x2="585" y2="170"/>
+        <ellipse cx="530" cy="170" rx="60" ry="24"/>
+        <ellipse cx="530" cy="170" rx="70" ry="43"/>
+        <ellipse cx="530" cy="170" rx="80" ry="58"/>
+        <ellipse cx="530" cy="170" rx="90" ry="71" stroke-width="2.6"/>
+      </g>
+      <g>
+        <circle cx="120" cy="170" r="6.5" fill="var(--panel)" stroke="var(--ink)" stroke-width="2.4"/>
+        <circle cx="240" cy="170" r="7.5" fill="var(--panel)" stroke="var(--gold)" stroke-width="2.8"/>
+        <circle cx="475" cy="170" r="6.5" fill="var(--panel)" stroke="var(--ink)" stroke-width="2.4"/>
+        <circle cx="585" cy="170" r="7.5" fill="var(--panel)" stroke="var(--gold)" stroke-width="2.8"/>
+      </g>
+      <g font-size="12.5" fill="var(--ink-mute)" text-anchor="middle">
+        <text x="120" y="196">Start</text>
+        <text x="240" y="196">Goal</text>
+        <text x="475" y="196">Start</text>
+        <text x="585" y="196">Goal</text>
+      </g>
+      <g font-size="14" font-weight="700" text-anchor="middle">
+        <text x="175" y="34" fill="var(--accent)">Uniform-cost: contours of $g$</text>
+        <text x="530" y="34" fill="var(--accent-2)">A*: contours of $f = g + h$</text>
+      </g>
+      <g font-size="12" fill="var(--ink-mute)" text-anchor="middle">
+        <text x="175" y="306">expands equally in all “directions”;</text>
+        <text x="175" y="322">everything within radius $C^*$ of the start</text>
+        <text x="530" y="306">expands mainly toward the goal, but still hedges</text>
+        <text x="530" y="322">its bets sideways to guarantee optimality</text>
+      </g>
+    </svg>
+    <div class="caption">These are not a cartoon — they are the exact level sets. UCS expands every node with $g \le C^*$: a ball around the start. A* expands every node with $f = g+h &lt; C^*$; with a perfect Euclidean $h$ that set is $\{p : d(\text{start},p) + d(p,\text{goal}) \le C^*\}$, which is the textbook definition of an <strong>ellipse with foci at the start and the goal</strong>. The bolder outer curve in each panel is the $C^*$ contour, the boundary of what must be expanded.</div>
+  </div>
+
+  <p>Now you can read off the entire story of the heuristic's quality as a geometric parameter:</p>
+
+  <ul>
+    <li>$h \equiv 0$: the ellipse's minor axis is as long as its major axis — the ellipse <em>is</em> the circle, and A* <em>is</em> UCS.</li>
+    <li>A weak but admissible $h$: a fat ellipse. Fewer nodes than UCS, still a lot.</li>
+    <li>A strong admissible $h$: a thin cigar hugging the straight line between start and goal.</li>
+    <li>$h = h^*$: the ellipse collapses onto the segment itself — A* expands only nodes on optimal paths. This is the best any heuristic can do.</li>
+  </ul>
+
+  <p>The word <strong>hedges</strong> in the slide is the important one. A* does <em>not</em> expand only the straight line, even with a good heuristic, and it must not: the sideways bulge is exactly the set of alternatives it is obliged to rule out before it can honestly claim optimality. Greedy skips the bulge, which is why it is faster and why it can be wrong. <strong>The bulge is the price of the proof.</strong> Go back to Figure 3 and run A* once more with this in mind — the fringe it fills in on either side of the corridor is the bulge.</p>
+
+  <h2 id="creating-heuristics">14. Creating heuristics: relaxed problems</h2>
+
+  <p>You now know what makes a heuristic legal. Where do you get one? The slides give the single most useful recipe in the whole search unit:</p>
+
+  <div class="box key">
+    <span class="label">The recipe — relaxation</span>
+    <p><strong>Admissible heuristics are usually the exact solution costs of <em>relaxed</em> problems</strong>, where you delete constraints so that <em>new actions become available</em>.</p>
+    <p>Why it always works: any solution to the real problem is still a legal solution to the relaxed problem (you removed rules, you did not add any), so the relaxed optimum can only be cheaper. Therefore
+    $$h(n) \;=\; \text{optimal cost from } n \text{ in the relaxed problem} \;\le\; h^*(n),$$
+    which is admissibility, obtained for free — you never have to check it case by case. And by the argument in §11, such an $h$ is normally consistent too.</p>
+  </div>
+
+  <p>The Romania heuristic is exactly this. Relaxation: <em>let the car drive in a straight line across fields, ignoring roads.</em> The optimal cost of that relaxed problem is the straight-line distance — 366 km from Arad — and it is computable with Pythagoras instead of search. The trick is to relax <strong>just enough</strong> that the relaxed problem becomes trivially solvable, while still capturing something real about the difficulty.</p>
+
+  <h3>Example: the 8-puzzle</h3>
+
+  <p>The slide poses five questions about the 8-puzzle and leaves them for the poll. Here are all five, answered.</p>
+
+  <div class="box example">
+    <span class="label">The 8-puzzle as a formal search problem</span>
+    <ul>
+      <li><strong>What are the states?</strong> An arrangement of the eight numbered tiles plus the blank in the nine cells of a $3\times3$ board — i.e. a <em>permutation</em> of the nine symbols $\{1,\dots,8,\square\}$ over nine positions.</li>
+      <li><strong>How many states?</strong> $9! = 362{,}880$ arrangements. But only <strong>half of them — 181,440 — are reachable</strong> from any given start, because a legal move always swaps the blank with a neighbour, and sliding the blank around and back always changes tile-permutation parity in lockstep with the blank's own displacement. The state space splits into two components that never communicate: if someone pries out two tiles and swaps them, the puzzle becomes <em>unsolvable</em>, and no amount of search will tell you otherwise — it will just exhaust the reachable half.</li>
+      <li><strong>What are the actions?</strong> Move the <strong>blank</strong> up, down, left or right (equivalently: slide the adjacent tile into the hole). Defining actions on the blank rather than on the tiles gives a branching factor of at most 4 instead of 8, for the same state space — a free win, and a good habit.</li>
+      <li><strong>How many actions from the start state?</strong> It depends only on where the blank is: a <em>corner</em> blank has 2 legal moves, an <em>edge</em> blank 3, and the <em>centre</em> blank 4. In the standard start state below the blank is in the centre, so <strong>4</strong>. (Average branching factor over the whole space is about 3.)</li>
+      <li><strong>What should the step costs be?</strong> $c = 1$ per move. We are minimising the <em>number of moves</em>, so making every move cost one unit makes path cost equal number of moves. With unit costs, $h^*$ is measured in moves and every heuristic below must be too.</li>
+    </ul>
+  </div>
+
+  <div class="viz">
+    <div class="viz-title">Figure 8 · The 8-puzzle: per-tile Manhattan distances summing to $h_{\text{MANHATTAN}} = 18$</div>
+    <svg viewBox="0 0 700 300" role="img" aria-label="Start board 7 2 4 / 5 blank 6 / 8 3 1 with each tile's Manhattan distance, and the goal board blank 1 2 / 3 4 5 / 6 7 8">
+      <g font-size="13" font-weight="700" fill="var(--ink-mute)" text-anchor="middle">
+        <text x="127" y="34">Start state</text>
+        <text x="559" y="34">Goal state</text>
+      </g>
+      <g stroke="var(--line-2)" stroke-width="2" fill="var(--bg-soft)">
+        <rect x="40" y="48" width="58" height="58"/><rect x="98" y="48" width="58" height="58"/><rect x="156" y="48" width="58" height="58"/>
+        <rect x="40" y="106" width="58" height="58"/><rect x="98" y="106" width="58" height="58" fill="var(--panel)"/><rect x="156" y="106" width="58" height="58"/>
+        <rect x="40" y="164" width="58" height="58"/><rect x="98" y="164" width="58" height="58"/><rect x="156" y="164" width="58" height="58"/>
+      </g>
+      <g font-size="23" font-weight="700" fill="var(--ink)" text-anchor="middle">
+        <text x="69" y="86">7</text><text x="127" y="86">2</text><text x="185" y="86">4</text>
+        <text x="69" y="144">5</text><text x="185" y="144">6</text>
+        <text x="69" y="202">8</text><text x="127" y="202">3</text><text x="185" y="202">1</text>
+      </g>
+      <g font-size="12" font-weight="750" fill="var(--accent)" text-anchor="end">
+        <text x="94" y="102">3</text><text x="152" y="102">1</text><text x="210" y="102">2</text>
+        <text x="94" y="160">2</text><text x="210" y="160">3</text>
+        <text x="94" y="218">2</text><text x="152" y="218">2</text><text x="210" y="218">3</text>
+      </g>
+      <text x="127" y="246" font-size="12" fill="var(--ink-mute)" text-anchor="middle">small orange = that tile's Manhattan distance</text>
+      <g stroke="var(--line-2)" stroke-width="2" fill="var(--bg-soft)">
+        <rect x="472" y="48" width="58" height="58" fill="var(--panel)"/><rect x="530" y="48" width="58" height="58"/><rect x="588" y="48" width="58" height="58"/>
+        <rect x="472" y="106" width="58" height="58"/><rect x="530" y="106" width="58" height="58"/><rect x="588" y="106" width="58" height="58"/>
+        <rect x="472" y="164" width="58" height="58"/><rect x="530" y="164" width="58" height="58"/><rect x="588" y="164" width="58" height="58"/>
+      </g>
+      <g font-size="23" font-weight="700" fill="var(--ink)" text-anchor="middle">
+        <text x="559" y="86">1</text><text x="617" y="86">2</text>
+        <text x="501" y="144">3</text><text x="559" y="144">4</text><text x="617" y="144">5</text>
+        <text x="501" y="202">6</text><text x="559" y="202">7</text><text x="617" y="202">8</text>
+      </g>
+      <g font-size="13.5" fill="var(--ink)" text-anchor="middle">
+        <text x="350" y="120" font-size="20" fill="var(--ink-mute)">→</text>
+        <text x="350" y="160" font-weight="700" fill="var(--accent)">$h_{\text{TILES}} = 8$</text>
+        <text x="350" y="182" font-weight="700" fill="var(--accent-2)">$h_{\text{MAN}} = 18$</text>
+      </g>
+      <text x="350" y="276" font-size="13" fill="var(--ink-mute)" text-anchor="middle">$3+1+2+2+2+3+3+2 = 18$ &nbsp;(tiles in order $1,2,\dots,8$)</text>
+    </svg>
+    <div class="caption">Both boards are the standard Russell &amp; Norvig pair. The blank does not contribute to either heuristic — it is not a tile, and counting it would break admissibility on some instances.</div>
+  </div>
+
+  <h3>8-puzzle heuristic I — misplaced tiles</h3>
+
+  <div class="box defn">
+    <span class="label">$h_{\text{TILES}}$</span>
+    <p>$h_{\text{TILES}}(n) = $ the <strong>number of tiles that are not in their goal position</strong> (never counting the blank).</p>
+    <p>On the start state above, every one of the eight tiles is somewhere it should not be, so <strong>$h_{\text{TILES}}(\text{start}) = 8$</strong>.</p>
+  </div>
+
+  <p><strong>Why is it admissible?</strong> Each move slides exactly one tile into a new cell. So every misplaced tile requires <em>at least</em> one move of its own before the puzzle can be solved, and no single move can fix two tiles at once. Therefore the number of remaining moves is at least the number of misplaced tiles: $h_{\text{TILES}} \le h^*$. ✔</p>
+
+  <p><strong>Which relaxation is it solving?</strong> Delete <em>both</em> rules about where a tile may go: <em>a tile may be picked up and teleported directly to its goal square, from anywhere, in one move.</em> In that fantasy puzzle the optimal solution is obviously “one teleport per misplaced tile” = 8 moves. That exact relaxed cost <em>is</em> $h_{\text{TILES}}$ — which is why admissibility did not have to be argued case by case.</p>
+
+  <h3>8-puzzle heuristic II — total Manhattan distance</h3>
+
+  <p>The slide asks: <em>what if we had an easier 8-puzzle where any tile could slide any direction at any time, ignoring other tiles?</em> Relax only <strong>one</strong> rule — the one that says a tile may only move into the blank — and keep the rule that a tile moves one square at a time, orthogonally.</p>
+
+  <div class="box defn">
+    <span class="label">$h_{\text{MANHATTAN}}$</span>
+    <p>$h_{\text{MANHATTAN}}(n) = \sum_{\text{tiles } t} \big( |r_t - r_t^{\text{goal}}| + |c_t - c_t^{\text{goal}}| \big)$ — the total Manhattan distance of every tile from where it belongs.</p>
+    <p>On the start state, tile by tile in numeric order: $3+1+2+2+2+3+3+2 = \mathbf{18}$, exactly the slide's “$h(\text{start}) = 3+1+2+\dots = 18$”.</p>
+  </div>
+
+  <p><strong>Why is it admissible?</strong> A tile at Manhattan distance $d$ from its home needs at least $d$ moves of its own, because one move changes one of its coordinates by one. Summing over tiles, and using again that each move moves only one tile, gives $h_{\text{MANHATTAN}} \le h^*$. ✔ Note both facts are needed: “$\ge d$ moves per tile” <em>and</em> “no move helps two tiles”. Drop the second and you could double-count.</p>
+
+  <p>And $h_{\text{MANHATTAN}} \ge h_{\text{TILES}}$ always, because a misplaced tile contributes at least 1 to the sum and a correctly placed one contributes 0. Keep that in mind for §15 — it is the definition of <em>dominance</em>, and it is why the numbers below come out the way they do.</p>
+
+  <h3>The statistics table, and what it is really saying</h3>
+
+  <div class="scroll-x">
+  <table class="center">
+    <thead>
+      <tr><th rowspan="2">Algorithm</th><th colspan="3">Average nodes expanded when the optimal path has…</th></tr>
+      <tr><th>…4 steps</th><th>…8 steps</th><th>…12 steps</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>UCS</td><td>112</td><td>6,300</td><td>$3.6 \times 10^6$</td></tr>
+      <tr><td>A*<sub>TILES</sub></td><td>13</td><td>39</td><td>227</td></tr>
+      <tr><td>A*<sub>MANHATTAN</sub></td><td>12</td><td>25</td><td><strong>73</strong></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="tiny muted center">Statistics from Andrew Moore, as given on the slide.</p>
+
+  <p>Read the table along the rows first, then down the columns, and it tells two different stories.</p>
+
+  <p><strong>Along the UCS row:</strong> $112 \to 6{,}300 \to 3{,}600{,}000$. Each time the solution gets 4 steps deeper, the work multiplies by roughly 56 and then 570. That is exponential blow-up with depth, and it is what “$O(b^d)$” feels like when you sit and watch it. At 12 steps UCS is touching 3.6 million nodes — <em>twenty times the entire reachable state space of 181,440</em>, which tells you something else: these are <em>tree</em>-search counts, re-expanding the same states over and over.</p>
+
+  <p><strong>Along the A*<sub>MANHATTAN</sub> row:</strong> $12 \to 25 \to 73$. Also growing, but at a rate a person could live with. Against UCS at depth 12 it is a factor of <strong>49,000</strong> less work — from the same algorithm skeleton, from the same state space, purely because somebody spent five minutes deciding which rule to delete.</p>
+
+  <p><strong>Down the depth-12 column:</strong> $3.6\times10^6 \to 227 \to 73$. This is the most important comparison in the table, because all three rows are the same algorithm with a different $h$: $h = 0$, then $h_{\text{TILES}}$, then $h_{\text{MANHATTAN}}$. <strong>The table is not a comparison of algorithms. It is a measurement of heuristic quality.</strong> A better heuristic does not merely trim a constant factor — it lowers the effective branching factor, which changes the exponent, which is why the gaps widen as the problems get deeper.</p>
+
+  <div class="box intuition">
+    <span class="label">Intuition — what “better” means quantitatively</span>
+    <p>If A* expands about $N$ nodes for a depth-$d$ solution, the <em>effective branching factor</em> $b^*$ is the number solving $N \approx (b^*)^d$. For depth 12: UCS gives $b^* \approx 3.6$, $h_{\text{TILES}}$ gives $b^* \approx 1.57$, $h_{\text{MANHATTAN}}$ gives $b^* \approx 1.42$. Getting $b^*$ near 1 is the whole game — a branching factor of 1 means a search that walks straight to the answer. <span class="pill">beyond syllabus</span></p>
+  </div>
+
+  <div class="guided">
+    <div class="g-head"><span class="tag">Guided problem 3</span>Design a heuristic by relaxation, for a problem you have not seen</div>
+    <div class="g-body">
+      <p><strong>Problem.</strong> Pacman is in a maze with walls. There are $k$ dots left. A state is (Pacman's position, which dots remain). Actions are N/S/E/W into a non-wall square, each costing 1; a dot is eaten automatically by stepping on it. The goal test is “no dots remain”. <em>Design an admissible heuristic</em>, argue why it is admissible, and say which relaxation it comes from. Then find a better one.</p>
+    </div>
+    <details class="step"><summary>Step 1 — First, list the constraints you could delete</summary><div>
+      <p>Relaxation is a <em>menu</em>, so write the menu down. The real problem says: (i) you must move one square at a time; (ii) you cannot pass through walls; (iii) you must visit <em>every</em> remaining dot; (iv) you can only be in one place at a time.</p>
+      <p>Each rule you delete makes a different, easier problem — and its exact cost is a candidate heuristic. Deleting nothing gives $h = h^*$ (perfect, unaffordable). Deleting everything gives $h = 0$ (free, useless). The craft is in between.</p>
+    </div></details>
+    <details class="step"><summary>Step 2 — Candidate A: delete rule (iii) down to “eat one dot”</summary><div>
+      <p><em>Relaxation:</em> you only have to reach the <strong>farthest</strong> remaining dot; the others vanish on their own.</p>
+      <p>$h_A = \max_{\text{dots } d} \text{mazeDistance}(\text{pacman}, d)$.</p>
+      <p><strong>Admissible?</strong> Yes. Any real plan must at some point step onto that farthest dot, and getting there costs at least its maze distance. So $h_A \le h^*$. ✔</p>
+      <p>Use <em>maze</em> distance (a small BFS that respects walls), not Manhattan — it is larger, still admissible, and therefore better (§15). If you cannot afford the BFS, Manhattan distance is a legal, weaker fallback.</p>
+      <p><strong>A near-miss worth naming:</strong> using the distance to the <em>nearest</em> dot is also admissible but much weaker; using the <em>sum</em> over all dots is <strong>not</strong> admissible at all — one walk can collect many dots, so the sum wildly overestimates, and A* will happily return garbage.</p>
+    </div></details>
+    <details class="step"><summary>Step 3 — Candidate B: delete rules (i) and (ii)</summary><div>
+      <p><em>Relaxation:</em> Pacman teleports to any square he likes, but still must land on each dot once.</p>
+      <p>$h_B = $ the number of remaining dots, $k$.</p>
+      <p><strong>Admissible?</strong> Yes: each move eats at most one dot (you land on one square), so at least $k$ moves remain. ✔ It costs $O(1)$ to compute if you keep a counter in the state.</p>
+      <p>Notice $h_A$ and $h_B$ measure different things — distance versus quantity — and neither dominates the other. One dot far away: $h_A$ is big, $h_B = 1$. Fifty dots all adjacent: $h_B = 50$, $h_A$ is small. This is the exact situation §15 tells you what to do about.</p>
+    </div></details>
+    <details class="step"><summary>Answer &amp; the takeaway</summary><div>
+      <p><strong>Answer:</strong> $h(n) = \max\big(h_A(n),\, h_B(n)\big)$ — the larger of “maze distance to the farthest remaining dot” and “number of remaining dots”. It is admissible because the max of admissible heuristics is admissible (§15 proves it), and it dominates both of its parts, so A* with it expands no more nodes than with either alone.</p>
+      <p><span class="pill">beyond syllabus</span> Stronger still: relax rule (iv) only partially and take $h = \text{(distance to the nearest dot)} + \text{(weight of a minimum spanning tree over the remaining dots, using maze distances)}$. Still admissible — any tour that visits all dots contains a spanning connected subgraph of them — and much tighter. This is the standard answer to the Berkeley “eat all the food” project.</p>
+      <p><strong>The takeaway, and the procedure to use in an exam:</strong> (1) write the problem's rules as a list; (2) cross one out; (3) ask “can I now compute the optimal cost in closed form or with a trivial algorithm?”; (4) if yes, that cost is your heuristic and it is admissible <em>by construction</em>; (5) if two candidates disagree about which situations are hard, take the max.</p>
+    </div></details>
+  </div>
+
+  <h2 id="dominance">15. Dominance, and combining heuristics</h2>
+
+  <div class="box defn">
+    <span class="label">Definition — dominance</span>
+    <p>For two heuristics, $h_a$ <strong>dominates</strong> $h_c$ — written $h_a \ge h_c$ — if
+    $$\forall n:\quad h_a(n) \;\ge\; h_c(n).$$
+    Read it as: $h_a$ is everywhere at least as well informed as $h_c$. (The $\forall n$ is doing real work: being bigger on <em>most</em> nodes is not dominance and buys no guarantee.)</p>
+  </div>
+
+  <p>The slide's summary: <strong>roughly speaking, larger is better — as long as both are admissible.</strong> Here is why, and it is worth being precise because “larger is better” sounds like it should be “smaller is safer”.</p>
+
+  <div class="box proof">
+    <span class="label">Why larger is better</span>
+    <p>With a consistent heuristic, A* must expand every node with $f(n) &lt; C^*$, i.e. every node with $g(n) + h(n) &lt; C^*$, and may skip the rest. Now suppose $h_a \ge h_c$, both admissible. If a node satisfies $g(n) + h_a(n) &lt; C^*$ then it also satisfies $g(n) + h_c(n) &lt; C^*$, since $h_c \le h_a$. So
+    $$\{\text{nodes A*}_{h_a} \text{ must expand}\} \;\subseteq\; \{\text{nodes A*}_{h_c} \text{ must expand}\}.$$
+    The better-informed search's workload is a <em>subset</em> of the worse-informed one's. Larger admissible $h$ ⟹ more nodes pruned ⟹ never more work (up to tie-breaking). $\blacksquare$</p>
+    <p>And it does not cost correctness, because admissibility caps how large $h$ may get: the ceiling is $h^*$. “Larger is better” only holds <em>beneath that ceiling</em>; above it, larger means wrong, which is Figure 4.</p>
+  </div>
+
+  <p>The two extremes named in the slides:</p>
+
+  <ul>
+    <li><strong>The zero heuristic is pretty bad.</strong> “What does A* do with $h=0$?” — it becomes <strong>uniform-cost search</strong> exactly: the priority is $g + 0 = g$. It is still complete and optimal, and it is dominated by every other admissible heuristic, so it does the most work any admissible A* can do. It is the floor.</li>
+    <li><strong>The exact heuristic is pretty good, but usually too expensive.</strong> $h = h^*$ dominates everything admissible (nothing may exceed $h^*$), and A* with it expands only nodes on optimal paths. The catch is circular: computing $h^*(n)$ means <em>solving the search problem from $n$</em>. If you could do that cheaply you would not be running A*. It is the ceiling, and it is unreachable by construction.</li>
+  </ul>
+
+  <p>Every useful heuristic lives strictly between those two, and the design question is always the same trade: a heuristic closer to $h^*$ prunes more nodes but costs more per node. A heuristic that halves the node count and triples the per-node cost is a loss.</p>
+
+  <h3>When neither dominates: take the max</h3>
+
+  <div class="box key">
+    <span class="label">The max trick</span>
+    <p>Given admissible $h_a$ and $h_b$ where neither dominates the other, define
+    $$h(n) \;=\; \max\big(h_a(n),\, h_b(n)\big).$$
+    <strong>The max of admissible heuristics is admissible, and it dominates both.</strong></p>
+  </div>
+
+  <div class="box proof">
+    <span class="label">Proof</span>
+    <p><em>Admissible.</em> Fix any node $n$. The value $\max(h_a(n), h_b(n))$ equals either $h_a(n)$ or $h_b(n)$ — whichever is larger — and each of those is $\le h^*(n)$ by the admissibility of its own heuristic. So the max is $\le h^*(n)$. Non-negativity is immediate, since the max of two non-negative numbers is non-negative. Hence $0 \le h(n) \le h^*(n)$. ✔</p>
+    <p><em>Dominates both.</em> By definition of the maximum, $\max(h_a(n), h_b(n)) \ge h_a(n)$ and $\ge h_b(n)$, for every $n$. That is exactly $h \ge h_a$ and $h \ge h_b$. ✔ $\blacksquare$</p>
+    <p><span class="pill">beyond syllabus</span> <em>The max of two <strong>consistent</strong> heuristics is also consistent.</em> Fix an edge $A \to C$ and suppose the max at $A$ is attained by $h_a$. Then $h(A) = h_a(A) \le \text{cost}(A,C) + h_a(C) \le \text{cost}(A,C) + h(C)$, using consistency of $h_a$ and then $h_a(C) \le h(C)$. Symmetrically if $h_b$ attains it. So you may combine consistent heuristics freely without losing graph-search optimality.</p>
+  </div>
+
+  <div class="box warn">
+    <span class="label">Common mistake — averaging, or adding</span>
+    <p>$\tfrac12(h_a + h_b)$ is admissible but pointless: it is dominated by the max, so it does strictly more work for the same guarantee. And $h_a + h_b$ is <strong>not</strong> admissible in general — two admissible estimates added together can easily exceed $h^*$ (take $h_a = h_b = h^*$; the sum is $2h^*$). Max is the only combinator that is both safe and never worse than its inputs.</p>
+  </div>
+
+  <div class="quiz" data-answer="1">
+    <div class="q">$h_1$ and $h_2$ are admissible. Which of these is guaranteed admissible <em>and</em> at least as informed as both?</div>
+    <button class="opt">$h_1 + h_2$</button>
+    <button class="opt">$\max(h_1, h_2)$</button>
+    <button class="opt">$\min(h_1, h_2)$</button>
+    <button class="opt">$\tfrac{1}{2}(h_1 + h_2)$</button>
+    <div class="why"><strong>Why:</strong> the max never exceeds $h^*$ (each argument is capped by $h^*$) and by definition sits above both inputs. The sum can shoot past $h^*$ and destroy optimality. The min is admissible but is dominated <em>by</em> both inputs — it is the worst legal combination, and it always makes A* do more work. The average is admissible but dominated by the max. When in doubt: <strong>push $h$ as high as you can without passing $h^*$.</strong></div>
+  </div>
+
+  <div class="quiz" data-answer="2">
+    <div class="q">Your A* graph search with an admissible-but-inconsistent $h$ returns a suboptimal path. Which single change is guaranteed to fix optimality without changing $h$?</div>
+    <button class="opt">Goal-test children as soon as they are generated, to catch the good goal earlier</button>
+    <button class="opt">Break $f$-ties in favour of the smaller $h$</button>
+    <button class="opt">Drop the explored set and run A* as tree search (accepting the extra work)</button>
+    <button class="opt">Push $h$ up by a constant so the estimates get sharper</button>
+    <div class="why"><strong>Why:</strong> §8's theorem needs only admissibility — but it is a theorem about <em>tree</em> search. Removing the explored set restores exactly the hypotheses of that proof, at the cost of re-expanding repeated states (and risking non-termination on infinite graphs with cycles). Testing goals at generation makes things strictly worse, and is how you lose optimality even with a perfect heuristic. Tie-breaking changes which optimal answer you get, never whether you get one. Adding a constant to $h$ breaks $h(\text{goal}) = 0$ and can push $h$ above $h^*$, i.e. it can make things inadmissible. <em>The other legal fix is to allow reopening closed nodes — but that <strong>is</strong> a change to the algorithm, and it is not in the slides' pseudocode.</em></div>
+  </div>
+
+  <h2 id="recap">16. Recap</h2>
+
+  <div class="box key">
+    <span class="label">The whole chapter in twelve lines</span>
+    <ul>
+      <li>A <strong>heuristic</strong> $h(n)$ estimates the cost from $n$'s state to a nearest goal. It is problem-specific and you write it.</li>
+      <li><strong>Greedy</strong> orders the frontier by $h$: fast, incomplete as tree search, never optimal.</li>
+      <li><strong>A*</strong> orders by $f(n) = g(n) + h(n)$ — backward cost plus estimated forward cost — i.e. by the estimated total cost of the best solution through $n$.</li>
+      <li>Goal-test on <strong>pop</strong>, never on generation.</li>
+      <li><strong>Admissible:</strong> $0 \le h(n) \le h^*(n)$. Optimistic. Never overestimate.</li>
+      <li><strong>A* tree search is optimal when $h$ is admissible</strong> — by blocking: an ancestor $n$ of the optimal goal $A$ is always on the frontier with $f(n) \le f(A) &lt; f(B)$, so the suboptimal goal $B$ can never be popped first.</li>
+      <li><strong>Consistent:</strong> $h(A) - h(C) \le \text{cost}(A \to C)$ for every edge. Triangle inequality. Implies admissible; the converse fails.</li>
+      <li>Consistency $\Rightarrow$ $f$ never decreases along a path $\Rightarrow$ the first pop of a state is its cheapest $\Rightarrow$ <strong>A* graph search is optimal</strong>.</li>
+      <li><strong>UCS is A* with $h = 0$</strong>, which is admissible and consistent — so UCS is optimal in both settings, and it is the most work an admissible A* can do.</li>
+      <li>UCS expands circles; A* expands ellipses squashed toward the goal. The sideways bulge is the price of the optimality proof.</li>
+      <li><strong>Build heuristics by relaxation</strong> — delete a rule, solve the easier problem exactly. Admissible (and usually consistent) by construction. 8-puzzle: $h_{\text{TILES}} = 8$ (teleporting tiles), $h_{\text{MANHATTAN}} = 18$ (tiles pass through each other).</li>
+      <li><strong>Dominance:</strong> larger is better while still $\le h^*$. If neither of two dominates, take the max — admissible, and dominates both.</li>
+    </ul>
+  </div>
+
+  <p>Next: <a href="adversarial-search.html">Chapter 3</a> keeps the tree but takes away the assumption that you control every move. Once an opponent gets to pick half the branches, “cheapest path” stops meaning anything and we need <strong>minimax</strong> — and the pruning idea you just met as “a heuristic lets you skip provably bad regions” comes back, sharper, as $\alpha$-$\beta$.</p>
+
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<script src="assets/site.js"></script>
+</body>
+</html>

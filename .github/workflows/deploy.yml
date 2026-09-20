@@ -3,6 +3,13 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
+    # Only the site lives in website/. Without this filter, committing any other
+    # project in this monorepo would rebuild the site — and every build makes
+    # ~148 SteamGridDB calls (37 games, looked up twice: once in games.astro,
+    # once in games/[slug].astro).
+    paths:
+      - "website/**"
+      - ".github/workflows/deploy.yml"
   workflow_dispatch:
 
 permissions:
@@ -23,6 +30,8 @@ jobs:
       - name: Install, build, and upload
         uses: withastro/action@v3
         with:
+          # The Astro project lives in website/, not at the repo root.
+          path: ./website
           node-version: 22
         env:
           STEAMGRIDDB_API_KEY: ${{ secrets.STEAMGRIDDB_API_KEY }}

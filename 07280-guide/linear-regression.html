@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Linear Regression · 07-280 Field Guide</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body data-page="linear-regression">
+<main>
+
+  <div class="eyebrow">Part II · Chapter 8</div>
+  <h1>Linear regression</h1>
+  <p class="subtitle">By the end of this page you can derive the least-squares line from scratch — twice, by completing the square and by calculus — write down the normal equations $\theta^\star=(X^\top X)^{-1}X^\top y$ and say exactly when they break.</p>
+
+  <div data-toc></div>
+
+  <h2 id="why-fit-a-line">Why anybody fits a line</h2>
+
+  <p>Start with the least glamorous possible situation. Your input space is $\X = \R$: one real number per example. Your label space is $\Y = \R$: one real number per example. You have $N$ training pairs</p>
+
+  $$\D = \{(x^{(1)},y^{(1)}),\ (x^{(2)},y^{(2)}),\ \dots,\ (x^{(N)},y^{(N)})\}.$$
+
+  <p><strong>Notation, first time:</strong> the superscript in $x^{(i)}$ is an <em>index</em>, not a power. $x^{(3)}$ is the third training input, not $x$ cubed. The course writes it in parentheses precisely so it can't be confused with an exponent, and later — when inputs become vectors — $x^{(i)}_j$ will mean "the $j$-th coordinate of the $i$-th sample".</p>
+
+  <p>The professor's running example is selling a used car. You scrape eight listings for a Pontiac Vibe and record mileage $x$ and asking price $y$:</p>
+
+  <div class="scroll-x">
+  <table class="tight center">
+    <thead><tr><th>mileage $x$ (miles)</th><td>25,000</td><td>34,000</td><td>45,000</td><td>70,000</td><td>93,000</td><td>110,000</td><td>125,000</td><td>160,000</td></tr></thead>
+    <tbody><tr><th>price $y$ (USD)</th><td>23,000</td><td>28,000</td><td>22,000</td><td>22,000</td><td>12,500</td><td>5,500</td><td>5,000</td><td>4,000</td></tr></tbody>
+  </table>
+  </div>
+
+  <p>Plot it and the eye immediately does something: it draws a line through the cloud. The whole chapter is the machine version of that reflex. <em>Let's fit a line.</em></p>
+
+  <div class="viz">
+    <div class="viz-title">Figure 1 · The data, the best line, and the residuals it leaves behind</div>
+    <svg id="figFit" viewBox="0 0 640 360" role="img" aria-label="Scatter plot of car price against mileage with the least-squares line and vertical residual segments"></svg>
+    <div class="caption">What to notice: the line does not pass through a single data point. Every point contributes a <em>residual</em> — the vertical gap $y^{(i)}-h(x^{(i)})$, drawn as a segment. Fitting a line means choosing the line that makes these segments collectively small. Vertical, not perpendicular: we are predicting $y$ <em>from</em> $x$, so only error in $y$ counts.</div>
+  </div>
+
+  <h3>Reason one: it is the simplest honest thing to do</h3>
+
+  <p>When $\Y=\R$ you have to output a number. The very simplest family of functions that outputs a number and actually responds to the input is a line. It has two knobs. You can compute its optimum in closed form on a napkin. And — this is the part that surprises people — it works startlingly often. Price vs. mileage, yield vs. fertiliser, run-time vs. input size: over a limited range, almost everything looks linear. Linear regression is a classical technique, older than computers, and it has not been retired.</p>
+
+  <h3>Reason two: the last layer of a neural network <em>is</em> a linear model</h3>
+
+  <p>This is the reason that should make you care, and it deserves unpacking, because the notes state it in three lines and move on.</p>
+
+  <p>Take a deep network that somebody already trained — an image model, a language model, anything. Structurally it is a long stack of layers followed by one final layer that produces the output. Write it as</p>
+
+  $$\text{network}(x) \;=\; \underbrace{\phi(x)}_{\text{everything but the last layer}} \ \longrightarrow\ \underbrace{\phi(x)^\top w + b}_{\text{the last layer}}.$$
+
+  <p>Here $\phi$ maps a raw input (pixels, tokens) to a $d$-dimensional vector of <strong>features</strong> — often called the embedding, or the penultimate activations. The last layer takes that vector and produces the answer.</p>
+
+  <p>Now you want to use this network for a <em>new</em> task, and you have only a few hundred labelled examples — nowhere near enough to retrain millions of parameters. The standard move: <strong>freeze $\phi$</strong> and retrain only $w$ and $b$. This is called <em>linear probing</em>, or "last-layer fine-tuning".</p>
+
+  <div class="box key"><span class="label">Key idea</span>
+    <p>Once $\phi$ is frozen, the numbers $\phi(x^{(i)})$ are just <em>fixed data</em>. Call $z^{(i)}=\phi(x^{(i)}) \in \R^d$. The learning problem you are left with is</p>
+    $$\argmin_{w,b}\ \frac1N\sum_{i=1}^N \left(y^{(i)} - \big(z^{(i)\top}w + b\big)\right)^2,$$
+    <p>which is <em>exactly</em> the linear regression problem of this chapter, with $z$ in place of $x$. Nothing about the network survives except a table of feature vectors. With real-valued labels, fine-tuning the last layer <strong>is</strong> least squares.</p>
+  </div>
+
+  <p>Three consequences worth carrying with you:</p>
+
+  <ul>
+    <li><strong>It is absurdly cheap.</strong> No backpropagation, no gradient descent, no epochs. You build one matrix and solve one linear system. Seconds, on a laptop, for a model that cost millions of dollars to pretrain.</li>
+    <li><strong>It works with tiny $N$.</strong> You are fitting $d+1$ numbers, not $10^9$ of them.</li>
+    <li><strong>It is how researchers measure representations.</strong> "Linear probe accuracy" is the standard way to ask <em>how much information did this network's features actually encode?</em> — you freeze the network, fit a linear model on top, and report its error. If a linear model can read the answer off the features, the features contain it.</li>
+  </ul>
+
+  <div class="box analogy"><span class="label">Analogy</span>
+    <p>The frozen network is a very expensive pair of glasses that someone else ground for you. It turns the blurry world into a crisp $d$-dimensional description. You are not regrinding the lenses. You are just deciding how to <em>read</em> what you now see — and reading, when the answer is a number, is a weighted sum.</p>
+    <p><em>Where the analogy breaks:</em> glasses are task-neutral, and a frozen network is not. Its features were shaped by the task it was pretrained on. If your new task needs information the pretraining threw away, no linear layer on top can recover it, and you must unfreeze. Linear probing tells you <em>whether</em> that's necessary.</p>
+  </div>
+
+  <h2 id="hypothesis-class">The hypothesis class: two numbers</h2>
+
+  <p>Recall from <a href="ml-formulation.html">the ML formulation chapter</a> that a learning problem is fixed by choosing a hypothesis class $\H$ — the set of functions we allow ourselves to return — and a loss. Here:</p>
+
+  <div class="box defn"><span class="label">Definition</span>
+    <p>$\H$ is the set of all functions $\R \to \R$ that can be written as a line. Each member is pinned down by two real parameters $w \in \R$ and $b \in \R$:</p>
+    $$h_{w,b}(x) \;=\; x\cdot w + b.$$
+    <p>$w$ is the <strong>slope</strong> — how many units of $y$ you get per unit of $x$. $b$ is the <strong>intercept</strong> or <strong>bias</strong> — the value of $h$ at $x=0$. (In algebra class this was $y = mx + c$; machine learning writes $w$ for "weight" and $b$ for "bias". Same line.)</p>
+  </div>
+
+  <p>Because a hypothesis is completely determined by $(w,b)$, <strong>searching over $\H$ is searching over $\R^2$</strong>. That swap — from "search a space of functions" to "search a space of numbers" — is what makes the problem solvable, and it is the move that every parametric model in this course makes.</p>
+
+  <div class="box warn"><span class="label">Common mistake</span>
+    <p>"$h(x)=wx+b$ is a linear function." In the <em>linear algebra</em> sense it is not: a linear function must satisfy $f(\alpha x + \beta v)=\alpha f(x)+\beta f(v)$, which forces $f(0)=0$, and $h(0)=b \neq 0$. A line-plus-constant is an <strong>affine</strong> function. Geometry and machine learning both say "linear" loosely and mean affine; linear algebra means it strictly.</p>
+    <p>And here's the twist that matters more: <em>which variable are we talking about?</em> $h(x)=wx+b$ is affine in $x$ — but if you hold the data fixed and treat the parameters as the variables, $f(w,b)=wx+b$ is genuinely <strong>linear in $(w,b)$</strong>, with no constant term. In ML the parameters are the variables and the data is constant. That's why $f(x)=w_2x^2+w_1x+b$, a <em>quadratic</em> in $x$, still counts as a "linear model": it is linear in $w_2,w_1,b$. Hold that thought until <a href="feature-engineering.html">feature engineering</a>.</p>
+  </div>
+
+  <h2 id="erm-and-squared-loss">ERM with squared loss</h2>
+
+  <p>We need a number that says how bad a candidate line is. Follow the pre-reading's own path, which tries three things:</p>
+
+  <p>For each point the <strong>error</strong> is $\text{err}^{(i)} = y^{(i)} - \hat y^{(i)}$ where $\hat y^{(i)} = wx^{(i)}+b$ is the prediction. That gives $N$ numbers; we need one.</p>
+
+  <ul>
+    <li><strong>Attempt 1 — sum the errors, $\sum_i \text{err}^{(i)}$. Fails.</strong> Errors carry signs. A line that misses one car by $+\$15{,}000$ and another by $-\$15{,}000$ scores a perfect $0$. You can make a catastrophic line look flawless by balancing its mistakes.</li>
+    <li><strong>Attempt 2 — mean absolute error, $\frac1N\sum_i |\text{err}^{(i)}|$. Acceptable.</strong> Signs can no longer cancel. But $|\cdot|$ has a corner at $0$, so it is not differentiable there, and it admits no closed-form minimiser.</li>
+    <li><strong>Attempt 3 — mean squared error, $\frac1N\sum_i (\text{err}^{(i)})^2$. Preferred.</strong> Squaring kills the sign too, and it is smooth everywhere.</li>
+  </ul>
+
+  <p>So the loss is $\ell(y,\hat y) = (y-\hat y)^2$ — <strong>squared loss</strong> — and empirical risk minimisation reads:</p>
+
+  <div class="box defn"><span class="label">Definition</span>
+    $$\argmin_{h \in \H}\ \frac1N\sum_{i=1}^{N}\Big(y^{(i)} - h\big(x^{(i)}\big)\Big)^2$$
+    <p>Reading it symbol by symbol: <em>over all lines $h$ in our class</em>, find the one <em>minimising</em> the <em>average</em> over the $N$ training points of the <em>squared</em> gap between the true label $y^{(i)}$ and the prediction $h(x^{(i)})$. The $\frac1N$ makes it a mean rather than a sum, so the number doesn't grow just because you collected more data.</p>
+  </div>
+
+  <h3>Why squaring is the natural choice for real-valued labels</h3>
+
+  <ol>
+    <li><strong>It removes the sign without removing smoothness.</strong> That is the whole job, and it does it with a polynomial.</li>
+    <li><strong>It punishes big misses disproportionately.</strong> Doubling an error quadruples its contribution. One car priced $\$20{,}000$ wrong hurts more than four cars priced $\$5{,}000$ wrong — usually what you want, since a wild prediction is worse than several mediocre ones.</li>
+    <li><strong>It is differentiable everywhere,</strong> so the calculus of <a href="optimization.html">Chapter 9</a> applies, and — as this chapter will show — it yields a <em>closed form</em>. Absolute error does not.</li>
+    <li><strong>Its unconstrained minimiser is the mean.</strong> If you ignore $x$ entirely and just pick a constant $c$, $\argmin_c \frac1N\sum_i(y^{(i)}-c)^2 = \bar y$. Squared loss is the loss whose answer is "the average", which is exactly the summary you want for a real-valued quantity. (Absolute error's answer is the <em>median</em> — a perfectly good but different question.)</li>
+  </ol>
+
+  <p>We often report the square root, $\text{RMSE}=\sqrt{\text{MSE}}$, because it lives in the units of $y$. For our eight cars the best possible line has $\text{RMSE} \approx \$3{,}156$: "typically off by about three thousand dollars".</p>
+
+  <div class="box warn"><span class="label">Common mistake</span>
+    <p>Squared loss' sensitivity to big errors is a feature <em>and</em> a bug. One mistyped listing — a $\$250{,}000$ Vibe — will drag the fitted line noticeably, because that single point contributes an enormous squared term. Least squares is <strong>not robust to outliers</strong>. Absolute error is much more robust, and it is exactly the property we just traded away for smoothness and a closed form.</p>
+  </div>
+
+  <div class="quiz" data-answer="1">
+    <div class="q">You fit a line and the eight residuals are $+400, -400, +600, -600, +100, -100, +9000, -9000$. Which statement is true?</div>
+    <button class="opt">The sum of errors is large, so this is clearly a bad line.</button>
+    <button class="opt">The sum of errors is $0$, which is why we never use it as a performance measure.</button>
+    <button class="opt">The MSE is $0$ because the errors cancel.</button>
+    <div class="why"><strong>Why:</strong> The errors sum to exactly $0$ — and the line is terrible, since two cars are off by $\$9{,}000$. That is precisely the "Attempt 1 fails" argument: signed errors cancel, so the sum says nothing. MSE does not cancel: $\frac18(400^2+400^2+600^2+600^2+100^2+100^2+9000^2+9000^2) = \frac18(162{,}020{,}000) \approx 2.03\times10^7$, i.e. RMSE $\approx \$4{,}500$.</div>
+  </div>
+
+  <h2 id="scalar-derivation">The derivation, line by line (with $b=0$)</h2>
+
+  <p>The notes simplify first: <em>set $b=0$</em>. That forces $h(0)=0$ — every candidate line is pinned to the origin, so only the slope is free. This is not the model you'd actually ship; it is a scaffold, because with one unknown the algebra fits on half a page and every step is visible. We restore $b$ in the <a href="#with-intercept">next section</a>.</p>
+
+  <p>With $b=0$, ERM becomes a one-variable minimisation:</p>
+
+  $$\argmin_{w \in \R}\ \frac1N\sum_{i=1}^{N}\Big(y^{(i)} - x^{(i)}w\Big)^2.$$
+
+  <h3>Step 1 — expand the square</h3>
+
+  <p>For each $i$, $(y^{(i)} - x^{(i)}w)^2 = y^{(i)2} + x^{(i)2}w^2 - 2\,y^{(i)}x^{(i)}w$. That is just $(p-q)^2 = p^2+q^2-2pq$ with $p=y^{(i)}$, $q=x^{(i)}w$. Sum over $i$ and pull $w$ (which doesn't depend on $i$) out of each sum:</p>
+
+  $$= \argmin_{w\in\R}\ \frac1N\left[\ \sum_{i=1}^N y^{(i)2} \;+\; w^2\sum_{i=1}^N x^{(i)2} \;-\; 2w\sum_{i=1}^N y^{(i)}x^{(i)}\ \right].$$
+
+  <p>This is exactly the line in the notes. Everything inside the bracket is a number computed from the data <em>except</em> $w$. To keep the page readable, name the three data constants:</p>
+
+  $$S \;=\; \sum_{i=1}^N x^{(i)2}, \qquad P \;=\; \sum_{i=1}^N y^{(i)}x^{(i)}, \qquad Q \;=\; \sum_{i=1}^N y^{(i)2}.$$
+
+  <p>So we are minimising $J(w)=\frac1N\left[Q + Sw^2 - 2Pw\right]$: a <strong>parabola in $w$</strong>, opening upwards whenever $S>0$. Every parabola that opens upwards has exactly one minimum. We just have to find it.</p>
+
+  <h3>Step 2 — completing the square</h3>
+
+  <div class="box proof"><span class="label">Proof</span>
+    <p>Take the two $w$-dependent terms and factor $S$ out:</p>
+    $$Sw^2 - 2Pw \;=\; S\left(w^2 - \frac{2P}{S}w\right).$$
+    <p>Inside the bracket, add and subtract the number that completes the square. Since $w^2 - 2\frac{P}{S}w$ is the start of $\left(w-\frac{P}{S}\right)^2 = w^2 - 2\frac{P}{S}w + \frac{P^2}{S^2}$, we add and subtract $\frac{P^2}{S^2}$:</p>
+    $$= S\left[\left(w-\frac{P}{S}\right)^2 - \frac{P^2}{S^2}\right] \;=\; S\left(w-\frac{P}{S}\right)^2 - \frac{P^2}{S}.$$
+    <p>Now push the $S$ inside the square, which means multiplying the bracket by $\sqrt S$ (legal because $S \geq 0$, being a sum of squares):</p>
+    $$S\left(w-\frac{P}{S}\right)^2 \;=\; \left(\sqrt S\left(w - \frac{P}{S}\right)\right)^2 \;=\; \left(w\sqrt{S} \;-\; \frac{P}{\sqrt S}\right)^2,$$
+    <p>using $\sqrt S \cdot \frac{P}{S} = \frac{P}{\sqrt S}$. Writing the sums back out, that inner expression is</p>
+    $$w\sqrt{\sum_{i=1}^N x^{(i)2}} \;-\; \frac{\sum_{i=1}^N y^{(i)}x^{(i)}}{\sqrt{\sum_{i=1}^N x^{(i)2}}},$$
+    <p>which is precisely the form in the lecture notes. Putting the whole objective back together:</p>
+    $$J(w) \;=\; \frac1N\left[\left(w\sqrt S - \frac{P}{\sqrt S}\right)^2 \;+\; \underbrace{Q - \frac{P^2}{S}}_{\text{no } w \text{ in here}}\right].$$
+  </div>
+
+  <h3>Step 3 — why we may throw the constant away</h3>
+
+  <p>The notes drop $Q-\frac{P^2}{S}$ without comment. Here is why that's legal, because it is a move you will make a hundred more times this semester.</p>
+
+  <div class="box key"><span class="label">Key idea</span>
+    <p>For any function $f$, any constant $c$, and any constant $\lambda &gt; 0$:</p>
+    $$\argmin_w\ \big[\lambda f(w) + c\big] \;=\; \argmin_w f(w).$$
+    <p><em>Proof.</em> $\lambda f(w)+c \leq \lambda f(w')+c \iff \lambda f(w) \leq \lambda f(w') \iff f(w) \leq f(w')$, the last step because dividing by a positive number preserves the inequality. So the two functions order every pair of candidates identically, and therefore have the same minimisers. $\square$</p>
+    <p>Adding $c$ slides the graph vertically; multiplying by $\lambda&gt;0$ stretches it vertically. Neither moves the <em>location</em> of the bottom. Note the two caveats: the <strong>$\argmin$</strong> is unchanged but the <strong>$\min$ value</strong> is not, and $\lambda$ must be strictly positive — $\lambda &lt; 0$ turns a minimum into a maximum.</p>
+  </div>
+
+  <p>This is also why the $\frac1N$ never affects the answer: $\frac1N &gt; 0$. You may minimise the sum or the mean; you get the same line, with different reported loss.</p>
+
+  <h3>Step 4 — read off the minimiser</h3>
+
+  <p>After dropping the constant and the $\frac1N$, we are minimising a single squared quantity:</p>
+
+  $$\argmin_{w\in\R}\ \left(w\sqrt S - \frac{P}{\sqrt S}\right)^2.$$
+
+  <p>A square of a real number is always $\geq 0$. So the smallest value this expression could <em>possibly</em> take is $0$ — and it actually attains $0$, at the $w$ that makes the inside vanish. Because the value $0$ is achievable, that $w$ is the minimiser. (This "lower bound plus achievability" argument is the whole logic of completing the square, and it is what makes the method a proof rather than a trick.)</p>
+
+  <p>Set the inside to zero and multiply through by $\sqrt S$:</p>
+
+  $$w\sqrt S - \frac{P}{\sqrt S} = 0 \quad\Longleftrightarrow\quad wS - P = 0 \quad\Longleftrightarrow\quad w\sum_{i=1}^N x^{(i)2} - \sum_{i=1}^N y^{(i)}x^{(i)} = 0.$$
+
+  <div class="box key"><span class="label">Key idea</span>
+    $$\boxed{\;w^\star \;=\; \frac{\sum_{i=1}^N y^{(i)}x^{(i)}}{\sum_{i=1}^N x^{(i)2}}\;}$$
+    <p>The best-fitting line through the origin is $y = w^\star x$. Numerator: how much $x$ and $y$ move together. Denominator: how much $x$ moves at all. The minimum loss achieved is $\frac1N\left(Q - \frac{P^2}{S}\right)$ — non-zero in general, since the points don't lie on a line.</p>
+  </div>
+
+  <h3>Step 5 — the calculus cross-check</h3>
+
+  <div class="box proof"><span class="label">Proof</span>
+    <p>Differentiate $J(w) = \frac1N\left[Q + Sw^2 - 2Pw\right]$ term by term. $Q$ is constant so contributes $0$; $\frac{d}{dw}w^2 = 2w$; $\frac{d}{dw}w = 1$:</p>
+    $$\frac{dJ}{dw} \;=\; \frac1N\left[2Sw - 2P\right].$$
+    <p>Set it to zero — at an interior minimum of a differentiable function the derivative vanishes:</p>
+    $$2Sw - 2P = 0 \quad\Longrightarrow\quad w^\star = \frac{P}{S} = \frac{\sum_i y^{(i)}x^{(i)}}{\sum_i x^{(i)2}}.$$
+    <p><strong>The same answer.</strong> And the second derivative is $\frac{d^2J}{dw^2} = \frac{2S}{N} &gt; 0$ whenever $S&gt;0$, confirming it is a minimum and not a maximum or an inflection. $\square$</p>
+  </div>
+
+  <div class="box intuition"><span class="label">Intuition</span>
+    <p>Why show it twice? Because the two routes teach different things. <strong>Completing the square</strong> proves it is a <em>global</em> minimum with no extra work — the objective is literally a square plus a constant, so nothing anywhere in $\R$ can do better. <strong>Setting the derivative to zero</strong> only finds a stationary point; you need the second-derivative test (or convexity) to know what kind. The calculus route generalises to messy functions; the completing-the-square route generalises to matrices, which is exactly what we do further down this page.</p>
+  </div>
+
+  <div class="guided">
+    <div class="g-head"><span class="tag">Guided problem</span>Fit a through-the-origin line to four points, by hand</div>
+    <div class="g-body">
+      <p>Training data: $(1,1),\ (2,3),\ (3,4),\ (4,8)$ — that is $x^{(1)}=1,y^{(1)}=1$, and so on, $N=4$. Assume $b=0$. Find $w^\star$, then the MSE it achieves.</p>
+    </div>
+    <details class="step"><summary>Step 1 — What do I actually need to compute?</summary>
+      <div><p>Only two numbers: $P=\sum_i y^{(i)}x^{(i)}$ and $S=\sum_i x^{(i)2}$. Then $w^\star = P/S$. Nothing else about the data matters — which is itself informative: the fit depends on the data only through these two summaries.</p></div></details>
+    <details class="step"><summary>Step 2 — Build the table</summary>
+      <div>
+        <table class="tight center">
+          <thead><tr><th>$i$</th><th>$x^{(i)}$</th><th>$y^{(i)}$</th><th>$x^{(i)}y^{(i)}$</th><th>$x^{(i)2}$</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>1</td><td>1</td><td>$1\cdot1=1$</td><td>$1$</td></tr>
+            <tr><td>2</td><td>2</td><td>3</td><td>$2\cdot3=6$</td><td>$4$</td></tr>
+            <tr><td>3</td><td>3</td><td>4</td><td>$3\cdot4=12$</td><td>$9$</td></tr>
+            <tr><td>4</td><td>4</td><td>8</td><td>$4\cdot8=32$</td><td>$16$</td></tr>
+            <tr><td colspan="3"><strong>totals</strong></td><td><strong>$P=51$</strong></td><td><strong>$S=30$</strong></td></tr>
+          </tbody>
+        </table>
+      </div></details>
+    <details class="step"><summary>Step 3 — Divide</summary>
+      <div><p>$$w^\star = \frac{P}{S} = \frac{51}{30} = 1.7.$$<p>The fitted line is $h(x) = 1.7x$.</p></div></details>
+    <details class="step"><summary>Step 4 — What loss does it achieve?</summary>
+      <div>
+        <p>Predictions: $h(1)=1.7$, $h(2)=3.4$, $h(3)=5.1$, $h(4)=6.8$. Residuals $y-\hat y$: $1-1.7=-0.7$; $3-3.4=-0.4$; $4-5.1=-1.1$; $8-6.8=+1.2$.</p>
+        <p>$$\text{MSE} = \tfrac14\left(0.49 + 0.16 + 1.21 + 1.44\right) = \tfrac14(3.30) = 0.825.$$</p>
+        <p>Cross-check with the formula $\frac1N(Q - P^2/S)$: $Q = 1+9+16+64 = 90$, so $\frac14\left(90 - \frac{51^2}{30}\right) = \frac14\left(90 - \frac{2601}{30}\right) = \frac14(90-86.7) = \frac14(3.3)=0.825$. ✓</p>
+      </div></details>
+    <details class="step"><summary>Answer &amp; the takeaway</summary>
+      <div><p>$w^\star = 1.7$, MSE $=0.825$, RMSE $\approx 0.908$.</p>
+      <p><strong>Takeaway:</strong> notice the residuals do <em>not</em> sum to zero here ($-0.7-0.4-1.1+1.2 = -1.0$). That is a symptom of forcing $b=0$: without an intercept the line cannot slide up or down to balance itself. Fix that next.</p></div></details>
+  </div>
+
+  <h2 id="corner-case-zero-denominator">Corner case: when is $\sum_i x^{(i)2} = 0$?</h2>
+
+  <p>The notes ask this and leave it hanging ("Think about this situation — how would the plot of training points look like?"). Here is the answer in full.</p>
+
+  <h3>The algebra</h3>
+
+  <p>$S = \sum_{i=1}^N x^{(i)2}$ is a sum of squares of real numbers. Every term satisfies $x^{(i)2} \geq 0$. A sum of non-negative numbers is zero <strong>if and only if every single term is zero</strong> — if even one term were positive, no other term could cancel it, since none is negative. And $x^{(i)2}=0 \iff x^{(i)}=0$. Therefore:</p>
+
+  $$\sum_{i=1}^N x^{(i)2} = 0 \quad\Longleftrightarrow\quad x^{(i)} = 0 \ \text{ for every } i = 1,\dots,N.$$
+
+  <h3>The picture</h3>
+
+  <p>Every training input is $0$. Plotted, all $N$ points sit <strong>stacked on the vertical axis</strong> — a column of dots at $x=0$, at assorted heights $y^{(1)},\dots,y^{(N)}$. There is no horizontal spread at all.</p>
+
+  <div class="viz">
+    <div class="viz-title">Figure 2 · The degenerate scatter: every $x^{(i)} = 0$</div>
+    <svg viewBox="0 0 640 300" role="img" aria-label="All training points stacked on the vertical axis, with three different lines through the origin all fitting equally badly">
+      <line x1="60" y1="260" x2="610" y2="260" stroke="var(--line-2)" stroke-width="1.5"/>
+      <line x1="180" y1="30" x2="180" y2="278" stroke="var(--line-2)" stroke-width="1.5"/>
+      <text x="612" y="264" font-size="13" fill="var(--ink-mute)" text-anchor="end" dy="18">x</text>
+      <text x="186" y="34" font-size="13" fill="var(--ink-mute)">y</text>
+      <text x="184" y="278" font-size="12" fill="var(--ink-mute)">0</text>
+      <line x1="180" y1="260" x2="600" y2="60" stroke="var(--accent)" stroke-width="2"/>
+      <line x1="180" y1="260" x2="600" y2="180" stroke="var(--accent-2)" stroke-width="2"/>
+      <line x1="180" y1="260" x2="600" y2="255" stroke="var(--accent-3)" stroke-width="2"/>
+      <line x1="180" y1="260" x2="600" y2="420" stroke="var(--gold)" stroke-width="2" clip-path="none" opacity="0.9"/>
+      <circle cx="180" cy="60"  r="5" fill="var(--ink)"/>
+      <circle cx="180" cy="95"  r="5" fill="var(--ink)"/>
+      <circle cx="180" cy="140" r="5" fill="var(--ink)"/>
+      <circle cx="180" cy="175" r="5" fill="var(--ink)"/>
+      <circle cx="180" cy="215" r="5" fill="var(--ink)"/>
+      <text x="200" y="52" font-size="13" fill="var(--ink-mute)">all N points sit here, at x = 0</text>
+      <text x="470" y="52" font-size="13" fill="var(--accent)">every slope w</text>
+      <text x="470" y="70" font-size="13" fill="var(--accent)">scores identically</text>
+    </svg>
+    <div class="caption">What to notice: all four candidate lines pass through the origin and therefore all predict $\hat y = w\cdot 0 = 0$ at the only input value that appears in the data. The slope is invisible to the loss, so the loss cannot choose one.</div>
+  </div>
+
+  <h3>Why the slope is genuinely undefined</h3>
+
+  <p>Plug $x^{(i)}=0$ into the objective:</p>
+
+  $$J(w) = \frac1N\sum_{i=1}^N\left(y^{(i)} - 0\cdot w\right)^2 = \frac1N\sum_{i=1}^N y^{(i)2} = \frac{Q}{N}.$$
+
+  <p>$J$ does not contain $w$ at all. It is a <em>flat</em> function — a horizontal line, not a parabola. Every $w \in \R$ achieves exactly the same loss $Q/N$. So $\argmin_w J(w) = \R$: the argmin is not a point, it is the entire real line. There is no "the" best slope; there are infinitely many, all tied.</p>
+
+  <p>Said in words: <strong>every line through the origin fits these points equally well — or, more honestly, equally badly.</strong> All of them predict $0$ at $x=0$; the data never probes any other $x$, so the data has no opinion about the slope. (The one sub-case where they all fit <em>perfectly</em> is $y^{(i)}=0$ for all $i$ too, i.e. all the data sits at the single point $(0,0)$; then $J(w)=0$ for every $w$.)</p>
+
+  <div class="box key"><span class="label">Key idea</span>
+    <p>The formula "behaves weirdly" ($0/0$, or $P/0$) for a real reason, not a numerical accident: <strong>the problem itself has no unique answer.</strong> Division by zero in a closed form is nearly always the algebra reporting that the optimisation problem is degenerate. Never patch it; diagnose it.</p>
+  </div>
+
+  <h3>The general version of this disease</h3>
+
+  <p>In one dimension, $S = \sum_i x^{(i)2}$ is exactly $X^\top X$ for the $N\times1$ design matrix $X$ we build below. $S=0$ means the single feature column is the zero vector, so $X$ has rank $0 &lt; 1$ — it is <strong>rank deficient</strong>. With $d$ features the same disease appears whenever the columns of $X$ are linearly dependent, and $X^\top X$ becomes singular. Same symptom (infinitely many tied optima), same cure (the feature is carrying no information the others don't already carry; drop it, or regularise). We return to this in <a href="#singular-xtx">the section on $X^\top X$ not being invertible</a>.</p>
+
+  <p>Practical note: a feature that is <em>constantly zero</em> should never have been in your dataset. If you see $S=0$, you have found a bug in your data pipeline, not an interesting statistical situation.</p>
+
+  <h2 id="with-intercept">Putting the intercept back: the general scalar solution</h2>
+
+  <p>The notes set $b=0$ "for ease of understanding". Real fits need $b$ — a Pontiac Vibe with zero miles is not worth zero dollars. Here is the two-parameter solution, and it turns out to reuse everything above.</p>
+
+  $$J(w,b) \;=\; \frac1N\sum_{i=1}^N\left(y^{(i)} - w x^{(i)} - b\right)^2.$$
+
+  <div class="box proof"><span class="label">Proof</span>
+    <p><strong>Take the partial derivative with respect to $b$ first.</strong> Using the chain rule, $\frac{\partial}{\partial b}(y_i - wx_i - b)^2 = 2(y_i - wx_i - b)\cdot(-1)$:</p>
+    $$\frac{\partial J}{\partial b} = -\frac2N\sum_{i=1}^N\left(y_i - wx_i - b\right) = 0 \;\Longrightarrow\; \sum_i y_i - w\sum_i x_i - Nb = 0.$$
+    <p>Divide by $N$ and write $\bar x = \frac1N\sum_i x_i$, $\bar y = \frac1N\sum_i y_i$ for the sample means:</p>
+    $$\boxed{\,b = \bar y - w\bar x\,}$$
+    <p>Notice this holds <em>for whatever $w$ turns out to be</em>. It also says the residuals sum to zero at the optimum — the equation above is literally "$\sum_i \text{residual}_i = 0$". That's the intercept doing its job: sliding the line vertically until the errors balance.</p>
+    <p><strong>Now substitute that $b$ back in.</strong> The $i$-th residual becomes</p>
+    $$y_i - wx_i - (\bar y - w\bar x) \;=\; (y_i - \bar y) - w(x_i - \bar x).$$
+    <p>So</p>
+    $$J(w) = \frac1N\sum_{i=1}^N\Big((y_i-\bar y) - w(x_i - \bar x)\Big)^2,$$
+    <p>which is <em>exactly the $b=0$ problem we already solved</em>, run on the <strong>centred</strong> data $\tilde x_i = x_i - \bar x$, $\tilde y_i = y_i - \bar y$. Apply $w^\star = \sum \tilde y_i\tilde x_i / \sum \tilde x_i^2$:</p>
+    $$\boxed{\;w^\star = \frac{\sum_{i=1}^N (x_i - \bar x)(y_i - \bar y)}{\sum_{i=1}^N (x_i-\bar x)^2},\qquad b^\star = \bar y - w^\star \bar x.\;}\qquad\square$$
+  </div>
+
+  <div class="box intuition"><span class="label">Intuition</span>
+    <p>Adding an intercept is the same as <strong>moving the origin to the centre of mass of the data</strong> and then fitting a through-the-origin line there. All the work we did with $b=0$ was not a toy after all — it was the general case in disguise.</p>
+    <p>The numerator is $N$ times the sample covariance of $x$ and $y$; the denominator is $N$ times the sample variance of $x$. So $w^\star = \widehat{\mathrm{Cov}}(x,y)/\widehat{\mathrm{Var}}(x)$: <em>how much they move together, per unit of how much $x$ moves.</em></p>
+  </div>
+
+  <h3>The line always passes through $(\bar x, \bar y)$</h3>
+
+  <p>Evaluate the fitted line at $x = \bar x$:</p>
+
+  $$h(\bar x) = w^\star \bar x + b^\star = w^\star\bar x + (\bar y - w^\star\bar x) = \bar y.$$
+
+  <p>So the least-squares line is <strong>pinned to the centroid of the data</strong> and pivots about it as the slope changes. That is a genuinely useful fact: if you know $\bar x, \bar y$ and the slope, you know the whole line, and you can sanity-check any fit by asking whether it passes through the average point.</p>
+
+  <p>The corresponding corner case: the denominator $\sum_i(x_i-\bar x)^2$ is zero exactly when every $x_i$ equals $\bar x$ — all the points share one $x$-value, stacked in a vertical column (now anywhere, not just at the axis). Same disease, same diagnosis: the data never varies $x$, so it can say nothing about the slope.</p>
+
+  <div class="box example"><span class="label">Example</span>
+    <p>The eight cars, with mileage in units of 10,000 miles and price in thousands of dollars, give $\bar x = 8.275$, $\bar y = 15.25$, and</p>
+    $$w^\star = -1.8906\ \text{(thousand dollars per 10{,}000 miles)}, \qquad b^\star = 30.895\ \text{(thousand dollars)}.$$
+    <p>In raw units: <strong>each extra mile costs about 18.9 cents</strong>, and a zero-mileage Vibe is priced at about $\$30{,}895$. Best achievable RMSE: $\$3{,}156$ — beating the pre-reading's eyeballed "good" line, which managed $\$3{,}620$. Predicted price at 80,000 miles: $30{,}895 - 0.18906\times80{,}000 \approx \$15{,}770$.</p>
+  </div>
+
+  <h2 id="feel-the-loss-surface">Feel it: drag the line, watch the loss</h2>
+
+  <p>Two figures, one set of controls. The first shows the line and its residuals in data space. The second shows the <em>same</em> $(w,b)$ as a single dot on the loss surface $J(w,b)$ — the landscape that <a href="optimization.html">gradient descent</a> will roll down in the next chapter.</p>
+
+  <div class="viz">
+    <div class="viz-title">Figure 3 · Interactive line fitter — eight cars, mileage in 10k miles, price in thousands of dollars</div>
+    <svg id="figDrag" viewBox="0 0 640 360" role="img" aria-label="Interactive scatter plot with an adjustable line and residual segments"></svg>
+    <div class="controls">
+      <label>slope $w$
+        <input type="range" id="wA" min="-4" max="1" step="0.01" value="-0.9" data-out="wAv" data-dp="2">
+        <span class="val" id="wAv"></span></label>
+      <label>intercept $b$
+        <input type="range" id="bA" min="0" max="45" step="0.1" value="20" data-out="bAv" data-dp="1">
+        <span class="val" id="bAv"></span></label>
+      <button class="btn primary" id="snapA">Snap to the closed-form optimum</button>
+      <button class="btn" id="resetA">Reset</button>
+    </div>
+    <div id="mseA" class="caption"></div>
+    <div class="caption">What to notice: you can make MSE small in many mediocre ways, but only one $(w,b)$ makes it smallest. Try dragging $w$ while watching the residuals flip from "all too high on the left" to "all too high on the right" — that sign pattern is the derivative telling you which way to move.</div>
+  </div>
+
+  <div class="viz">
+    <div class="viz-title">Figure 4 · The same $(w,b)$ on the loss surface $J(w,b)$</div>
+    <canvas id="figSurf" width="640" height="360" style="width:100%;height:auto;display:block" aria-label="Contour heat map of mean squared error as a function of slope and intercept"></canvas>
+    <div class="caption">Driven by the sliders above. Dark bands are low loss. What to notice: the valley is a long, tilted ellipse, not a circular bowl — $w$ and $b$ are <em>coupled</em>, because raising the intercept can be partly undone by lowering the slope. The cross marks $(w^\star,b^\star)=(-1.908,\,31.042)$, the exact answer from the closed form. That elongated, tilted valley is precisely the geometry that makes plain gradient descent zig-zag, which is the story of the <a href="optimization.html">next chapter</a>.</div>
+  </div>
+
+  <div class="quiz" data-answer="2">
+    <div class="q">On the loss surface above, you sit at some $(w,b)$ and increase $b$ by a little. The loss goes up. What can you conclude?</div>
+    <button class="opt">You are at the global optimum.</button>
+    <button class="opt">The optimal $b$ is larger than your current $b$.</button>
+    <button class="opt">Nothing about $w$ — and for $b$, only that moving <em>up</em> from here is uphill; the optimum has a smaller $b$ <em>if you hold $w$ fixed</em>.</button>
+    <div class="why"><strong>Why:</strong> a partial derivative tells you about one direction only. $\partial J/\partial b &gt; 0$ says the slice of the surface at your current $w$ is rising in $b$. Because the valley is <em>tilted</em>, the joint optimum can still have a larger $b$ than yours — you'd just have to change $w$ at the same time. This coupling is the reason we solve for $w$ and $b$ <em>together</em> (or run gradient descent on both coordinates at once) rather than one at a time.</div>
+  </div>
+
+  <h2 id="vector-case">Many features: the design matrix</h2>
+
+  <p>One number per car is not much. Real inputs have several features: mileage, age, engine size, number of previous owners. So let $\X = \R^d$ and keep $\Y = \R$. A training input is now a vector $x^{(i)} \in \R^d$, whose $j$-th coordinate $x^{(i)}_j$ is the $j$-th feature of the $i$-th car.</p>
+
+  <p>The hypothesis class becomes all <em>hyperplanes</em>: $h(x) = x^\top w + b$ with $w \in \R^d$, $b \in \R$. Written out, $x^\top w = \sum_{j=1}^d x_j w_j$ — a weighted sum of the features. Each $w_j$ says "how many dollars per unit of feature $j$".</p>
+
+  <h3>The bias trick: absorbing $b$</h3>
+
+  <p>Carrying $b$ around separately is a nuisance in the algebra. The standard fix, which the notes use: <strong>fix the first coordinate of every $x$ to be $1$</strong>, and stack $b$ on top of $w$:</p>
+
+  $$x = \begin{bmatrix}1\\ x_1 \\ \vdots \\ x_{d-1}\end{bmatrix}, \qquad \theta = \begin{bmatrix} b \\ w \end{bmatrix}, \qquad\text{so}\qquad x^\top\theta = 1\cdot b + \sum_j x_j w_j = x^\top w + b.$$
+
+  <p>Now $h_\theta(x) = x^\top\theta$ with <em>no</em> separate bias term — the intercept has become the weight on a constant feature. From here on, $d$ counts that constant feature, and $\theta \in \R^d$ is the single parameter vector we are solving for. (This is exactly the pre-reading's $\theta = \begin{bmatrix}b\\w\end{bmatrix}$, $x = \begin{bmatrix}1\\x\end{bmatrix}$, $y=x^\top\theta$.)</p>
+
+  <div class="box defn"><span class="label">Definition</span>
+    <p>The <strong>design matrix</strong> $X \in \R^{N\times d}$ stacks the training inputs as <em>rows</em>, and the <strong>label vector</strong> $y \in \R^N$ stacks the labels:</p>
+    $$X = \begin{bmatrix} \leftarrow\ x^{(1)\top}\ \rightarrow \\ \leftarrow\ x^{(2)\top}\ \rightarrow \\ \vdots \\ \leftarrow\ x^{(N)\top}\ \rightarrow\end{bmatrix} \in \R^{N\times d}, \qquad y = \begin{bmatrix}y^{(1)}\\ y^{(2)} \\ \vdots \\ y^{(N)}\end{bmatrix} \in \R^{N}.$$
+    <p><strong>Rows are samples, columns are features.</strong> Row $i$ is one car; column $j$ is one feature measured across all cars. The first column is all ones.</p>
+  </div>
+
+  <p>The single most useful consequence: $X\theta \in \R^N$ is <em>the vector of all $N$ predictions at once</em>, because row $i$ of $X\theta$ is $x^{(i)\top}\theta = h_\theta(x^{(i)})$. So $y - X\theta$ is the vector of all $N$ residuals, and</p>
+
+  $$\|y - X\theta\|_2^2 = \sum_{i=1}^N\left(y^{(i)} - x^{(i)\top}\theta\right)^2$$
+
+  <p>(recall $\|v\|_2^2 = \sum_k v_k^2$, the squared Euclidean length). Therefore ERM in matrix form is simply</p>
+
+  $$\theta^\star = \argmin_{\theta \in \R^d}\ \frac1N\|y - X\theta\|_2^2.$$
+
+  <div class="box intuition"><span class="label">Intuition</span>
+    <p>Everything you knew has been repackaged, nothing added. $N$ separate squared errors became <em>one</em> squared length of <em>one</em> residual vector in $\R^N$. Least squares is: <strong>make the residual vector short</strong>.</p>
+  </div>
+
+  <h2 id="why-not-inverse">Answering the notes: "can you simply set $\theta = X^{-1}y$?"</h2>
+
+  <p>The notes pose this parenthetically and answer "No." Here is why, at four levels, because the reasons are genuinely different and each one teaches something.</p>
+
+  <h3>1. $X$ is usually not square, so $X^{-1}$ does not exist as an object</h3>
+
+  <p>Matrix inverses are defined only for square matrices. $X$ is $N\times d$ and you normally have far more samples than features — eight cars, two parameters. $X^{-1}$ is not "hard to compute"; it is not a thing.</p>
+
+  <h3>2. Even when $N=d$, $X$ is usually still not invertible</h3>
+
+  <p>A square matrix is invertible only if its rows (equivalently columns) are linearly independent. Two identical cars in your dataset give two identical rows, and the matrix is singular. Two features that are the same measurement in different units give two dependent columns, same conclusion.</p>
+
+  <h3>3. The system is overdetermined: there is <em>no</em> exact solution</h3>
+
+  <p>"$\theta = X^{-1}y$" is asking for a $\theta$ with $X\theta = y$ exactly — a line that passes through <em>every</em> data point. With $N=8$ equations and $d=2$ unknowns, that's eight constraints on two numbers. Generic data admits no solution at all. Look at Figure 1: no straight line touches all eight dots, and no amount of algebra will produce one.</p>
+
+  <div class="box key"><span class="label">Key idea</span>
+    <p>As $\theta$ ranges over $\R^d$, the prediction vector $X\theta$ traces out exactly the <strong>column space</strong> of $X$ — the set of all linear combinations of the $d$ columns of $X$, which is a $d$-dimensional subspace sitting inside $\R^N$. When $d &lt; N$, that is a thin slice of a big space. The label vector $y$ lives in $\R^N$ and, thanks to noise, almost surely does <em>not</em> lie in that slice.</p>
+    <p>So "solve $X\theta = y$" is the wrong question. The right question is: <strong>which point of the column space is closest to $y$?</strong> That is least squares, and its answer is the <em>orthogonal projection</em> of $y$ onto $\mathrm{col}(X)$.</p>
+  </div>
+
+  <div class="viz">
+    <div class="viz-title">Figure 5 · Least squares is a projection onto the column space</div>
+    <svg viewBox="0 0 640 380" role="img" aria-label="A plane representing the column space of X, with the label vector y above it and its perpendicular projection inside it">
+      <polygon points="70,250 380,165 590,235 280,325" fill="var(--bg-soft)" stroke="var(--line-2)" stroke-width="1.5"/>
+      <text x="92" y="300" font-size="14" fill="var(--ink-mute)">col(X) = { Xθ : θ ∈ ℝᵈ }, a d-dimensional slice of ℝᴺ</text>
+      <circle cx="235" cy="262" r="4" fill="var(--ink-mute)"/>
+      <text x="205" y="257" font-size="13" fill="var(--ink-mute)">0</text>
+      <line x1="235" y1="262" x2="430" y2="60" stroke="var(--accent)" stroke-width="2.5"/>
+      <polygon points="430,60 418,70 428,76" fill="var(--accent)"/>
+      <circle cx="430" cy="60" r="5" fill="var(--accent)"/>
+      <text x="440" y="56" font-size="15" fill="var(--accent)">y  (the labels)</text>
+      <text x="440" y="74" font-size="12.5" fill="var(--ink-mute)">not in the plane — noise lifts it off</text>
+      <line x1="235" y1="262" x2="424" y2="207" stroke="var(--accent-2)" stroke-width="2.5"/>
+      <polygon points="424,207 411,204 415,214" fill="var(--accent-2)"/>
+      <circle cx="424" cy="207" r="5" fill="var(--accent-2)"/>
+      <text x="436" y="212" font-size="15" fill="var(--accent-2)">ŷ = Xθ*</text>
+      <text x="436" y="230" font-size="12.5" fill="var(--ink-mute)">the closest point in the plane</text>
+      <line x1="430" y1="60" x2="424" y2="207" stroke="var(--rose)" stroke-width="2.5" stroke-dasharray="6 4"/>
+      <text x="300" y="130" font-size="14" fill="var(--rose)">residual y − Xθ*</text>
+      <text x="300" y="148" font-size="12.5" fill="var(--rose)">⊥ to every column of X</text>
+      <polyline points="410,199 406,216 423,220" fill="none" stroke="var(--rose)" stroke-width="1.6"/>
+      <circle cx="300" cy="280" r="5" fill="var(--ink-mute)"/>
+      <text x="252" y="302" font-size="13" fill="var(--ink-mute)">some other Xθ</text>
+      <line x1="300" y1="280" x2="430" y2="60" stroke="var(--ink-mute)" stroke-width="1.6" stroke-dasharray="3 4"/>
+      <text x="345" y="205" font-size="12.5" fill="var(--ink-mute)">longer</text>
+    </svg>
+    <div class="caption">What to notice: the shortest segment from a point to a plane is the perpendicular one. Writing "perpendicular" algebraically — every column of $X$ is orthogonal to the residual, i.e. $X^\top(y - X\theta^\star) = 0$ — rearranges instantly to $X^\top X\theta^\star = X^\top y$. That is where the <strong>normal equations</strong> get their name: <em>normal</em> means perpendicular.</div>
+  </div>
+
+  <h3>4. And even if you could invert $X$, you shouldn't want to</h3>
+
+  <p>Suppose $N=d$ and $X$ happened to be invertible. Then $\theta = X^{-1}y$ would give a model passing exactly through every training point, including every measurement error in it. Training loss $0$, and a model that has memorised the noise. That is overfitting, and the fact that least squares <em>refuses</em> to interpolate when $N &gt; d$ is a feature.</p>
+
+  <h2 id="normal-equations">The normal equations, derived in full</h2>
+
+  <p>Drop the $\frac1N$ (positive constant, doesn't move the argmin) and expand the squared norm using $\|v\|_2^2 = v^\top v$:</p>
+
+  $$\argmin_\theta\ (y - X\theta)^\top(y - X\theta).$$
+
+  <h3>Step 1 — multiply it out</h3>
+
+  <p>Use $(a-b)^\top(c-d) = a^\top c - a^\top d - b^\top c + b^\top d$ (matrix multiplication distributes) and $(X\theta)^\top = \theta^\top X^\top$ (the transpose reverses a product):</p>
+
+  $$(y-X\theta)^\top(y-X\theta) \;=\; y^\top y \;-\; \theta^\top X^\top y \;-\; y^\top X\theta \;+\; \theta^\top X^\top X\theta.$$
+
+  <h3>Step 2 — the two middle terms are the same number</h3>
+
+  <div class="box proof"><span class="label">Proof</span>
+    <p>Check the shapes. $\theta^\top$ is $1\times d$; $X^\top$ is $d\times N$; $y$ is $N\times1$. So $\theta^\top X^\top y$ is a $1\times1$ matrix — a scalar. Likewise $y^\top X\theta$ is $1\times N$ times $N\times d$ times $d\times1 = 1\times 1$.</p>
+    <p>A $1\times1$ matrix is symmetric: $c^\top = c$ for a scalar $c$. And transposing the first term gives exactly the second:</p>
+    $$\left(\theta^\top X^\top y\right)^\top = y^\top \left(X^\top\right)^\top \left(\theta^\top\right)^\top = y^\top X\theta.$$
+    <p>A scalar equals its own transpose, so $\theta^\top X^\top y = y^\top X\theta$, and the two terms combine into $-2\theta^\top X^\top y$. $\square$</p>
+  </div>
+
+  <p>Also, $y^\top y$ contains no $\theta$ — drop it, by the same argmin rule as before. We are left with the notes' expression:</p>
+
+  $$\argmin_\theta\ -2\theta^\top X^\top y + \theta^\top X^\top X\theta.$$
+
+  <h3>Step 3 — name the pieces</h3>
+
+  <div class="box defn"><span class="label">Definition</span>
+    $$A = X^\top X \in \R^{d\times d}, \qquad b = X^\top y \in \R^{d}.$$
+    <p><em>(Careful: this $b$ is the notes' reuse of the letter — it is a vector, not the scalar intercept from earlier. The intercept now lives inside $\theta$.)</em></p>
+    <p><strong>The analogy the notes draw:</strong> in the scalar case we had $S = \sum_i x^{(i)2}$ and $P=\sum_i y^{(i)}x^{(i)}$, and the answer was $P/S$. Here $A = X^\top X$ is the matrix version of $\sum_i x_i^2$ — its $(j,k)$ entry is literally $\sum_{i=1}^N x^{(i)}_j x^{(i)}_k$ — and $b = X^\top y$ is the matrix version of $\sum_i x_i y_i$, its $j$-th entry being $\sum_{i=1}^N x^{(i)}_j y^{(i)}$. The answer will be $A^{-1}b$: "$b$ divided by $A$".</p>
+  </div>
+
+  <p>Two facts about $A$ we will need. First, <strong>$A$ is symmetric</strong>: $A^\top = (X^\top X)^\top = X^\top (X^\top)^\top = X^\top X = A$. Second, <strong>$A$ is positive semidefinite</strong>: for any $v\in\R^d$, $v^\top A v = v^\top X^\top X v = (Xv)^\top(Xv) = \|Xv\|_2^2 \geq 0$. If $A$ is additionally invertible then $\|Xv\|^2 &gt; 0$ for all $v \neq 0$, i.e. $A$ is positive <em>definite</em>. Assume that for now.</p>
+
+  <h3>Step 4 — complete the square, in matrices</h3>
+
+  <div class="box proof"><span class="label">Proof</span>
+    <p><strong>Claim.</strong> For symmetric invertible $A$,</p>
+    $$-2\theta^\top b + \theta^\top A\theta \;=\; (\theta - A^{-1}b)^\top A (\theta - A^{-1}b) \;-\; b^\top A^{-1}b.$$
+    <p><strong>Verify by expanding the right-hand side.</strong> Write $m = A^{-1}b$. Then</p>
+    $$(\theta-m)^\top A(\theta-m) = \theta^\top A\theta - \theta^\top A m - m^\top A\theta + m^\top A m.$$
+    <p>Handle the four pieces:</p>
+    <ul>
+      <li>$\theta^\top A m = \theta^\top A A^{-1} b = \theta^\top b$.</li>
+      <li>$m^\top A\theta = (A^{-1}b)^\top A\theta = b^\top (A^{-1})^\top A\theta$. <strong>Here symmetry is used:</strong> $A^\top = A$ implies $(A^{-1})^\top = (A^\top)^{-1} = A^{-1}$, so this is $b^\top A^{-1}A\theta = b^\top\theta$. And $b^\top\theta$ is a $1\times1$ scalar equal to its transpose $\theta^\top b$.</li>
+      <li>$m^\top A m = b^\top (A^{-1})^\top A A^{-1} b = b^\top A^{-1} b$ (symmetry again).</li>
+    </ul>
+    <p>Substituting:</p>
+    $$(\theta-m)^\top A(\theta-m) = \theta^\top A\theta - \theta^\top b - \theta^\top b + b^\top A^{-1}b = \theta^\top A\theta - 2\theta^\top b + b^\top A^{-1}b.$$
+    <p>Subtract $b^\top A^{-1}b$ from both sides and the claim follows. $\square$</p>
+  </div>
+
+  <div class="box key"><span class="label">Key idea</span>
+    <p>Symmetry of $A$ is doing real work, not cosmetics. Without $A^\top = A$ the two cross terms $\theta^\top Am$ and $m^\top A\theta$ would <em>not</em> collapse into $2\theta^\top b$, and there would be no clean completed square. This is exactly why the derivation is stated for $A = X^\top X$: that product is symmetric no matter what $X$ is.</p>
+  </div>
+
+  <h3>Step 5 — read off the minimiser</h3>
+
+  <p>Substituting the identity, and dropping the constant $-b^\top A^{-1}b$ (no $\theta$ in it):</p>
+
+  $$\argmin_\theta\ (\theta - A^{-1}b)^\top A(\theta - A^{-1}b).$$
+
+  <p>Since $A = X^\top X$, this quadratic form is</p>
+
+  $$(\theta - A^{-1}b)^\top X^\top X(\theta - A^{-1}b) = \big\|X\left(\theta - (X^\top X)^{-1}X^\top y\right)\big\|_2^2,$$
+
+  <p>which is the notes' final line. A squared norm is $\geq 0$, and it hits $0$ when its argument does, at $\theta = A^{-1}b$ — achievable, so it is the minimum. (With $A$ positive definite it is the <em>unique</em> minimiser: any $\theta \ne A^{-1}b$ gives a strictly positive value.)</p>
+
+  <div class="box key"><span class="label">Key idea</span>
+    $$\boxed{\;\theta^\star \;=\; A^{-1}b \;=\; \left(X^\top X\right)^{-1}X^\top y\;}$$
+    <p>The <strong>normal equations</strong>. Compare the scalar answer $w^\star = P/S$: same formula, with $S \to X^\top X$, $P \to X^\top y$, and "divide" $\to$ "multiply by the inverse". In practice nobody forms the inverse; you solve the linear system $(X^\top X)\theta = X^\top y$, which is faster and numerically far better behaved.</p>
+  </div>
+
+  <h3>Step 6 — the calculus route, for cross-check</h3>
+
+  <p>The <a href="optimization.html">optimization chapter</a> proves the two vector-calculus identities $\nabla_\theta(\theta^\top v) = v$ and $\nabla_\theta(\theta^\top A\theta) = (A + A^\top)\theta$. Apply them to $J(\theta) = y^\top y - 2\theta^\top X^\top y + \theta^\top X^\top X\theta$:</p>
+
+  $$\nabla_\theta J(\theta) \;=\; 0 \;-\; 2X^\top y \;+\; (X^\top X + (X^\top X)^\top)\theta \;=\; -2X^\top y + 2X^\top X\theta,$$
+
+  <p>using symmetry of $X^\top X$ in the last step. Setting $\nabla_\theta J = 0$:</p>
+
+  $$2X^\top X\theta = 2X^\top y \quad\Longrightarrow\quad X^\top X\theta = X^\top y \quad\Longrightarrow\quad \theta^\star = (X^\top X)^{-1}X^\top y.$$
+
+  <p><strong>Same answer, third time.</strong> And notice that $X^\top X\theta = X^\top y$ rearranges to $X^\top(y - X\theta) = 0$ — the geometric statement from Figure 5 that the residual is orthogonal to every column of $X$. Algebra, calculus and geometry all land on the same equation.</p>
+
+  <div class="guided">
+    <div class="g-head"><span class="tag">Guided problem</span>Normal equations by hand, with a 2×2 inverse</div>
+    <div class="g-body">
+      <p>Three points: $(x,y) = (0,1),\ (1,2),\ (2,5)$. Fit $h(x) = wx + b$ using $\theta^\star = (X^\top X)^{-1}X^\top y$ with the bias absorbed. Do every arithmetic step.</p>
+      <p class="tiny muted">Reminder: $\begin{bmatrix}p&amp;q\\r&amp;s\end{bmatrix}^{-1} = \dfrac{1}{ps-qr}\begin{bmatrix}s&amp;-q\\-r&amp;p\end{bmatrix}$.</p>
+    </div>
+    <details class="step"><summary>Step 1 — Build $X$ and $y$</summary>
+      <div>
+        <p>Absorbing the bias means each input becomes $\begin{bmatrix}1 \\ x\end{bmatrix}$ and $\theta = \begin{bmatrix}b\\w\end{bmatrix}$. Rows of $X$ are the inputs:</p>
+        $$X = \begin{bmatrix}1 & 0\\ 1 & 1\\ 1 & 2\end{bmatrix} \in \R^{3\times2}, \qquad y = \begin{bmatrix}1\\2\\5\end{bmatrix}\in\R^3.$$
+        <p>Sanity check: $N=3$ rows, $d=2$ columns. The first column is all ones — that's the constant feature.</p>
+      </div></details>
+    <details class="step"><summary>Step 2 — Compute $A = X^\top X$</summary>
+      <div>
+        <p>$X^\top = \begin{bmatrix}1&1&1\\0&1&2\end{bmatrix}$ is $2\times3$, so $A$ is $2\times2$. Entry $(j,k)$ is the dot product of column $j$ and column $k$ of $X$:</p>
+        <ul>
+          <li>$A_{11} = 1^2+1^2+1^2 = 3$ (this is always $N$ for the ones-column)</li>
+          <li>$A_{12} = A_{21} = 1\cdot0 + 1\cdot1 + 1\cdot2 = 3$ (this is $\sum_i x_i$)</li>
+          <li>$A_{22} = 0^2+1^2+2^2 = 5$ (this is $\sum_i x_i^2$)</li>
+        </ul>
+        $$A = \begin{bmatrix}3 & 3\\ 3 & 5\end{bmatrix}.$$
+        <p>Symmetric, as promised.</p>
+      </div></details>
+    <details class="step"><summary>Step 3 — Compute $b = X^\top y$</summary>
+      <div>
+        <ul>
+          <li>First entry: $1\cdot1 + 1\cdot2 + 1\cdot5 = 8$ (this is $\sum_i y_i$)</li>
+          <li>Second entry: $0\cdot1 + 1\cdot2 + 2\cdot5 = 12$ (this is $\sum_i x_iy_i$)</li>
+        </ul>
+        $$b = \begin{bmatrix}8\\12\end{bmatrix}.$$
+      </div></details>
+    <details class="step"><summary>Step 4 — Invert $A$</summary>
+      <div>
+        <p>$\det A = 3\cdot5 - 3\cdot3 = 15 - 9 = 6 \neq 0$, so the inverse exists.</p>
+        $$A^{-1} = \frac16\begin{bmatrix}5 & -3\\ -3 & 3\end{bmatrix}.$$
+        <p>Check: $A^{-1}A = \frac16\begin{bmatrix}5\cdot3-3\cdot3 & 5\cdot3-3\cdot5\\ -3\cdot3+3\cdot3 & -3\cdot3+3\cdot5\end{bmatrix} = \frac16\begin{bmatrix}6&0\\0&6\end{bmatrix} = I$. ✓</p>
+      </div></details>
+    <details class="step"><summary>Step 5 — Multiply</summary>
+      <div>
+        $$\theta^\star = A^{-1}b = \frac16\begin{bmatrix}5&-3\\-3&3\end{bmatrix}\begin{bmatrix}8\\12\end{bmatrix} = \frac16\begin{bmatrix}40-36\\ -24+36\end{bmatrix} = \frac16\begin{bmatrix}4\\12\end{bmatrix} = \begin{bmatrix}2/3\\ 2\end{bmatrix}.$$
+        <p>So $b^\star = 2/3$ and $w^\star = 2$: the fitted line is $h(x) = 2x + \tfrac23$.</p>
+      </div></details>
+    <details class="step"><summary>Answer &amp; the takeaway</summary>
+      <div>
+        <p><strong>$h(x) = 2x + \tfrac23$.</strong> Cross-check with the scalar with-intercept formulas: $\bar x = 1$, $\bar y = 8/3$.</p>
+        $$w^\star = \frac{(-1)(1-\tfrac83) + 0 + (1)(5-\tfrac83)}{(-1)^2+0^2+1^2} = \frac{\tfrac53 + \tfrac73}{2} = \frac{4}{2} = 2,\qquad b^\star = \tfrac83 - 2\cdot1 = \tfrac23.\ \checkmark$$
+        <p>Residuals: $1 - \tfrac23 = \tfrac13$; $2 - \tfrac83 = -\tfrac23$; $5-\tfrac{14}{3} = \tfrac13$. They sum to $\tfrac13-\tfrac23+\tfrac13 = 0$, exactly as the $\partial J/\partial b = 0$ condition predicted.</p>
+        <p><strong>Takeaway:</strong> every entry of $A$ and $b$ was a familiar scalar sum in disguise. The matrix machinery is bookkeeping for sums you already know how to compute — its value is that it keeps working when $d = 500$.</p>
+      </div></details>
+  </div>
+
+  <h2 id="singular-xtx">Corner case: when $X^\top X$ is not invertible</h2>
+
+  <p>The notes flag this and say "you don't have to worry about it". You should at least be able to <em>recognise</em> it, so here is the short version.</p>
+
+  <h3>When does it happen?</h3>
+
+  <p>$\det(X^\top X) = 0$ exactly when $\mathrm{rank}(X) &lt; d$, i.e. the columns of $X$ are linearly dependent. Two ways to arrive there:</p>
+
+  <ul>
+    <li><strong>Fewer samples than features, $N &lt; d$.</strong> Then $\mathrm{rank}(X) \leq N &lt; d$ automatically. This is routine in genomics (20,000 gene-expression features, 100 patients) and in text (a 50,000-word vocabulary, 2,000 documents). Geometrically: $d$ vectors in $\R^N$ with $d &gt; N$ cannot be independent.</li>
+    <li><strong>Redundant features.</strong> A feature repeated twice; a feature that is a fixed multiple of another; a set of one-hot indicator columns that sum to the all-ones intercept column (the "dummy variable trap").</li>
+  </ul>
+
+  <div class="box example"><span class="label">Example</span>
+    <p>You record each car's weight twice — once in thousands of kilograms, once in thousands of pounds — so column 2 is $2.2\times$ column 1:</p>
+    $$X = \begin{bmatrix}1 & 2.2\\ 2 & 4.4\\ 3 & 6.6\end{bmatrix},\qquad X^\top X = \begin{bmatrix}1+4+9 & 2.2+8.8+19.8\\ 2.2+8.8+19.8 & 4.84+19.36+43.56\end{bmatrix} = \begin{bmatrix}14 & 30.8\\ 30.8 & 67.76\end{bmatrix}.$$
+    $$\det = 14\times67.76 - 30.8^2 = 948.64 - 948.64 = 0.$$
+    <p>Singular. And you can see why the fit is ambiguous: if $\theta = (\theta_1,\theta_2)$ fits, so does $(\theta_1 + 2.2c,\ \theta_2 - c)$ for any $c$ — the two features can trade weight freely without changing a single prediction. "Kilograms matter and pounds don't" and "pounds matter and kilograms don't" are the same model.</p>
+  </div>
+
+  <h3>What it means</h3>
+
+  <p>If $v \neq 0$ satisfies $Xv = 0$ (a null-space direction — which exists precisely when the columns are dependent), then for any optimal $\theta^\star$,</p>
+
+  $$X(\theta^\star + cv) = X\theta^\star + cXv = X\theta^\star \quad\text{for every } c \in \R.$$
+
+  <p>Identical predictions, identical loss. So there are <strong>infinitely many optima</strong>, forming a whole line (or plane, or...) of tied solutions. Crucially the <em>projection</em> $\hat y = X\theta^\star$ is still unique — Figure 5 still has exactly one closest point in the plane. What is not unique is the <em>coordinates</em> $\theta$ you use to name that point.</p>
+
+  <h3>What the pseudo-inverse picks <span class="pill">beyond syllabus</span></h3>
+
+  <p>The Moore–Penrose pseudo-inverse $X^+$ is defined for every matrix, square or not, invertible or not, and $\theta = X^+y$ always returns a least-squares solution. Among the infinitely many tied optima it selects a specific one: <strong>the one with the smallest $\|\theta\|_2$</strong>. In the kilograms/pounds example it splits the weight between the two columns rather than dumping it all on one, which is the least arbitrary choice available. When $X^\top X$ <em>is</em> invertible, $X^+ = (X^\top X)^{-1}X^\top$ and you recover the normal equations exactly, so nothing is lost by always using it. In code, <code>numpy.linalg.lstsq</code> does this for you; <code>numpy.linalg.inv</code> will simply blow up.</p>
+
+  <p>The other standard fix is <strong>ridge regression</strong>: minimise $\|y-X\theta\|^2 + \lambda\|\theta\|^2$ for some $\lambda &gt; 0$, whose solution is $(X^\top X + \lambda I)^{-1}X^\top y$. Adding $\lambda I$ shifts every eigenvalue of $X^\top X$ up by $\lambda$, so the matrix is invertible for <em>any</em> data. <span class="pill">beyond syllabus</span></p>
+
+  <div class="quiz" data-answer="0">
+    <div class="q">You have $N=50$ documents and $d=5{,}000$ word-count features. What happens if you try $\theta = (X^\top X)^{-1}X^\top y$?</div>
+    <button class="opt">$X^\top X$ is $5000\times5000$ with rank at most 50, so it is singular — there are infinitely many parameter vectors achieving zero training error.</button>
+    <button class="opt">It works fine; $X^\top X$ is square, and square matrices are invertible.</button>
+    <button class="opt">It fails because $X$ isn't square, so $X^\top X$ isn't either.</button>
+    <div class="why"><strong>Why:</strong> $X^\top X$ <em>is</em> always square ($d\times d$) — squareness is never the problem. Rank is. $\mathrm{rank}(X^\top X) = \mathrm{rank}(X) \le \min(N,d) = 50$, far below $5{,}000$, so the determinant is $0$. With $d \gg N$ you can fit the 50 labels perfectly in infinitely many ways; the training loss is $0$ for a whole $4{,}950$-dimensional family of $\theta$. You need the pseudo-inverse, or regularisation, or fewer features — and you should be very suspicious of the resulting test error.</div>
+  </div>
+
+  <h2 id="cost-and-handoff">What it costs, and why the next chapter exists</h2>
+
+  <p>The closed form is wonderful. It is also, for large $d$, unusable. Count the operations:</p>
+
+  <div class="scroll-x">
+  <table>
+    <thead><tr><th>Step</th><th>What it does</th><th>Cost</th></tr></thead>
+    <tbody>
+      <tr><td>$X^\top X$</td><td>$d^2$ entries, each a dot product of two length-$N$ columns</td><td>$O(Nd^2)$</td></tr>
+      <tr><td>$X^\top y$</td><td>$d$ entries, each a length-$N$ dot product</td><td>$O(Nd)$</td></tr>
+      <tr><td>Solve $(X^\top X)\theta = X^\top y$</td><td>Cholesky factorisation of a $d\times d$ system</td><td>$O(d^3)$</td></tr>
+      <tr><td><strong>Total</strong></td><td></td><td>$\mathbf{O(Nd^2 + d^3)}$</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>Also $O(d^2)$ <em>memory</em>, just to hold $X^\top X$.</p>
+
+  <div class="box example"><span class="label">Example</span>
+    <ul>
+      <li><strong>$d = 10$, $N = 10^6$.</strong> $Nd^2 = 10^8$ operations. Instant. Use the closed form, always.</li>
+      <li><strong>$d = 1{,}000$, $N = 10^6$.</strong> $Nd^2 = 10^{12}$, $d^3=10^9$. Minutes on a laptop, plus 8 MB for $X^\top X$. Still fine.</li>
+      <li><strong>$d = 10^5$</strong> (a modest last layer, or bag-of-words). $d^3 = 10^{15}$ operations and $d^2 = 10^{10}$ entries $\approx$ 80 GB of memory just for $X^\top X$. <strong>Hopeless.</strong> And the cubic term doesn't care how much data you have — it is pure dimension.</li>
+    </ul>
+  </div>
+
+  <div class="box key"><span class="label">Key idea</span>
+    <p>Gradient descent computes $\nabla_\theta J = -2X^\top y + 2X^\top X\theta$, but it never <em>forms</em> $X^\top X$. It evaluates $X^\top(X\theta)$ as two matrix–vector products: $O(Nd)$ per iteration, $O(d)$ memory. Run it for $T$ iterations and you pay $O(TNd)$ — <strong>linear in $d$, not cubic.</strong> For $d = 10^5$ that is the difference between "runs in a minute" and "does not run".</p>
+    <p>And linear regression is the <em>easy</em> case: it is one of the very few models with any closed form at all. Logistic regression has none. Neural networks have none. Gradient descent is the general-purpose answer, and it is the subject of <a href="optimization.html">the next chapter</a>.</p>
+  </div>
+
+  <div class="guided">
+    <div class="g-head"><span class="tag">Guided problem</span>A fit from summary statistics — should I sell the Vibe?</div>
+    <div class="g-body">
+      <p>Someone hands you only these numbers for the eight cars (mileage in miles, price in dollars): $\bar x = 82{,}750$, $\bar y = 15{,}250$, $\sum_i (x_i-\bar x)(y_i-\bar y) = -2.1268\times10^9$, $\sum_i (x_i-\bar x)^2 = 1.1249\times10^{10}$.</p>
+      <p>(a) Find the fitted line. (b) Predict the price of a Vibe with 80,000 miles. (c) The car actually has 140,000 miles; what does the model say, and what should you notice?</p>
+    </div>
+    <details class="step"><summary>Step 1 — Which formula applies?</summary>
+      <div><p>We want an intercept (a zero-mileage car is not free), so use the centred formulas, not $P/S$:</p>
+      $$w^\star = \frac{\sum_i(x_i-\bar x)(y_i-\bar y)}{\sum_i(x_i-\bar x)^2},\qquad b^\star = \bar y - w^\star\bar x.$$
+      <p>Note we never needed the raw data — those four summaries are <em>sufficient</em>.</p></div></details>
+    <details class="step"><summary>Step 2 — Slope and intercept</summary>
+      <div>
+        $$w^\star = \frac{-2.1268\times10^9}{1.1249\times10^{10}} = -0.18906\ \text{dollars per mile}.$$
+        $$b^\star = 15{,}250 - (-0.18906)(82{,}750) = 15{,}250 + 15{,}645 = 30{,}895\ \text{dollars}.$$
+        <p>So $h(x) = 30{,}895 - 0.18906\,x$. Sign check: the slope is negative, which is what "more miles, less money" should look like. If you got a positive slope, you swapped the sign somewhere.</p>
+      </div></details>
+    <details class="step"><summary>Step 3 — Predict at 80,000 miles</summary>
+      <div>
+        $$h(80{,}000) = 30{,}895 - 0.18906\times80{,}000 = 30{,}895 - 15{,}125 = 15{,}770.$$
+        <p>About $\$15{,}770$. Sanity check with the centroid property: $80{,}000$ is just below $\bar x = 82{,}750$, and indeed $15{,}770$ is just above $\bar y = 15{,}250$. The line passes through $(\bar x,\bar y)$, so predictions near the mean mileage should land near the mean price.</p>
+      </div></details>
+    <details class="step"><summary>Step 4 — Predict at 140,000 miles, and be suspicious</summary>
+      <div>
+        $$h(140{,}000) = 30{,}895 - 0.18906\times140{,}000 = 30{,}895 - 26{,}468 = 4{,}427.$$
+        <p>About $\$4{,}427$. Two things to notice.</p>
+        <p><strong>(i) Extrapolation.</strong> $140{,}000$ is inside the training range ($25{,}000$–$160{,}000$), so this is interpolation and reasonably trustworthy. But the same formula at $x = 200{,}000$ gives $30{,}895 - 37{,}812 = -\$6{,}917$: a <em>negative price</em>. The model has no idea that prices are bounded below by zero. A line is linear everywhere, including where reality is not.</p>
+        <p><strong>(ii) RMSE is $\$3{,}156$.</strong> Against a prediction of $\$4{,}427$ that is a huge relative uncertainty. A point estimate without its error bar is a half-answer.</p>
+      </div></details>
+    <details class="step"><summary>Answer &amp; the takeaway</summary>
+      <div><p>(a) $h(x) = 30{,}895 - 0.18906x$. (b) $\approx\$15{,}770$. (c) $\approx\$4{,}427$, with RMSE $\approx\$3{,}156$, and the model goes negative beyond about $163{,}400$ miles.</p>
+      <p><strong>Takeaway:</strong> the fit depends on the data only through four summary numbers, the fitted line always passes through $(\bar x,\bar y)$, and the model's confident-looking arithmetic says nothing about whether a line was the right hypothesis class. Checking <em>that</em> is what <a href="ml-formulation.html">train/test splits</a> are for.</p></div></details>
+  </div>
+
+  <div class="guided">
+    <div class="g-head"><span class="tag">Guided problem</span>Diagnose three broken designs</div>
+    <div class="g-body">
+      <p>For each, say whether the closed-form solution is unique, and why.</p>
+      <p><strong>(A)</strong> $b=0$ model, data $(0,4),(0,-1),(0,7)$. &nbsp;&nbsp; <strong>(B)</strong> with-intercept model, data $(5,3),(5,9),(5,1)$. &nbsp;&nbsp; <strong>(C)</strong> $d=3$ features (constant, mileage, mileage-in-kilometres), $N=100$ cars.</p>
+    </div>
+    <details class="step"><summary>(A) — do the arithmetic before reasoning</summary>
+      <div><p>$S=\sum x_i^2 = 0+0+0 = 0$ and $P = \sum x_iy_i = 0$. The formula reads $0/0$: undefined. And indeed $J(w) = \frac13(16+1+49) = 22$ for <em>every</em> $w$ — flat. Infinitely many optima; the slope is unidentifiable because the data never varies $x$. This is exactly the notes' corner case.</p></div></details>
+    <details class="step"><summary>(B) — same disease, shifted</summary>
+      <div><p>$\bar x = 5$, so every $(x_i - \bar x) = 0$ and the denominator $\sum(x_i-\bar x)^2 = 0$. Undefined again. Picture: three points stacked vertically at $x=5$. Any line through $(5,\bar y) = (5,\tfrac{13}{3})$ fits identically, whatever its slope. The intercept did not save us: the problem is zero horizontal spread, not the position of the origin.</p></div></details>
+    <details class="step"><summary>(C) — rank deficiency with plenty of data</summary>
+      <div><p>Column 3 is $1.609\times$ column 2, so $\mathrm{rank}(X) = 2 &lt; 3 = d$ even though $N=100 \gg d$. $X^\top X$ is $3\times3$ with determinant $0$. Not unique: shifting weight between the miles column and the kilometres column leaves every prediction untouched. <strong>Lots of data does not fix redundant features.</strong> Drop one column, or use the pseudo-inverse.</p></div></details>
+    <details class="step"><summary>Answer &amp; the takeaway</summary>
+      <div><p>None of the three has a unique solution. (A) and (B) are the scalar corner case — zero variation in $x$. (C) is its multivariate form — linearly dependent columns.</p>
+      <p><strong>Takeaway:</strong> "the denominator is zero" and "$X^\top X$ is singular" are the same statement at two different values of $d$. In both cases the fitted <em>predictions</em> may still be perfectly well defined; it is the <em>parameters</em> that are ambiguous. If your job is prediction you can shrug; if your job is to interpret the coefficients ("how much is a mile worth?"), you cannot.</p></div></details>
+  </div>
+
+  <div class="quiz" data-answer="1">
+    <div class="q">Which of these is <em>not</em> a valid reason that $\theta^\star = (X^\top X)^{-1}X^\top y$ rather than $X^{-1}y$?</div>
+    <button class="opt">$X$ is $N\times d$ and generally not square, so it has no inverse.</button>
+    <button class="opt">$X^\top X$ is always invertible, whereas $X$ never is.</button>
+    <button class="opt">With $N &gt; d$ the system $X\theta = y$ is overdetermined and generically has no exact solution; least squares projects $y$ onto $\mathrm{col}(X)$ instead.</button>
+    <div class="why"><strong>Why:</strong> $X^\top X$ is <em>not</em> always invertible — that's the whole point of the pseudo-inverse discussion. It is invertible exactly when $X$ has full column rank, which fails when $N &lt; d$ or when features are redundant. The other two statements are correct and are the real reasons.</div>
+  </div>
+
+  <h2 id="recap">Recap</h2>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="kicker">Scalar</div>
+      <h3>One feature</h3>
+      <p>Through the origin: $w^\star=\dfrac{\sum_i y_ix_i}{\sum_i x_i^2}$. With intercept: $w^\star = \dfrac{\sum_i(x_i-\bar x)(y_i-\bar y)}{\sum_i(x_i-\bar x)^2}$, $b^\star=\bar y - w^\star\bar x$, and the line passes through $(\bar x,\bar y)$. Breaks when $x$ has no spread.</p>
+    </div>
+    <div class="card">
+      <div class="kicker">Vector</div>
+      <h3>$d$ features</h3>
+      <p>Absorb $b$ as a constant-1 feature, stack samples as rows of $X$. $\theta^\star=(X^\top X)^{-1}X^\top y$, the orthogonal projection of $y$ onto $\mathrm{col}(X)$. Breaks when $\mathrm{rank}(X) &lt; d$; use the pseudo-inverse.</p>
+    </div>
+  </div>
+
+  <ul>
+    <li>Squared loss, because errors must not cancel, we want smoothness, and we want the mean.</li>
+    <li>Completing the square proves a <em>global</em> optimum; setting the derivative to zero finds a stationary point. Both give the same formula, three times over.</li>
+    <li>Dropping $\theta$-independent constants and positive scale factors inside an $\argmin$ is always legal and always worth doing.</li>
+    <li>A zero denominator is never a numerical nuisance — it is the algebra reporting that the problem has infinitely many answers.</li>
+    <li>The closed form costs $O(Nd^2 + d^3)$. That cubic term is why <a href="optimization.html">gradient descent</a> exists.</li>
+  </ul>
+
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<script src="assets/site.js"></script>
+<script>
+document.addEventListener("shellready", () => {
+  /* Eight used cars: x = mileage in 10k miles, y = price in $1000s.
+     Closed-form optimum computed from this exact data: w* = -1.9077, b* = 31.0420. */
+  const DATA = [[2,27.5],[3,24.8],[5,22.0],[6,19.1],[8,16.2],[9,13.5],[11,10.6],[13,5.9]];
+  const N = DATA.length;
+  const mx = DATA.reduce((a,d)=>a+d[0],0)/N, my = DATA.reduce((a,d)=>a+d[1],0)/N;
+  const W_STAR = DATA.reduce((a,d)=>a+(d[0]-mx)*(d[1]-my),0) / DATA.reduce((a,d)=>a+(d[0]-mx)**2,0);
+  const B_STAR = my - W_STAR*mx;
+  const mse = (w,b) => DATA.reduce((a,d)=>a+(d[1]-(w*d[0]+b))**2,0)/N;
+
+  const svg = document.getElementById("figDrag");
+  const cv  = document.getElementById("figSurf");
+  const wIn = document.getElementById("wA"), bIn = document.getElementById("bA");
+  const out = document.getElementById("mseA");
+  if (!svg || !cv || !wIn || !bIn) return;
+
+  const W=640,H=360,L=56,R=18,T=18,B=44;
+  const X0=0,X1=14,Y0=0,Y1=32;
+  const px = x => L + (x-X0)/(X1-X0)*(W-L-R);
+  const py = y => H-B - (y-Y0)/(Y1-Y0)*(H-T-B);
+
+  function drawScatter(w,b){
+    const E = SG.el;
+    svg.innerHTML = "";
+    // axes + gridlines
+    const g = E("g",{});
+    for(let x=0;x<=14;x+=2){
+      g.appendChild(E("line",{x1:px(x),y1:T,x2:px(x),y2:H-B,stroke:"var(--line)","stroke-width":1}));
+      g.appendChild(E("text",{x:px(x),y:H-B+18,"text-anchor":"middle","font-size":11,fill:"var(--ink-mute)"},x));
+    }
+    for(let y=0;y<=32;y+=8){
+      g.appendChild(E("line",{x1:L,y1:py(y),x2:W-R,y2:py(y),stroke:"var(--line)","stroke-width":1}));
+      g.appendChild(E("text",{x:L-9,y:py(y)+4,"text-anchor":"end","font-size":11,fill:"var(--ink-mute)"},y));
+    }
+    g.appendChild(E("text",{x:(L+W-R)/2,y:H-8,"text-anchor":"middle","font-size":12,fill:"var(--ink-soft)"},"mileage x  (10,000 miles)"));
+    g.appendChild(E("text",{x:14,y:H/2,"text-anchor":"middle","font-size":12,fill:"var(--ink-soft)",transform:`rotate(-90 14 ${H/2})`},"price y  ($1000s)"));
+    svg.appendChild(g);
+
+    // the candidate line
+    svg.appendChild(E("line",{x1:px(X0),y1:py(w*X0+b),x2:px(X1),y2:py(w*X1+b),
+      stroke:"var(--accent)","stroke-width":2.5,"stroke-linecap":"round"}));
+
+    // residual segments, then points on top
+    DATA.forEach(([x,y])=>{
+      const yh = w*x+b;
+      svg.appendChild(E("line",{x1:px(x),y1:py(y),x2:px(x),y2:py(yh),
+        stroke:"var(--rose)","stroke-width":1.6,"stroke-dasharray":"3 2",opacity:.85}));
+    });
+    DATA.forEach(([x,y])=>{
+      svg.appendChild(E("circle",{cx:px(x),cy:py(y),r:4.5,fill:"var(--accent-2)",
+        stroke:"var(--panel)","stroke-width":1.5}));
+    });
+  }
+
+  function drawSurface(w,b){
+    const ctx = cv.getContext("2d");
+    const WS=-4, WE=1, BS=0, BE=45;          // must match the slider ranges
+    const cw=cv.width, ch=cv.height, cell=4;
+    const ink = SG.css("--ink-mute"), acc = SG.css("--accent"), pan = SG.css("--panel");
+    ctx.clearRect(0,0,cw,ch);
+    // log-scaled loss shading
+    let lo=Infinity, hi=-Infinity; const grid=[];
+    for(let j=0;j<ch;j+=cell){ const row=[];
+      for(let i=0;i<cw;i+=cell){
+        const v = Math.log10(1+mse(WS+(i/cw)*(WE-WS), BE-(j/ch)*(BE-BS)));
+        row.push(v); if(v<lo)lo=v; if(v>hi)hi=v;
+      } grid.push(row);
+    }
+    for(let j=0;j<grid.length;j++) for(let i=0;i<grid[j].length;i++){
+      const t=(grid[j][i]-lo)/(hi-lo);
+      // contour banding: darker = lower loss
+      const band = Math.abs((t*14)%1 - .5) < .06 ? .22 : 0;
+      ctx.fillStyle = `rgba(${Math.round(255-190*(1-t))},${Math.round(255-170*(1-t))},${Math.round(255-140*(1-t))},${.10+.85*t+band})`;
+      ctx.fillRect(i*cell,j*cell,cell,cell);
+    }
+    const cx = (v)=> (v-WS)/(WE-WS)*cw, cy = (v)=> (BE-v)/(BE-BS)*ch;
+    // optimum cross
+    ctx.strokeStyle=acc; ctx.lineWidth=2.5;
+    ctx.beginPath(); ctx.moveTo(cx(W_STAR)-9,cy(B_STAR)); ctx.lineTo(cx(W_STAR)+9,cy(B_STAR));
+    ctx.moveTo(cx(W_STAR),cy(B_STAR)-9); ctx.lineTo(cx(W_STAR),cy(B_STAR)+9); ctx.stroke();
+    // current point
+    ctx.fillStyle=SG.css("--accent-2"); ctx.strokeStyle=pan; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.arc(cx(w),cy(b),6,0,7); ctx.fill(); ctx.stroke();
+    // axis labels
+    ctx.fillStyle=ink; ctx.font="12px -apple-system, system-ui, sans-serif";
+    ctx.textAlign="center"; ctx.fillText("slope w  →", cw/2, ch-8);
+    ctx.save(); ctx.translate(13,ch/2); ctx.rotate(-Math.PI/2);
+    ctx.fillText("intercept b  →",0,0); ctx.restore();
+  }
+
+  function render(){
+    const w=+wIn.value, b=+bIn.value;
+    drawScatter(w,b); drawSurface(w,b);
+    if(out){
+      const m=mse(w,b), best=mse(W_STAR,B_STAR);
+      out.innerHTML = `Mean squared error at your $(w,b)$: <strong>${m.toFixed(3)}</strong> &nbsp;·&nbsp; `
+        + `best possible: <strong>${best.toFixed(3)}</strong> at $w^\\star=${W_STAR.toFixed(3)}$, $b^\\star=${B_STAR.toFixed(3)}$`
+        + (m>best+1e-9 ? ` &nbsp;·&nbsp; you are <strong>${(m/best).toFixed(1)}×</strong> off the floor.` : ` &nbsp;·&nbsp; that's the optimum.`);
+      if(window.renderMathInElement) renderMathInElement(out,{delimiters:[{left:"$",right:"$",display:false}],throwOnError:false});
+    }
+  }
+
+  wIn.addEventListener("input",render);
+  bIn.addEventListener("input",render);
+  const snap=document.getElementById("snapA");
+  if(snap) snap.onclick=()=>{ wIn.value=W_STAR.toFixed(2); bIn.value=B_STAR.toFixed(1);
+    wIn.dispatchEvent(new Event("input")); bIn.dispatchEvent(new Event("input")); };
+  const rst=document.getElementById("resetA");
+  if(rst) rst.onclick=()=>{ wIn.value=-0.9; bIn.value=20;
+    wIn.dispatchEvent(new Event("input")); bIn.dispatchEvent(new Event("input")); };
+  document.addEventListener("themechange",render);
+  render();
+});
+</script>
+
+</body>
+</html>
