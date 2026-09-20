@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-19T23:57:25.587Z",
+  "fetchedAt": "2026-09-20T03:32:24.483Z",
   "nowPlaying": {
-    "isPlaying": true,
-    "title": "Thnks fr th Mmrs",
-    "artist": "Fall Out Boy",
-    "album": "Infinity On High",
-    "art": "https://i.scdn.co/image/ab67616d00001e02da071ae7564949fbbfc6904d",
-    "url": "https://open.spotify.com/track/3Zwu2K0Qa5sT6teCCHPShP",
-    "progressMs": 75512,
-    "durationMs": 203506,
-    "playedAt": "2026-09-19T23:57:25.587Z"
+    "isPlaying": false,
+    "title": "Choosin' Texas",
+    "artist": "Ella Langley",
+    "album": "Dandelion",
+    "art": "https://i.scdn.co/image/ab67616d00001e028c4aa8e46455efcaa08c4085",
+    "url": "https://open.spotify.com/track/1REy2Bm9XrSoRMBKNXW69l",
+    "progressMs": null,
+    "durationMs": 232226,
+    "playedAt": "2026-09-20T00:09:31.270Z"
   },
   "topArtists": [
     {
