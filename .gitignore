@@ -23,8 +23,11 @@ pnpm-debug.log*
 # jetbrains setting folder
 .idea/
 
-# local Claude Code settings
-.claude/
+# local Claude Code settings, but NOT shared skills.
+# git cannot re-include a path inside an excluded *directory*, so exclude the
+# contents and then negate the one subdirectory we do want tracked.
+.claude/*
+!.claude/skills/
 
 # local Spotify snapshot preview (see website/README.md)
 website/public/spotify.json
