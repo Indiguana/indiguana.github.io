@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-20T03:32:24.483Z",
+  "fetchedAt": "2026-09-20T08:56:49.934Z",
   "nowPlaying": {
     "isPlaying": false,
-    "title": "Choosin' Texas",
-    "artist": "Ella Langley",
-    "album": "Dandelion",
-    "art": "https://i.scdn.co/image/ab67616d00001e028c4aa8e46455efcaa08c4085",
-    "url": "https://open.spotify.com/track/1REy2Bm9XrSoRMBKNXW69l",
+    "title": "Don't Go Breaking My Heart",
+    "artist": "Elton John, Kiki Dee",
+    "album": "Rock Of The Westies",
+    "art": "https://i.scdn.co/image/ab67616d00001e0242a15a4fe15a8a88ab728d5b",
+    "url": "https://open.spotify.com/track/7HW5WIw7ZgZORCzUxv5gW5",
     "progressMs": null,
-    "durationMs": 232226,
-    "playedAt": "2026-09-20T00:09:31.270Z"
+    "durationMs": 275440,
+    "playedAt": "2026-09-20T06:46:04.408Z"
   },
   "topArtists": [
     {
@@ -31,16 +31,16 @@
       "url": "https://open.spotify.com/artist/6eUKZXaKkcviH0Ku9w2n3V"
     },
     {
-      "name": "Michael Jackson",
-      "sub": "",
-      "art": "https://i.scdn.co/image/ab6761610000f178997cc9a4aec335d46c9481fd",
-      "url": "https://open.spotify.com/artist/3fMbdgg4jU18AjLCKBhRSm"
-    },
-    {
       "name": "One Direction",
       "sub": "",
       "art": "https://i.scdn.co/image/6c89c662ad0ab75bc2af9a3ae2b16f811daced50",
       "url": "https://open.spotify.com/artist/4AK6F7OLvEQ5QYCBNiQWHq"
+    },
+    {
+      "name": "Michael Jackson",
+      "sub": "",
+      "art": "https://i.scdn.co/image/ab6761610000f178997cc9a4aec335d46c9481fd",
+      "url": "https://open.spotify.com/artist/3fMbdgg4jU18AjLCKBhRSm"
     }
   ],
   "topTracks": [
