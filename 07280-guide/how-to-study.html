@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How to Use This Guide · 07-280 Field Guide</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body data-page="how-to-study">
+<main>
+
+  <div class="eyebrow">Start here</div>
+  <h1>How to use this guide</h1>
+  <p class="subtitle">Ten minutes here will save you many hours later: what this guide is for, the order to read it in, and what is actually worth memorising for 07-280.</p>
+
+  <div data-toc></div>
+
+  <h2 id="premise">The premise</h2>
+
+  <p>The course slides <em>state</em> results. They tell you that A* is optimal with an admissible heuristic, that mutual information is $H(Y) - H(Y\mid a)$, that the normal equation is $\theta = (X^\top X)^{-1}X^\top y$. They rarely tell you where any of it came from, and a formula you cannot re-derive is a formula you will misapply under exam pressure.</p>
+
+  <p>This guide re-teaches the same syllabus from scratch. Every chapter starts from a concrete situation, builds the notation only when the situation demands it, states each definition with every symbol named in words, works a small numeric example by hand, gives the derivation line by line — including the ones the slides skip — and then makes you do it yourself in guided problems. Where the professor's notes pose a question and leave it hanging ("Answer: in poll"), this guide answers it and shows the work.</p>
+
+  <p>It is not a summary and it is not a cheat sheet. It is longer than the slides on purpose. There <em>is</em> a <a href="cheatsheet.html">cheat sheet</a>, and it is the last thing you should use, not the first.</p>
+
+  <h2 id="map">The dependency map</h2>
+
+  <p>Chapters build on each other. An arrow means "you will be lost without this first." Click any box to go there.</p>
+
+  <div class="viz">
+    <div class="viz-title">Chapter dependencies</div>
+    <svg viewBox="0 0 700 410" role="img" aria-label="Dependency graph of the chapters: search foundations leads to informed search and to constraint satisfaction; informed search leads to adversarial search. ML formulation leads to decision trees and to linear regression; decision trees leads to information theory; linear regression leads to optimization, which leads to feature engineering, which leads to logistic regression.">
+      <defs>
+        <marker id="h2sArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--ink-mute)"></path>
+        </marker>
+      </defs>
+
+      <text x="20" y="22" font-size="11" letter-spacing="2" fill="var(--ink-mute)">PART I — SEARCH</text>
+
+      <a href="search-foundations.html">
+        <rect x="20" y="36" width="180" height="44" rx="8" fill="var(--panel)" stroke="var(--line-2)"></rect>
+        <text x="110" y="63" text-anchor="middle" font-size="13" fill="currentColor">1 · Search foundations</text>
+      </a>
+      <a href="informed-search.html">
+        <rect x="250" y="36" width="180" height="44" rx="8" fill="var(--panel)" stroke="var(--line-2)"></rect>
+        <text x="340" y="63" text-anchor="middle" font-size="13" fill="currentColor">2 · Informed search</text>
+      </a>
+      <a href="adversarial-search.html">
+        <rect x="480" y="36" width="200" height="44" rx="8" fill="var(--panel)" stroke="var(--line-2)"></rect>
+        <text x="580" y="63" text-anchor="middle" font-size="13" fill="currentColor">3 · Adversarial search</text>
+      </a>
+      <a href="csps.html">
+        <rect x="250" y="110" width="180" height="44" rx="8" fill="var(--panel)" stroke="var(--line-2)"></rect>
+        <text x="340" y="137" text-anchor="middle" font-size="13" fill="currentColor">4 · CSPs</text>
+      </a>
+
+      <line x1="204" y1="58" x2="244" y2="58" stroke="var(--ink-mute)" stroke-width="1.5" marker-end="url(#h2sArrow)"></line>
+      <line x1="434" y1="58" x2="474" y2="58" stroke="var(--ink-mute)" stroke-width="1.5" marker-end="url(#h2sArrow)"></line>
+      <line x1="110" y1="84" x2="244" y2="128" stroke="var(--ink-mute)" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#h2sArrow)"></line>
+      <text x="150" y="122" font-size="10.5" fill="var(--ink-mute)">branches off</text>
+
+      <text x="20" y="178" font-size="11" letter-spacing="2" fill="var(--ink-mute)">PART II — MACHINE LEARNING</text>
+
+      <a href="ml-formulation.html">
+        <rect x="20" y="232" width="180" height="44" rx="8" fill="var(--panel)" stroke="var(--accent)" stroke-width="2"></rect>
+        <text x="110" y="259" text-anchor="middle" font-size="13" fill="currentColor">5 · ML formulation</text>
+      </a>
+      <a href="decision-trees.html">
+        <rect x="250" y="192" width="180" height="44" rx="8" fill="var(--panel)" stroke="var(--line-2)"></rect>
+        <text x="340" y="219" text-anchor="middle" font-size="13" fill="currentColor">6 · Decision trees</text>
+      </a>
+      <a href="information-theory.html">
+        <rect x="480" y="192" width="200" height="44" rx="8" fill="var(--panel)" stroke="var(--line-2)"></rect>
+        <text x="580" y="219" text-anchor="middle" font-size="13" fill="currentColor">7 · Information theory</text>
+      </a>
+      <a href="linear-regression.html">
+        <rect x="250" y="272" width="180" height="44" rx="8" fill="var(--panel)" stroke="var(--line-2)"></rect>
+        <text x="340" y="299" text-anchor="middle" font-size="13" fill="currentColor">8 · Linear regression</text>
+      </a>
+      <a href="optimization.html">
+        <rect x="480" y="272" width="200" height="44" rx="8" fill="var(--panel)" stroke="var(--line-2)"></rect>
+        <text x="580" y="299" text-anchor="middle" font-size="13" fill="currentColor">9 · Optimization: GD &amp; SGD</text>
+      </a>
+      <a href="feature-engineering.html">
+        <rect x="250" y="352" width="180" height="44" rx="8" fill="var(--panel)" stroke="var(--line-2)"></rect>
+        <text x="340" y="379" text-anchor="middle" font-size="13" fill="currentColor">10 · Feature engineering</text>
+      </a>
+      <a href="logistic-regression.html">
+        <rect x="480" y="352" width="200" height="44" rx="8" fill="var(--panel)" stroke="var(--line-2)"></rect>
+        <text x="580" y="379" text-anchor="middle" font-size="13" fill="currentColor">11 · Logistic regression</text>
+      </a>
+
+      <line x1="204" y1="246" x2="244" y2="220" stroke="var(--ink-mute)" stroke-width="1.5" marker-end="url(#h2sArrow)"></line>
+      <line x1="204" y1="262" x2="244" y2="290" stroke="var(--ink-mute)" stroke-width="1.5" marker-end="url(#h2sArrow)"></line>
+      <line x1="434" y1="214" x2="474" y2="214" stroke="var(--ink-mute)" stroke-width="1.5" marker-end="url(#h2sArrow)"></line>
+      <line x1="434" y1="294" x2="474" y2="294" stroke="var(--ink-mute)" stroke-width="1.5" marker-end="url(#h2sArrow)"></line>
+      <path d="M 580 320 C 580 342, 470 330, 400 348" fill="none" stroke="var(--ink-mute)" stroke-width="1.5" marker-end="url(#h2sArrow)"></path>
+      <line x1="434" y1="374" x2="474" y2="374" stroke="var(--ink-mute)" stroke-width="1.5" marker-end="url(#h2sArrow)"></line>
+    </svg>
+    <div class="caption">What to notice: the two halves of the course are independent of each other — you can revise search and ML in either order. Inside each half the chain is strict. Chapter 5 is the hinge of Part II: both the tree branch and the regression branch assume its notation ($\X$, $\Y$, $\D$, $\ell$, $\hat R$, ERM), so skipping it makes everything downstream look like arbitrary symbol-pushing.</div>
+  </div>
+
+  <h2 id="components">What the pieces of a page mean</h2>
+
+  <p>Every chapter is built from the same handful of components. They are not decoration — each one signals how to read what is inside it.</p>
+
+  <div class="grid2">
+    <div class="card">
+      <h3>The coloured callouts</h3>
+      <p><strong>Intuition</strong> — the mental picture. Skippable if the maths already clicked; the thing to re-read if it did not.<br>
+      <strong>Key idea</strong> — the load-bearing sentence. If you remember one line from a section, this is it.<br>
+      <strong>Definition</strong> — the formal statement, as the course gives it.<br>
+      <strong>Analogy</strong> — a comparison, always with a note on where it breaks.<br>
+      <strong>Proof / derivation</strong> — every line justified, no "it can be shown".<br>
+      <strong>Common mistake</strong> — an error people actually make, and why it is tempting.<br>
+      <strong>Example</strong> — fully worked arithmetic, nothing hand-waved.</p>
+    </div>
+    <div class="card">
+      <h3>Problems, quizzes, figures</h3>
+      <p><strong>Guided problems</strong> are the most important thing on any page. Each has a statement, then collapsed steps, then the answer.<br>
+      <strong>Quizzes</strong> are single-question checks; the explanation always says why the wrong answers are attractive, so read it even when you were right.<br>
+      <strong>Interactive figures</strong> have sliders and buttons. Move them. The caption tells you what to notice, but the understanding comes from watching a quantity move when you change another one.</p>
+    </div>
+  </div>
+
+  <div class="box warn"><span class="label">Common mistake</span>
+    <p><strong>Opening the reveal before attempting the step.</strong> Reading a solution produces the pleasant feeling of understanding without any of the substance — you recognise each line as reasonable and conclude you could have produced it. Under exam conditions you cannot, because recognition and generation are different skills and only one of them is being tested.</p>
+    <p>The steps are collapsed deliberately. Write something down first — even a wrong attempt, even just "I think I need Bayes here." The failed attempt is what makes the reveal stick: you already have a question, so the answer lands on something instead of washing over you. Attempt, then reveal, then re-do the step yourself from blank paper.</p>
+  </div>
+
+  <h2 id="strategy">What to memorise, and what to re-derive</h2>
+
+  <p>This course rewards derivation, not recall. Almost everything can be rebuilt in thirty seconds from a definition, and rebuilt formulas do not get mixed up with each other. Memorise this short list and nothing else:</p>
+
+  <ul>
+    <li>The <strong>A* optimality conditions</strong> — admissible ($h(n) \leq h^*(n)$, never overestimates) for tree search, consistent ($h(n) \leq c(n,n') + h(n')$) for graph search.</li>
+    <li>The <strong>entropy and mutual information definitions</strong> — $H(Y) = \sum_y P(y)\log\frac{1}{P(y)}$ and $I(Y;a) = H(Y) - H(Y\mid a)$.</li>
+    <li>The <strong>normal equation</strong> — $\theta = (X^\top X)^{-1}X^\top y$.</li>
+    <li>The <strong>gradient descent update</strong> — $\theta \leftarrow \theta - \alpha \nabla_\theta \hat R(\theta)$.</li>
+    <li>The <strong>sigmoid</strong> — $\sigma(z) = \dfrac{1}{1+e^{-z}}$, and that $\sigma'(z) = \sigma(z)(1-\sigma(z))$.</li>
+  </ul>
+
+  <p>Everything else you should be able to <em>re-derive on the spot</em>: why BFS is optimal only with uniform edge costs; why an inconsistent heuristic can make A* re-expand a node; why $\alpha$-$\beta$ pruning cannot change the minimax value; why the minimiser of squared error is the mean; why the normal equation comes from setting a gradient to zero; why zero-one loss cannot be optimised by gradient descent. If you can rebuild those, the memorised five are a convenience rather than a crutch.</p>
+
+  <p><strong>A suggested order.</strong> Read a chapter in one sitting, doing the guided problems as you meet them rather than saving them for the end. Budget roughly: two sessions for search (Ch. 1–2), one for adversarial search and one for CSPs, one for Chapter 5 — which is short but is the vocabulary for everything after it — then one each for trees, information theory, linear regression and optimization, and a final one for features and logistic regression. That is about ten sittings. Then, and only then, work the <a href="practice.html">problem set</a> cold, without notes, and use the <a href="cheatsheet.html">cheat sheet</a> purely to check yourself. If a cheat-sheet line surprises you, go back to the chapter that derived it.</p>
+
+  <h2 id="sources">Sources</h2>
+
+  <p>This guide is a re-teaching of the following course documents. Nothing here is a substitute for them — when the guide and the professor disagree, the professor is right, and please tell us. Cross-check against:</p>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="kicker">Part I — search</div>
+      <ul class="tiny">
+        <li><code>07280_F26_Lec2_Informed_Search</code> (and <code>-runover</code>)</li>
+        <li><code>07280_F26_Lec3_Adversarial_Search</code></li>
+        <li><code>07280_S26_Notes_Adversarial_Search</code></li>
+        <li><code>07280_F26_Lec4_CSPs</code></li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="kicker">Part II — machine learning</div>
+      <ul class="tiny">
+        <li><code>07280_F26_ML_formulation</code></li>
+        <li><code>07280_F26_Notes_ML_Prob_Decision_Trees</code></li>
+        <li><code>07280_F26_Lecture_Notes_Decision_Trees</code></li>
+        <li><code>07280_F26_Lecture_Notes_Linear_Regression</code></li>
+        <li><code>07280_F26_Notes_Optimization_and_Linear_Regression</code></li>
+        <li><code>07280_F26_Lecture_Notes_Optimization</code></li>
+        <li><code>07280_F26_Notes_Feature_Eng_and_Logistic_Reg</code></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="box key"><span class="label">Key idea</span>
+    <p>If you only take one habit from this page: after finishing any chapter, close it and write the main result on a blank sheet <em>with its derivation</em>. Whatever you cannot reproduce is exactly what you have not learned yet, and you now know precisely where to go back to.</p>
+  </div>
+
+  <p class="muted tiny">Start with <a href="search-foundations.html">Chapter 1 — search problems, BFS/DFS/UCS</a>, or jump straight to <a href="ml-formulation.html">Chapter 5 — ML problem formulation</a> if machine learning is what is on the exam next.</p>
+
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<script src="assets/site.js"></script>
+</body>
+</html>

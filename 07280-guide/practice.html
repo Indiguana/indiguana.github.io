@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guided problem set — Part I · 07-280 Field Guide</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body data-page="practice">
+<main>
+
+  <div class="eyebrow">Reference</div>
+  <h1>Guided problem set — Part&nbsp;I</h1>
+  <p class="subtitle">Twelve exam-shaped problems on the search half of the course, each one fully worked in progressive steps — every number on this page was computed and checked, not estimated.</p>
+
+  <div class="box warn">
+    <span class="label">Scope of this page</span>
+    <p style="margin-bottom:0">This set covers <strong>Part&nbsp;I only</strong> — search, A*, games and CSPs. There is no Part&nbsp;II section here. For machine-learning practice, use the guided problems inside each chapter: <a href="ml-formulation.html">ML formulation</a>, <a href="decision-trees.html">decision trees</a>, <a href="information-theory.html">entropy &amp; mutual information</a>, <a href="linear-regression.html">linear regression</a>, <a href="optimization.html">optimization</a>, <a href="feature-engineering.html">feature engineering</a> and <a href="logistic-regression.html">logistic regression</a> each carry three to four of their own, with the same step-by-step structure.</p>
+  </div>
+
+  <div class="box key">
+    <span class="label">How to use this set</span>
+    <p><strong>Do these with a pen.</strong> Reading a solution feels like learning and isn't. Every problem is self-contained — all the data you need is in the problem statement, as a table or a figure — so open the problem, close the laptop, and work it on paper first.</p>
+    <p>Then open <em>one</em> step at a time. Each problem starts with “Step 1 — what's actually being asked”, because on an exam the most expensive mistakes happen before any arithmetic: answering the wrong question. Attempt each step before you reveal it. If your answer matches, open the next one. If it doesn't, find <em>where</em> the two traces diverge before reading further — that divergence point is the thing you actually need to learn.</p>
+    <p>Every problem ends with a box titled <em>“Why this is the exam version of this idea.”</em> That box names the specific trap the problem was built around. Those traps are the real content of this page; the numbers are just the delivery mechanism.</p>
+    <p>Difficulty is marked: <span class="pill">warm-up</span> you should get in under three minutes, <span class="pill">exam level</span> is what a real midterm question looks like, <span class="pill">stretch</span> goes one step past what was lectured.</p>
+  </div>
+
+  <div data-toc></div>
+
+  <h2 id="search-foundations">1. Search foundations</h2>
+
+  <p>Chapter reference: <a href="search-foundations.html">Search problems, BFS/DFS/UCS</a>.</p>
+
+  <div class="guided">
+    <div class="g-head"><span class="tag">Problem 1</span>Sizing a warehouse state space <span class="pill">warm-up</span></div>
+    <div class="g-body">
+      <p>A delivery robot lives on an $8 \times 6$ grid of floor cells (all 48 cells are legal). The world contains:</p>
+      <ul>
+        <li>the robot's cell — one of <strong>48</strong>;</li>
+        <li>five parcels $f_1,\dots,f_5$, each either still undelivered or delivered — one bit each;</li>
+        <li>the robot's facing $d \in \{\mathrm{N},\mathrm{S},\mathrm{E},\mathrm{W}\}$;</li>
+        <li>a battery level $\beta \in \{0,1,\dots,20\}$ — <strong>21</strong> values.</li>
+      </ul>
+      <p>Give the state representation and the state-space size for each of the following tasks.</p>
+      <ol>
+        <li><strong>(a)</strong> The full world state.</li>
+        <li><strong>(b)</strong> “Drive to the charging dock in the corner.” Moves are N/S/E/W, each legal from anywhere, each costing 1. Battery is ignored.</li>
+        <li><strong>(c)</strong> “Deliver all five parcels”, battery ignored, moves N/S/E/W.</li>
+        <li><strong>(d)</strong> “Deliver all five parcels without the battery hitting 0”, where every move drains one unit.</li>
+      </ol>
+    </div>
+    <details class="step"><summary>Step 1 — What are we actually being asked?</summary><div>
+      <p>Not “how many things are in the world”. The question is: <em>which variables does this particular search problem read?</em> A variable belongs in the state if and only if the goal test, the action set $\text{Actions}(s)$, the transition model $\text{Result}(s,a)$, or the cost function $c(s,a,s')$ consults it — or if it changes in a way that later affects one of those.</p>
+      <p>So run a four-way relevance test on each of $p$ (position), the $f_i$, $d$ (facing), $\beta$ (battery), once per task.</p>
+    </div></details>
+    <details class="step"><summary>Step 2 — (a) and (b)</summary><div>
+      <p><strong>(a)</strong> The full world state keeps everything: $(p, f_1,\dots,f_5, d, \beta)$, size</p>
+      $$48 \cdot 2^5 \cdot 4 \cdot 21 = 48 \cdot 32 \cdot 4 \cdot 21 = \mathbf{129{,}024}.$$
+      <p><strong>(b)</strong> The goal test reads only $p$. Moves are N/S/E/W regardless of facing, so $\text{Actions}$ does not read $d$. Cost is 1 per move, so $c$ reads nothing. Parcels are never read. Battery is ignored by assumption.</p>
+      <p>State $= (p)$, size $\mathbf{48}$.</p>
+      <p>Note how brutal that is: $129{,}024 \to 48$, a factor of 2688, purely by deleting variables nobody reads.</p>
+    </div></details>
+    <details class="step"><summary>Step 3 — (c) and (d)</summary><div>
+      <p><strong>(c)</strong> The goal test now reads all five $f_i$ (“are they all delivered?”), and the $f_i$ change as we act, so they stay. $d$ and $\beta$ are still unread.</p>
+      $$\text{State} = (p, f_1,\dots,f_5), \qquad 48 \cdot 2^5 = \mathbf{1{,}536}.$$
+      <p><strong>(d)</strong> Now “without the battery hitting 0” makes $\beta$ part of the <em>legality</em> of a plan, and $\beta$ changes with every move, so the transition model reads and writes it. It's in.</p>
+      $$\text{State} = (p, f_1,\dots,f_5, \beta), \qquad 48 \cdot 32 \cdot 21 = \mathbf{32{,}256}.$$
+      <p>$d$ is still out in every task, because nothing — goal, actions, transitions, costs — ever consults it.</p>
+    </div></details>
+    <details class="step"><summary>Solution</summary><div>
+      <table class="tight center">
+        <thead><tr><th>Task</th><th>Representation</th><th>Size</th></tr></thead>
+        <tbody>
+          <tr><td>(a) world state</td><td>$(p, f_1..f_5, d, \beta)$</td><td>$48\cdot 32\cdot 4\cdot 21 = 129{,}024$</td></tr>
+          <tr><td>(b) reach dock</td><td>$(p)$</td><td>$48$</td></tr>
+          <tr><td>(c) deliver all</td><td>$(p, f_1..f_5)$</td><td>$48\cdot 32 = 1{,}536$</td></tr>
+          <tr><td>(d) deliver all, battery</td><td>$(p, f_1..f_5, \beta)$</td><td>$48\cdot 32\cdot 21 = 32{,}256$</td></tr>
+        </tbody>
+      </table>
+    </div></details>
+    <details class="step"><summary>Why this is the exam version of this idea</summary><div>
+      <p><strong>The trap is the facing variable $d$.</strong> It is listed prominently in the problem, it is part of the world, and it is irrelevant to every single task — so every product you write that contains a $4$ is wrong. The exam always plants at least one decoy variable, and it usually plants it in a task where a <em>small rule change</em> would make it relevant (if actions were “turn left / go straight”, $d$ would be back in, through $\text{Actions}$, not through the goal test).</p>
+      <p>Second trap: $2^5$, not $5$ and not $5!$. The state is a snapshot, not a history. Five independent bits give $2^5$ configurations; the <em>order</em> of delivery lives in the plan, not the state.</p>
+    </div></details>
+  </div>
+
+  <div class="guided">
+    <div class="g-head"><span class="tag">Problem 2</span>Hand-trace BFS, DFS and UCS on one graph <span class="pill">exam level</span></div>
+    <div class="g-body">
+      <p>Start state $S$, goal state $G$. Edges are undirected; the number on an edge is its cost in both directions.</p>
+
+      <div class="viz">
+        <div class="viz-title">The state space graph</div>
+        <svg viewBox="0 0 640 300" role="img" aria-label="Weighted undirected graph with nodes S, A, B, C, D, E, G">
+          <g stroke="var(--line-2)" stroke-width="2" fill="none">
+            <line x1="60" y1="150" x2="170" y2="90"/>
+            <line x1="60" y1="150" x2="170" y2="215"/>
+            <line x1="170" y1="90" x2="300" y2="60"/>
+            <line x1="170" y1="90" x2="320" y2="165"/>
+            <line x1="170" y1="215" x2="320" y2="165"/>
+            <line x1="170" y1="215" x2="330" y2="265"/>
+            <line x1="300" y1="60" x2="320" y2="165"/>
+            <line x1="300" y1="60" x2="520" y2="160"/>
+            <line x1="320" y1="165" x2="520" y2="160"/>
+            <line x1="330" y1="265" x2="520" y2="160"/>
+          </g>
+          <g fill="var(--accent)" font-size="14" font-weight="700" text-anchor="middle">
+            <text x="108" y="112">1</text>
+            <text x="110" y="196">4</text>
+            <text x="235" y="65">2</text>
+            <text x="238" y="140">5</text>
+            <text x="252" y="205">1</text>
+            <text x="243" y="253">7</text>
+            <text x="322" y="114">1</text>
+            <text x="408" y="100">8</text>
+            <text x="420" y="152">3</text>
+            <text x="432" y="223">2</text>
+          </g>
+          <g fill="var(--panel)" stroke="var(--ink)" stroke-width="2">
+            <circle cx="60" cy="150" r="21"/><circle cx="170" cy="90" r="21"/>
+            <circle cx="170" cy="215" r="21"/><circle cx="300" cy="60" r="21"/>
+            <circle cx="320" cy="165" r="21"/><circle cx="330" cy="265" r="21"/>
+          </g>
+          <circle cx="520" cy="160" r="23" fill="var(--panel)" stroke="var(--accent-2)" stroke-width="3"/>
+          <g fill="var(--ink)" font-size="16" font-weight="700" text-anchor="middle" dominant-baseline="middle">
+            <text x="60" y="150">S</text><text x="170" y="90">A</text><text x="170" y="215">B</text>
+            <text x="300" y="60">C</text><text x="320" y="165">D</text><text x="330" y="265">E</text>
+            <text x="520" y="160" fill="var(--accent-2)">G</text>
+          </g>
+        </svg>
+        <div class="caption">Successors are always generated in alphabetical order, and ties in the priority queue are broken alphabetically. All three algorithms are <strong>graph search</strong>: a state is never expanded twice, and the goal test happens when a node is <em>popped</em>, not when it is generated.</div>
+      </div>
+
+      <p>For each of BFS, DFS and UCS, give <strong>(i)</strong> the order in which states are popped off the frontier and expanded, and <strong>(ii)</strong> the path returned and its cost.</p>
+    </div>
+    <details class="step"><summary>Step 1 — What are we actually being asked?</summary><div>
+      <p>Three questions in one, and they differ in exactly one line of code: what the frontier is.</p>
+      <ul>
+        <li><strong>BFS</strong> — frontier is a FIFO queue. Pop order is by <em>depth</em> (number of edges), ignoring cost entirely.</li>
+        <li><strong>DFS</strong> — frontier is a LIFO stack. To pop alphabetically-first, you push successors in <em>reverse</em> alphabetical order.</li>
+        <li><strong>UCS</strong> — frontier is a priority queue keyed on $g(n)$, the cumulative cost from $S$. Pop order is by <em>cost</em>.</li>
+      </ul>
+      <p>The adjacency lists, alphabetised:<br>
+      $S\!:\!A,B$ &nbsp;·&nbsp; $A\!:\!C,D,S$ &nbsp;·&nbsp; $B\!:\!D,E,S$ &nbsp;·&nbsp; $C\!:\!A,D,G$ &nbsp;·&nbsp; $D\!:\!A,B,C,G$ &nbsp;·&nbsp; $E\!:\!B,G$ &nbsp;·&nbsp; $G\!:\!C,D,E$.</p>
+    </div></details>
+    <details class="step"><summary>Step 2 — BFS</summary><div>
+      <p>Pop $S$; enqueue $A,B$. Pop $A$; enqueue $C,D$ ($S$ already expanded). Pop $B$; $D$ is already queued, enqueue $E$. Pop $C$; enqueue $G$. Pop $D$ — nothing new. Pop $E$ — nothing new. Pop $G$: goal.</p>
+      <p><strong>Pop order:</strong> $S, A, B, C, D, E, G$.</p>
+      <p><strong>Returned path:</strong> $S \to A \to C \to G$, found at depth 3. Cost $= 1 + 2 + 8 = \mathbf{11}$.</p>
+      <p>BFS found a <em>shallow</em> path, not a cheap one.</p>
+    </div></details>
+    <details class="step"><summary>Step 3 — DFS</summary><div>
+      <p>Push $S$. Pop $S$, push $B,A$ (reverse alphabetical, so $A$ is on top). Pop $A$, push $D,C$ → pop $C$, push $G,D$ → pop $D$ (top of stack), push $G,C,B,A$ → after skipping expanded states, pop $B$, push $E$ → pop $E$, push $G$ → pop $G$: goal.</p>
+      <p><strong>Pop order:</strong> $S, A, C, D, B, E, G$.</p>
+      <p><strong>Returned path:</strong> $S \to A \to C \to D \to B \to E \to G$, cost $= 1+2+1+1+7+2 = \mathbf{14}$.</p>
+      <p>DFS returned the worst of the three. That is normal, and it is not a bug: DFS promises nothing about quality.</p>
+    </div></details>
+    <details class="step"><summary>Step 4 — UCS</summary><div>
+      <p>Track $g$ as you go. Pop $S$ ($g{=}0$); frontier $A{:}1$, $B{:}4$. Pop $A$ ($g{=}1$); add $C{:}3$, $D{:}6$ (via $A$). Pop $C$ ($g{=}3$); $D$ via $C$ is $3+1 = 4 &lt; 6$, so <strong>replace</strong> the frontier entry for $D$ with $g{=}4$; add $G{:}11$ (via $C$). Now the frontier holds $B{:}4$, $D{:}4$, $G{:}11$ — a tie at 4, broken alphabetically, so pop $B$ ($g{=}4$); $D$ via $B$ would be $4+1=5$, worse than 4, discard. Pop $D$ ($g{=}4$); $G$ via $D$ is $4+3 = 7 &lt; 11$, replace. Pop $G$ ($g{=}7$): goal.</p>
+      <p><strong>Pop order (with $g$):</strong> $S(0),\ A(1),\ C(3),\ B(4),\ D(4),\ G(7)$ — note $E$ is <em>never expanded</em>.</p>
+      <p><strong>Returned path:</strong> $S \to A \to C \to D \to G$, cost $= 1+2+1+3 = \mathbf{7}$.</p>
+    </div></details>
+    <details class="step"><summary>Solution</summary><div>
+      <div class="scroll-x">
+      <table class="center">
+        <thead><tr><th></th><th>Pop / expansion order</th><th>Path returned</th><th>Cost</th></tr></thead>
+        <tbody>
+          <tr><td><strong>BFS</strong></td><td>S, A, B, C, D, E, G</td><td>S→A→C→G</td><td>11</td></tr>
+          <tr><td><strong>DFS</strong></td><td>S, A, C, D, B, E, G</td><td>S→A→C→D→B→E→G</td><td>14</td></tr>
+          <tr><td><strong>UCS</strong></td><td>S(0), A(1), C(3), B(4), D(4), G(7)</td><td>S→A→C→D→G</td><td><strong>7</strong></td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p>UCS expanded the fewest nodes (6 of 7) <em>and</em> returned the only optimal path.</p>
+    </div></details>
+    <details class="step"><summary>Why this is the exam version of this idea</summary><div>
+      <p><strong>Trap 1 — “BFS finds the shortest path.”</strong> BFS finds the path with the fewest <em>edges</em>. Here that is the 3-edge, cost-11 route; the optimal route has 4 edges and costs 7. BFS is optimal only when every step cost is equal.</p>
+      <p><strong>Trap 2 — the frontier replacement at $D$.</strong> The single most-missed line in UCS: when a cheaper path to a state already on the frontier is found, you <em>replace</em> the entry rather than adding a second one or ignoring it. Miss it and you return $S\to B\to D\to G$ at cost 8.</p>
+      <p><strong>Trap 3 — goal test on pop, not on generation.</strong> $G$ was generated with $g{=}11$ while $C$ was expanded. If you had returned then, you'd answer 11. UCS only commits when $G$ reaches the front of the queue, by which point its $g$ has been improved to 7.</p>
+    </div></details>
+  </div>
+
+  <div class="guided">
+    <div class="g-head"><span class="tag">Problem 3</span>Completeness and optimality, argued not recited <span class="pill">exam level</span></div>
+    <div class="g-body">
+      <p>Answer each with a one-line argument or an explicit counterexample. You may reuse the graph from Problem 2.</p>
+      <ol>
+        <li><strong>(a)</strong> Is DFS <em>complete</em> on the Problem 2 graph? Is DFS complete in general?</li>
+        <li><strong>(b)</strong> BFS is complete when the branching factor is finite. Is BFS optimal on the Problem 2 graph? Give the cheapest counterexample you can.</li>
+        <li><strong>(c)</strong> UCS is optimal when all step costs satisfy $c \ge \varepsilon &gt; 0$. What breaks if some edges are allowed cost $0$? What breaks if some edges are allowed <em>negative</em> cost?</li>
+        <li><strong>(d)</strong> Someone changes every edge in the Problem 2 graph to cost $1$. Does UCS now expand states in the same order as BFS? Does it return the same path?</li>
+      </ol>
+    </div>
+    <details class="step"><summary>Step 1 — What are we actually being asked?</summary><div>
+      <p>Pin the definitions down before arguing. <strong>Complete</strong>: if a solution exists, the algorithm is guaranteed to find one in finite time. <strong>Optimal</strong>: the solution it returns has minimum total cost. These are different properties and a given algorithm can have one without the other — DFS-with-a-visited-set on a finite graph is complete but not optimal.</p>
+      <p>Note also that “complete” is a property of the <em>algorithm + graph class</em> pair, not of the algorithm alone. That is why (a) has two different answers.</p>
+    </div></details>
+    <details class="step"><summary>Step 2 — (a) and (b)</summary><div>
+      <p><strong>(a)</strong> On the Problem 2 graph: <em>yes</em>, complete. The graph is finite (7 states) and we are running graph search with an explored set, so no state is expanded twice; the search must terminate, and it terminates having touched every reachable state, so if $G$ is reachable it is found.</p>
+      <p>In general: <em>no</em>. Two ways it fails. (i) <strong>Tree search on a cyclic graph</strong>: with no explored set, DFS can loop $S \to A \to S \to A \to \cdots$ forever. (ii) <strong>Infinite state spaces</strong>: even acyclic, DFS can march down an infinite branch (“keep adding 1 to the counter”) and never come back, even though the goal sits one step off the root.</p>
+      <p><strong>(b)</strong> No. The counterexample is already in Problem 2: BFS returns $S\to A\to C\to G$ at cost 11, but the optimum is 7. The minimal counterexample is three nodes — $S\to G$ costing 10, and $S\to A$ costing 1 with $A \to G$ costing 1. BFS finds the 1-edge path of cost 10 and stops; the optimum is the 2-edge path of cost 2.</p>
+    </div></details>
+    <details class="step"><summary>Step 3 — (c)</summary><div>
+      <p><strong>Zero-cost edges.</strong> Optimality survives — the proof of UCS optimality only needs $g$ to be non-decreasing along a path, which $c \ge 0$ gives you. What dies is the <em>completeness</em> guarantee in an infinite space: with a positive lower bound $\varepsilon$ on step cost, every cost contour contains finitely many nodes, so UCS eventually pushes past any finite cost. With cost-0 edges you can build an infinite zero-cost chain out of $S$ and UCS will expand it forever, never reaching the cost-1 contour that contains the goal. On a <em>finite</em> graph, zero costs are harmless.</p>
+      <p><strong>Negative-cost edges.</strong> Now optimality dies outright. UCS assumes that once a state is popped, its $g$ can never improve — that is exactly why we are allowed to mark it explored and never reconsider it. A negative edge discovered later can lower the true cost of an already-expanded state, and UCS will never notice. (This is why you need Bellman–Ford, not Dijkstra/UCS, for negative weights. <span class="pill">beyond syllabus</span>)</p>
+    </div></details>
+    <details class="step"><summary>Solution</summary><div>
+      <p><strong>(d)</strong> With all costs $1$, $g(n)$ equals the depth of $n$, so the priority queue orders by depth — which is exactly what the FIFO queue does, <em>provided</em> ties are broken in insertion order. So UCS and BFS expand in the same order and both return a minimum-depth path, which is now also a minimum-cost path. This is the precise sense in which <strong>BFS is the special case of UCS with unit costs</strong>, and the mirror of the fact that <strong>UCS is the special case of A* with $h \equiv 0$</strong>.</p>
+      <p>Summary table:</p>
+      <table class="tight center">
+        <thead><tr><th></th><th>Complete?</th><th>Optimal?</th></tr></thead>
+        <tbody>
+          <tr><td>DFS (graph search, finite space)</td><td>yes</td><td>no</td></tr>
+          <tr><td>DFS (tree search, cycles / infinite)</td><td>no</td><td>no</td></tr>
+          <tr><td>BFS (finite branching)</td><td>yes</td><td>only if all costs equal</td></tr>
+          <tr><td>UCS ($c \ge \varepsilon &gt; 0$)</td><td>yes</td><td>yes</td></tr>
+        </tbody>
+      </table>
+    </div></details>
+    <details class="step"><summary>Why this is the exam version of this idea</summary><div>
+      <p><strong>The trap is memorising the table instead of the reason.</strong> Every row above has a condition attached, and the exam question is always built by deleting the condition: “DFS is incomplete” (only without an explored set, or in an infinite space), “BFS is optimal” (only for unit costs), “UCS is optimal” (only for non-negative costs). If you can produce the three-node counterexample for BFS in ten seconds, you have actually learned it; if you can only recite the row, you haven't.</p>
+      <p>Part (c) is the one people lose points on, because <em>zero</em> and <em>negative</em> break different properties — zero breaks completeness in infinite spaces, negative breaks optimality everywhere.</p>
+    </div></details>
+  </div>
+
+  <h2 id="informed-search">2. Informed search: heuristics and A*</h2>
+
+  <p>Chapter reference: <a href="informed-search.html">Heuristics, Greedy &amp; A*</a>.</p>
+
+  <div class="guided">
+    <div class="g-head"><span class="tag">Problem 4</span>A* trace: expansion order with $g$, $h$, $f$ <span class="pill">exam level</span></div>
+    <div class="g-body">
+      <p>Directed graph below; edge labels are costs, the boxed value under each node is $h$. Start $S$, goal $G$. Run <strong>A* graph search</strong>: priority $f(n) = g(n) + h(n)$, goal test on pop, ties broken alphabetically. List every pop with its $g$, $h$ and $f$, then give the path returned and its cost.</p>
+
+      <div class="viz">
+        <div class="viz-title">Graph with heuristic values</div>
+        <svg viewBox="0 0 640 280" role="img" aria-label="Directed graph S to G with edge costs and heuristic values">
+          <defs>
+            <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--line-2)"/>
+            </marker>
+          </defs>
+          <g stroke="var(--line-2)" stroke-width="2" fill="none" marker-end="url(#ah)">
+            <line x1="80" y1="130" x2="180" y2="66"/>
+            <line x1="80" y1="130" x2="180" y2="194"/>
+            <line x1="222" y1="60" x2="348" y2="60"/>
+            <line x1="216" y1="76" x2="352" y2="184"/>
+            <line x1="216" y1="184" x2="352" y2="76"/>
+            <line x1="222" y1="200" x2="348" y2="200"/>
+            <line x1="392" y1="66" x2="518" y2="124"/>
+            <line x1="392" y1="194" x2="518" y2="136"/>
+          </g>
+          <g fill="var(--accent)" font-size="14" font-weight="700" text-anchor="middle">
+            <text x="120" y="88">2</text>
+            <text x="120" y="184">1</text>
+            <text x="285" y="48">2</text>
+            <text x="250" y="122">5</text>
+            <text x="322" y="122">2</text>
+            <text x="285" y="222">2</text>
+            <text x="455" y="82">4</text>
+            <text x="455" y="188">4</text>
+          </g>
+          <g fill="var(--panel)" stroke="var(--ink)" stroke-width="2">
+            <circle cx="60" cy="130" r="21"/><circle cx="200" cy="60" r="21"/>
+            <circle cx="200" cy="200" r="21"/><circle cx="370" cy="60" r="21"/>
+            <circle cx="370" cy="200" r="21"/>
+          </g>
+          <circle cx="540" cy="130" r="23" fill="var(--panel)" stroke="var(--accent-2)" stroke-width="3"/>
+          <g fill="var(--ink)" font-size="16" font-weight="700" text-anchor="middle" dominant-baseline="middle">
+            <text x="60" y="130">S</text><text x="200" y="60">A</text><text x="200" y="200">B</text>
+            <text x="370" y="60">C</text><text x="370" y="200">D</text>
+            <text x="540" y="130" fill="var(--accent-2)">G</text>
+          </g>
+          <g fill="var(--accent-3)" font-size="13" font-weight="700" text-anchor="middle">
+            <text x="60" y="168">h=5</text><text x="200" y="30">h=4</text><text x="200" y="238">h=4</text>
+            <text x="370" y="30">h=3</text><text x="370" y="238">h=3</text><text x="540" y="170">h=0</text>
+          </g>
+        </svg>
+        <div class="caption">Edges: $S\!\to\!A(2)$, $S\!\to\!B(1)$, $A\!\to\!C(2)$, $A\!\to\!D(5)$, $B\!\to\!C(2)$, $B\!\to\!D(2)$, $C\!\to\!G(4)$, $D\!\to\!G(4)$.</div>
+      </div>
+    </div>
+    <details class="step"><summary>Step 1 — What are we actually being asked?</summary><div>
+      <p>An A* trace is bookkeeping, not cleverness. Keep three columns and never mix them up:</p>
+      <ul>
+        <li>$g(n)$ — <em>backward</em> cost: what the path you actually took to $n$ has cost so far. A fact.</li>
+        <li>$h(n)$ — <em>forward</em> estimate: guessed remaining cost from $n$ to a goal. Given to you, never computed.</li>
+        <li>$f(n) = g(n) + h(n)$ — estimated total cost of the cheapest solution <em>through</em> $n$. This is the priority.</li>
+      </ul>
+      <p>“Graph search” means: keep an explored set; never expand a state twice; if a cheaper path to a frontier state appears, replace the entry.</p>
+    </div></details>
+    <details class="step"><summary>Step 2 — The first two pops</summary><div>
+      <p>Insert $S$ with $g{=}0$, $h{=}5$, $f{=}5$.</p>
+      <p><strong>Pop 1: $S$</strong> — $g{=}0, h{=}5, f{=}5$. Generate $A$ ($g{=}2$, $f{=}2{+}4{=}6$) and $B$ ($g{=}1$, $f{=}1{+}4{=}5$).</p>
+      <p>Frontier: $B(f{=}5)$, $A(f{=}6)$.</p>
+      <p><strong>Pop 2: $B$</strong> — $g{=}1, h{=}4, f{=}5$. Generate $C$ ($g{=}1{+}2{=}3$, $f{=}3{+}3{=}6$) and $D$ ($g{=}1{+}2{=}3$, $f{=}6$).</p>
+      <p>Frontier: $A(6)$, $C(6)$, $D(6)$ — a three-way tie.</p>
+    </div></details>
+    <details class="step"><summary>Step 3 — The tie, and the discarded path</summary><div>
+      <p>Alphabetical tie-break: <strong>Pop 3: $A$</strong> — $g{=}2, h{=}4, f{=}6$.</p>
+      <p>$A$ generates $C$ with $g = 2+2 = 4$. But $C$ is already on the frontier with $g = 3$. Since $4 &gt; 3$, <strong>discard</strong> — do not add a second $C$.</p>
+      <p>$A$ also generates $D$ with $g = 2+5 = 7$, worse than the existing $g{=}3$. Discard.</p>
+      <p>So expanding $A$ changed nothing at all. That is A* correctly refusing to be tempted: $A$ looked as promising as $C$ and $D$ on $f$, and turned out to be a dead weight.</p>
+      <p><strong>Pop 4: $C$</strong> — $g{=}3, h{=}3, f{=}6$. Generates $G$ with $g = 3+4 = 7$, $f = 7+0 = 7$.</p>
+      <p><strong>Pop 5: $D$</strong> — $g{=}3, h{=}3, f{=}6$. Generates $G$ with $g = 3+4 = 7$ — a tie, so nothing improves.</p>
+      <p><strong>Pop 6: $G$</strong> — $g{=}7, h{=}0, f{=}7$. Goal test fires.</p>
+    </div></details>
+    <details class="step"><summary>Solution</summary><div>
+      <table class="tight center">
+        <thead><tr><th>#</th><th>Popped</th><th>$g$</th><th>$h$</th><th>$f$</th><th>Path to it</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>S</td><td>0</td><td>5</td><td>5</td><td>S</td></tr>
+          <tr><td>2</td><td>B</td><td>1</td><td>4</td><td>5</td><td>S→B</td></tr>
+          <tr><td>3</td><td>A</td><td>2</td><td>4</td><td>6</td><td>S→A</td></tr>
+          <tr><td>4</td><td>C</td><td>3</td><td>3</td><td>6</td><td>S→B→C</td></tr>
+          <tr><td>5</td><td>D</td><td>3</td><td>3</td><td>6</td><td>S→B→D</td></tr>
+          <tr><td>6</td><td>G</td><td>7</td><td>0</td><td>7</td><td>S→B→C→G</td></tr>
+        </tbody>
+      </table>
+      <p><strong>Returned path:</strong> $S \to B \to C \to G$, cost $= 1 + 2 + 4 = \mathbf{7}$.</p>
+      <p>Sanity check: $f$ never decreased along the pop sequence ($5,5,6,6,6,7$). That monotonicity is the fingerprint of a <em>consistent</em> heuristic — and this $h$ is consistent (check every edge: $h(n) - h(n') \le c$ holds for all eight).</p>
+    </div></details>
+    <details class="step"><summary>Why this is the exam version of this idea</summary><div>
+      <p><strong>The trap is pop 3.</strong> $A$ gets expanded even though it contributes nothing to the answer, because its $f$ ties with the useful nodes. Students who “shortcut” by only following the eventual solution path report five pops and miss $A$ and $D$. A* expands <em>every</em> node with $f &lt; f^*$ and some of those with $f = f^*$; it does not magically know which ones matter.</p>
+      <p><strong>Second trap:</strong> the two $g$-values for $C$ (3 via $B$, 4 via $A$). The exam wants to see you keep the smaller one and discard the larger. Writing $C$ twice in your table with two different $g$'s is the classic tree-search-in-graph-search-clothing error.</p>
+      <p><strong>Third trap:</strong> $G$ is generated at pop 4 but not returned until pop 6. Goal test on pop.</p>
+    </div></details>
+  </div>
+
+  <div class="guided">
+    <div class="g-head"><span class="tag">Problem 5</span>Admissible but not consistent — and what it costs you <span class="pill">exam level</span></div>
+    <div class="g-body">
+      <p>Directed graph: $S\to A$ (1), $A\to C$ (1), $S\to C$ (3), $C\to G$ (3). Proposed heuristic:</p>
+      <table class="tight center">
+        <thead><tr><th>$n$</th><th>S</th><th>A</th><th>C</th><th>G</th></tr></thead>
+        <tbody><tr><td>$h(n)$</td><td>2</td><td>4</td><td>1</td><td>0</td></tr></tbody>
+      </table>
+
+      <div class="viz">
+        <div class="viz-title">The graph</div>
+        <svg viewBox="0 0 560 220" role="img" aria-label="Four-node directed graph S, A, C, G">
+          <defs>
+            <marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--line-2)"/>
+            </marker>
+          </defs>
+          <g stroke="var(--line-2)" stroke-width="2" fill="none" marker-end="url(#ah2)">
+            <line x1="78" y1="88" x2="188" y2="54"/>
+            <line x1="232" y1="54" x2="338" y2="88"/>
+            <path d="M 66 122 Q 210 200 337 118"/>
+            <line x1="382" y1="100" x2="476" y2="100"/>
+          </g>
+          <g fill="var(--accent)" font-size="15" font-weight="700" text-anchor="middle">
+            <text x="126" y="58">1</text><text x="292" y="58">1</text>
+            <text x="205" y="190">3</text><text x="429" y="88">3</text>
+          </g>
+          <g fill="var(--panel)" stroke="var(--ink)" stroke-width="2">
+            <circle cx="60" cy="100" r="21"/><circle cx="210" cy="45" r="21"/><circle cx="360" cy="100" r="21"/>
+          </g>
+          <circle cx="498" cy="100" r="23" fill="var(--panel)" stroke="var(--accent-2)" stroke-width="3"/>
+          <g fill="var(--ink)" font-size="16" font-weight="700" text-anchor="middle" dominant-baseline="middle">
+            <text x="60" y="100">S</text><text x="210" y="45">A</text><text x="360" y="100">C</text>
+            <text x="498" y="100" fill="var(--accent-2)">G</text>
+          </g>
+          <g fill="var(--accent-3)" font-size="13" font-weight="700" text-anchor="middle">
+            <text x="60" y="140">h=2</text><text x="210" y="17">h=4</text>
+            <text x="360" y="140">h=1</text><text x="498" y="142">h=0</text>
+          </g>
+        </svg>
+        <div class="caption">Note the two routes into $C$: the direct $S\to C$ costing 3, and the cheaper $S\to A \to C$ costing 2.</div>
+      </div>
+
+      <ol>
+        <li><strong>(a)</strong> Is $h$ admissible? Show the check.</li>
+        <li><strong>(b)</strong> Is $h$ consistent? If not, exhibit the violating edge and the exact inequality that fails.</li>
+        <li><strong>(c)</strong> Run A* <em>graph</em> search. What does it return, and is it optimal?</li>
+      </ol>
+    </div>
+    <details class="step"><summary>Step 1 — What are we actually being asked?</summary><div>
+      <p>Two different tests that students routinely merge into one.</p>
+      <div class="box defn"><span class="label">Definition</span>
+        <p><strong>Admissible:</strong> $0 \le h(n) \le h^*(n)$ for every $n$, where $h^*(n)$ is the true cheapest cost from $n$ to the nearest goal. This is a <em>per-node</em> test against the truth.</p>
+        <p><strong>Consistent:</strong> $h(n) \le c(n,a,n') + h(n')$ for every edge $n \to n'$, and $h(\text{goal}) = 0$. This is a <em>per-edge</em> test, a triangle inequality, and it never mentions $h^*$.</p>
+      </div>
+      <p>Consistency implies admissibility, never the reverse. So (b) can fail while (a) passes — that is exactly what this problem is built to show.</p>
+    </div></details>
+    <details class="step"><summary>Step 2 — (a) Admissibility</summary><div>
+      <p>Compute $h^*$ backwards from the goal:</p>
+      <ul>
+        <li>$h^*(G) = 0$.</li>
+        <li>$h^*(C) = 3$ (only edge $C\to G$).</li>
+        <li>$h^*(A) = 1 + h^*(C) = 4$.</li>
+        <li>$h^*(S) = \min\{\,1 + h^*(A),\ 3 + h^*(C)\,\} = \min\{5, 6\} = 5$.</li>
+      </ul>
+      <table class="tight center">
+        <thead><tr><th>$n$</th><th>$h(n)$</th><th>$h^*(n)$</th><th>$h \le h^*$?</th></tr></thead>
+        <tbody>
+          <tr><td>S</td><td>2</td><td>5</td><td>yes</td></tr>
+          <tr><td>A</td><td>4</td><td>4</td><td>yes (tight)</td></tr>
+          <tr><td>C</td><td>1</td><td>3</td><td>yes</td></tr>
+          <tr><td>G</td><td>0</td><td>0</td><td>yes</td></tr>
+        </tbody>
+      </table>
+      <p><strong>$h$ is admissible.</strong></p>
+    </div></details>
+    <details class="step"><summary>Step 3 — (b) Consistency, edge by edge</summary><div>
+      <p>Test $h(n) - h(n') \le c(n,n')$ on all four edges:</p>
+      <table class="tight center">
+        <thead><tr><th>Edge</th><th>$c$</th><th>$h(n) - h(n')$</th><th>OK?</th></tr></thead>
+        <tbody>
+          <tr><td>$S \to A$</td><td>1</td><td>$2 - 4 = -2$</td><td>yes</td></tr>
+          <tr><td>$S \to C$</td><td>3</td><td>$2 - 1 = 1$</td><td>yes</td></tr>
+          <tr><td>$A \to C$</td><td>1</td><td>$4 - 1 = 3$</td><td><strong>NO</strong></td></tr>
+          <tr><td>$C \to G$</td><td>3</td><td>$1 - 0 = 1$</td><td>yes</td></tr>
+        </tbody>
+      </table>
+      <p><strong>The violating edge is $A \to C$.</strong> The failing inequality, written out:</p>
+      $$h(A) \le c(A,C) + h(C) \quad\Longrightarrow\quad 4 \le 1 + 1 = 2 \quad \text{FALSE}.$$
+      <p>Intuitively: standing at $A$ the heuristic claims 4 units of work remain; one cheap step later, at $C$, it claims only 1 remains. The heuristic “discovered” 3 units of progress from a step that cost 1. That drop is what consistency forbids.</p>
+    </div></details>
+    <details class="step"><summary>Step 4 — (c) A* graph search on this graph</summary><div>
+      <p>Insert $S$: $g{=}0,h{=}2,f{=}2$.</p>
+      <p><strong>Pop $S$</strong> ($f{=}2$). Generate $A$ ($g{=}1$, $f{=}1{+}4{=}5$) and $C$ ($g{=}3$, $f{=}3{+}1{=}4$).</p>
+      <p><strong>Pop $C$</strong> ($g{=}3, h{=}1, f{=}4$) — it beat $A$ on $f$. Mark $C$ <strong>explored</strong>. Generate $G$ ($g{=}6$, $f{=}6$).</p>
+      <p><strong>Pop $A$</strong> ($g{=}1, h{=}4, f{=}5$). $A$ offers $C$ at $g = 1+1 = 2$, which is <em>better</em> than the 3 we used — but $C$ is already in the explored set, so graph search throws it away. There is no frontier entry left to replace.</p>
+      <p><strong>Pop $G$</strong> ($g{=}6, f{=}6$). Return $S \to C \to G$ at cost $\mathbf{6}$.</p>
+      <p>The true optimum is $S \to A \to C \to G$ at cost $1 + 1 + 3 = \mathbf{5}$. <strong>A* graph search returned a suboptimal path.</strong></p>
+    </div></details>
+    <details class="step"><summary>Solution</summary><div>
+      <p><strong>(a)</strong> Admissible — every $h(n) \le h^*(n)$, tight at $A$.</p>
+      <p><strong>(b)</strong> Not consistent. Violating edge $A \to C$: $h(A) = 4 &gt; c(A,C) + h(C) = 1 + 1 = 2$.</p>
+      <p><strong>(c)</strong> A* graph search returns $S\to C\to G$, cost 6; the optimum is $S\to A\to C\to G$, cost 5. A* <em>tree</em> search on the same graph would still return the optimum (it would regenerate $C$ via $A$ and win), which is exactly the theorem: <em>admissible ⇒ A* tree search optimal; consistent ⇒ A* graph search optimal.</em></p>
+      <p>Diagnostic you can use on any trace: with a consistent $h$, the $f$-values of popped nodes are non-decreasing. Here they went $2, 4, 5, 6$ — non-decreasing by luck — but the underlying $f$ along the optimal path $S(2), A(5), C(3), G(5)$ <em>drops</em> from 5 to 3. That drop is the inconsistency made visible.</p>
+    </div></details>
+    <details class="step"><summary>Why this is the exam version of this idea</summary><div>
+      <p><strong>The trap is believing admissible is enough.</strong> It is enough for tree search only. This problem is the smallest possible graph where the distinction bites, and it is the exact structure the lecture used: a node ($C$) reachable two ways, expanded early via the expensive route because its heuristic under-promised, then locked out of correction by the explored set.</p>
+      <p>The examinable phrase is “<em>exhibit the violating edge</em>”. Saying “it's inconsistent” earns nothing; naming $A\to C$ and writing $4 &gt; 1 + 1$ earns everything. Also note that consistency is checked on <strong>edges</strong> — there are only four to check here, and checking nodes instead is the standard wrong move.</p>
+    </div></details>
+  </div>
+
+  <div class="guided">
+    <div class="g-head"><span class="tag">Problem 6</span>Design a heuristic by relaxation, then prove it <span class="pill">stretch</span></div>
+    <div class="g-body">
+      <p>Pacman sits at cell $(1,1)$ of a $5\times 5$ grid — coordinates are (column, row), rows numbered top to bottom. There are walls (shaded). He must eat <strong>all three</strong> dots, at $(1,4)$, $(3,1)$ and $(4,4)$. Legal moves are N/S/E/W into a non-wall cell, each costing 1. The goal is reached when all three dots are eaten.</p>
+
+      <div class="viz">
+        <div class="viz-title">The maze</div>
+        <svg viewBox="0 0 300 300" role="img" aria-label="Five by five grid with Pacman at top left and three dots">
+          <g fill="var(--bg-soft)" stroke="none">
+            <rect x="100" y="100" width="50" height="50"/>
+            <rect x="150" y="100" width="50" height="50"/>
+            <rect x="100" y="200" width="50" height="50"/>
+          </g>
+          <g stroke="var(--line-2)" stroke-width="1.5" fill="none">
+            <rect x="0" y="0" width="250" height="250"/>
+            <line x1="50" y1="0" x2="50" y2="250"/><line x1="100" y1="0" x2="100" y2="250"/>
+            <line x1="150" y1="0" x2="150" y2="250"/><line x1="200" y1="0" x2="200" y2="250"/>
+            <line x1="0" y1="50" x2="250" y2="50"/><line x1="0" y1="100" x2="250" y2="100"/>
+            <line x1="0" y1="150" x2="250" y2="150"/><line x1="0" y1="200" x2="250" y2="200"/>
+          </g>
+          <circle cx="25" cy="25" r="14" fill="var(--gold)"/>
+          <g fill="var(--accent)">
+            <circle cx="25" cy="175" r="8"/><circle cx="125" cy="25" r="8"/><circle cx="175" cy="175" r="8"/>
+          </g>
+          <g fill="var(--ink-mute)" font-size="11" text-anchor="middle">
+            <text x="25" y="266">1</text><text x="75" y="266">2</text><text x="125" y="266">3</text>
+            <text x="175" y="266">4</text><text x="225" y="266">5</text>
+            <text x="267" y="29">1</text><text x="267" y="79">2</text><text x="267" y="129">3</text>
+            <text x="267" y="179">4</text><text x="267" y="229">5</text>
+            <text x="125" y="288">column</text>
+          </g>
+        </svg>
+        <div class="caption">Pacman (gold) at $(1,1)$; dots (terracotta) at $(3,1)$, $(1,4)$ and $(4,4)$. Shaded cells are walls.</div>
+      </div>
+
+      <ol>
+        <li><strong>(a)</strong> What is the state space for this problem, and how big is it?</li>
+        <li><strong>(b)</strong> Three candidate heuristics: $h_{\text{count}} = $ number of dots remaining; $h_{\max} = \max_{\text{dots }d} \text{Manhattan}(p,d)$; $h_{\text{sum}} = \sum_{\text{dots }d}\text{Manhattan}(p,d)$. Compute each at the start state.</li>
+        <li><strong>(c)</strong> Which are admissible? Prove the admissible ones by naming the relaxation. Kill the inadmissible one with a counterexample.</li>
+        <li><strong>(d)</strong> Which heuristic should you actually use?</li>
+      </ol>
+    </div>
+    <details class="step"><summary>Step 1 — What are we actually being asked?</summary><div>
+      <p>The recipe the course gives for inventing admissible heuristics is: <strong>solve a relaxed problem exactly</strong>. A relaxation is the same problem with <em>extra actions allowed</em> (or constraints deleted). Because every legal plan in the original is still legal in the relaxation, the relaxed optimum can only be cheaper — which is precisely $h(n) \le h^*(n)$.</p>
+      <p>So for each candidate you must name the relaxation it is the exact solution to. If you can't name one, it probably isn't admissible.</p>
+    </div></details>
+    <details class="step"><summary>Step 2 — (a) The state space</summary><div>
+      <p>It is <em>not</em> just Pacman's position. The goal test reads which dots are eaten, and that changes as he moves, so it's part of the state:</p>
+      $$\text{State} = (p,\ e_1, e_2, e_3), \quad p \in \{25 \text{ cells}\} \setminus \{3 \text{ walls}\},\ e_i \in \{0,1\}.$$
+      <p>Size $= 22 \cdot 2^3 = \mathbf{176}$. Tiny, but the same construction with 30 dots is the $2^{30}$ blow-up from Chapter 1.</p>
+    </div></details>
+    <details class="step"><summary>Step 3 — (b) The three values at the start</summary><div>
+      <p>Manhattan distance from $(1,1)$, ignoring walls:</p>
+      <ul>
+        <li>to $(3,1)$: $|1-3| + |1-1| = 2$;</li>
+        <li>to $(1,4)$: $|1-1| + |1-4| = 3$;</li>
+        <li>to $(4,4)$: $|1-4| + |1-4| = 3 + 3 = 6$.</li>
+      </ul>
+      <p>So $h_{\text{count}} = \mathbf{3}$, $h_{\max} = \max(2,3,6) = \mathbf{6}$, $h_{\text{sum}} = 2+3+6 = \mathbf{11}$.</p>
+    </div></details>
+    <details class="step"><summary>Step 4 — (c) Admissibility, one at a time</summary><div>
+      <p><strong>$h_{\text{count}}$ is admissible.</strong> Relaxation: allow Pacman to teleport to any cell for free; he still must <em>step onto</em> each remaining dot, and each such step costs 1. The optimal cost of that relaxed problem is exactly the number of dots left. Formally, every real plan that eats $k$ dots contains at least $k$ moves (each dot is eaten by entering its cell), so $h^* \ge k = h_{\text{count}}$. ∎</p>
+      <p><strong>$h_{\max}$ is admissible.</strong> Relaxation: delete the walls (so movement is free Manhattan movement) <em>and</em> require only that the single farthest dot be eaten, ignoring the others. Any real plan must at some point reach that dot, and reaching it costs at least its Manhattan distance (each move changes the Manhattan distance by at most 1, and walls only ever make it worse). So $h^* \ge \max_d \text{Manhattan}(p,d) = h_{\max}$. ∎</p>
+      <p><strong>$h_{\text{sum}}$ is not admissible.</strong> It double-counts shared travel. Counterexample right here: ignore walls for a moment and compute the true cost of the wall-free version of this very problem. The best visiting order is $(1,1) \to (3,1) \to (4,4) \to (1,4)$, costing $2 + 4 + 3 = 9$. All six orders:</p>
+      <table class="tight center">
+        <thead><tr><th>Order</th><th>Cost</th></tr></thead>
+        <tbody>
+          <tr><td>(3,1), (4,4), (1,4)</td><td><strong>9</strong></td></tr>
+          <tr><td>(1,4), (4,4), (3,1)</td><td>10</td></tr>
+          <tr><td>(3,1), (1,4), (4,4)</td><td>10</td></tr>
+          <tr><td>(1,4), (3,1), (4,4)</td><td>12</td></tr>
+          <tr><td>(4,4), (1,4), (3,1)</td><td>14</td></tr>
+          <tr><td>(4,4), (3,1), (1,4)</td><td>15</td></tr>
+        </tbody>
+      </table>
+      <p>So even with no walls at all, $h^*(\text{start}) \le 9$ in the relaxed world, while $h_{\text{sum}} = 11 &gt; 9$. An overestimate — inadmissible, and A* using it can return a suboptimal plan.</p>
+    </div></details>
+    <details class="step"><summary>Solution</summary><div>
+      <p><strong>(a)</strong> $(p, e_1,e_2,e_3)$, size $22 \cdot 8 = 176$.</p>
+      <p><strong>(b)</strong> $h_{\text{count}} = 3$, $h_{\max} = 6$, $h_{\text{sum}} = 11$.</p>
+      <p><strong>(c)</strong> $h_{\text{count}}$ and $h_{\max}$ admissible (relaxations: free teleportation / no walls and only one dot required). $h_{\text{sum}}$ inadmissible — it reports 11 where the true cost is at most 9.</p>
+      <p><strong>(d)</strong> Use $h_{\max}$, or better, $h(n) = \max\!\big(h_{\text{count}}(n),\, h_{\max}(n)\big)$.</p>
+      <div class="box key"><span class="label">Key idea</span>
+        <p>Larger admissible heuristics <strong>dominate</strong>: if $h_a(n) \ge h_b(n)$ for all $n$ and both are admissible, A* with $h_a$ expands a subset of the nodes A* with $h_b$ expands. The max of two admissible heuristics is admissible (it is still bounded by $h^*$, since both arguments are) and dominates both — so you never have to choose between two admissible heuristics. Here $\max(3, 6) = 6$; on a state where only one far dot remains, $h_{\max}$ wins, and on a state with many nearby dots, $h_{\text{count}}$ wins.</p>
+      </div>
+    </div></details>
+    <details class="step"><summary>Why this is the exam version of this idea</summary><div>
+      <p><strong>The trap is $h_{\text{sum}}$.</strong> It is the most natural thing to write, it is bigger (so it feels better), and it is wrong for a reason that has nothing to do with walls: the three trips share road. Any heuristic that adds up costs of sub-goals that can be achieved <em>on the way to each other</em> overestimates. The exam almost always offers a sum as a distractor next to a max.</p>
+      <p>Second trap: “prove it admissible” means <em>name the relaxation and show every real plan costs at least this much</em>. “It looks small” is not a proof. Third trap: forgetting that the dot-bits belong in the state — an $h$ that depends only on position cannot be right for a multi-dot problem, because two states with the same position and different dots need different estimates.</p>
+    </div></details>
+  </div>
+
+  <h2 id="adversarial-search">3. Adversarial search</h2>
+
+  <p>Chapter reference: <a href="adversarial-search.html">Minimax, α-β pruning, Expectimax</a>.</p>
+
+  <div class="guided">
+    <div class="g-head"><span class="tag">Problem 7</span>Minimax value and the action <span class="pill">warm-up</span></div>
+    <div class="g-body">
+      <p>A two-player, zero-sum, turn-taking game. The tree below alternates MAX (▲, blue player, moves first), MIN (▼), MAX (▲), then terminal utilities — all stated from MAX's point of view. Compute the minimax value of the root and <strong>name the action MAX should take</strong>.</p>
+
+      <div class="viz">
+        <div class="viz-title">Depth-3 game tree</div>
+        <svg viewBox="0 0 640 300" role="img" aria-label="Minimax game tree of depth three with eight leaves">
+          <g stroke="var(--line-2)" stroke-width="2" fill="none">
+            <line x1="320" y1="42" x2="170" y2="93"/><line x1="320" y1="42" x2="470" y2="93"/>
+            <line x1="170" y1="117" x2="90" y2="168"/><line x1="170" y1="117" x2="250" y2="168"/>
+            <line x1="470" y1="117" x2="400" y2="168"/><line x1="470" y1="117" x2="550" y2="168"/>
+            <line x1="90" y1="192" x2="45" y2="243"/><line x1="90" y1="192" x2="135" y2="243"/>
+            <line x1="250" y1="192" x2="205" y2="243"/><line x1="250" y1="192" x2="295" y2="243"/>
+            <line x1="400" y1="192" x2="355" y2="243"/><line x1="400" y1="192" x2="445" y2="243"/>
+            <line x1="550" y1="192" x2="505" y2="243"/><line x1="550" y1="192" x2="595" y2="243"/>
+          </g>
+          <g fill="var(--accent-2)" stroke="var(--ink)" stroke-width="1.5">
+            <polygon points="320,14 302,42 338,42"/>
+            <polygon points="90,140 72,168 108,168"/><polygon points="250,140 232,168 268,168"/>
+            <polygon points="400,140 382,168 418,168"/><polygon points="550,140 532,168 568,168"/>
+          </g>
+          <g fill="var(--rose)" stroke="var(--ink)" stroke-width="1.5">
+            <polygon points="170,121 152,93 188,93"/><polygon points="470,121 452,93 488,93"/>
+          </g>
+          <g fill="var(--panel)" stroke="var(--line-2)" stroke-width="1.5">
+            <rect x="28" y="243" width="34" height="28" rx="5"/><rect x="118" y="243" width="34" height="28" rx="5"/>
+            <rect x="188" y="243" width="34" height="28" rx="5"/><rect x="278" y="243" width="34" height="28" rx="5"/>
+            <rect x="338" y="243" width="34" height="28" rx="5"/><rect x="428" y="243" width="34" height="28" rx="5"/>
+            <rect x="488" y="243" width="34" height="28" rx="5"/><rect x="578" y="243" width="34" height="28" rx="5"/>
+          </g>
+          <g fill="var(--ink)" font-size="15" font-weight="700" text-anchor="middle" dominant-baseline="middle">
+            <text x="45" y="258">5</text><text x="135" y="258">2</text><text x="205" y="258">9</text><text x="295" y="258">3</text>
+            <text x="355" y="258">4</text><text x="445" y="258">8</text><text x="505" y="258">6</text><text x="595" y="258">1</text>
+          </g>
+          <g fill="var(--ink-mute)" font-size="12.5" text-anchor="middle">
+            <text x="238" y="66">Left</text><text x="410" y="66">Right</text>
+            <text x="30" y="200">a</text><text x="290" y="200">b</text><text x="340" y="200">c</text><text x="590" y="200">d</text>
+          </g>
+        </svg>
+        <div class="caption">▲ = MAX node (takes the largest child), ▼ = MIN node (takes the smallest child). Leaves are utilities for MAX.</div>
+      </div>
+    </div>
+    <details class="step"><summary>Step 1 — What are we actually being asked?</summary><div>
+      <p>Two things, and the second is the one people forget. The <em>minimax value</em> is a number — the utility MAX can guarantee against an optimal opponent. The <em>answer to the game</em> is an <strong>action</strong> — which child of the root achieves that value.</p>
+      <p>You evaluate strictly bottom-up: every node's value is determined by its children, so you can never start at the root.</p>
+    </div></details>
+    <details class="step"><summary>Step 2 — The MAX layer just above the leaves</summary><div>
+      <p>Four MAX nodes, each taking the max of its two leaves:</p>
+      <ul>
+        <li>$a = \max(5, 2) = 5$</li>
+        <li>$b = \max(9, 3) = 9$</li>
+        <li>$c = \max(4, 8) = 8$</li>
+        <li>$d = \max(6, 1) = 6$</li>
+      </ul>
+    </div></details>
+    <details class="step"><summary>Step 3 — The MIN layer, then the root</summary><div>
+      <ul>
+        <li>Left MIN $= \min(a, b) = \min(5, 9) = 5$</li>
+        <li>Right MIN $= \min(c, d) = \min(8, 6) = 6$</li>
+      </ul>
+      <p>Root $= \max(5, 6) = 6$.</p>
+    </div></details>
+    <details class="step"><summary>Solution</summary><div>
+      <p><strong>Minimax value of the root: 6. MAX should play <em>Right</em>.</strong></p>
+      <p>The full annotated tree: leaves $5,2\,|\,9,3\,|\,4,8\,|\,6,1$ → MAX layer $5, 9, 8, 6$ → MIN layer $5, 6$ → root $6$.</p>
+      <p>Read the guarantee out loud: “If I play Right, then whatever MIN does, I end up at either $c=8$ or $d=6$; MIN will send me to $d$; from $d$ I take 6.” The 9 down the Left branch is unreachable against a competent opponent — MIN simply steers to $a=5$ instead.</p>
+    </div></details>
+    <details class="step"><summary>Why this is the exam version of this idea</summary><div>
+      <p><strong>Trap 1 — the biggest leaf is a lie.</strong> The largest utility in the tree is 9, sitting under Left. Left is the wrong move. Minimax value is never “the best thing that could happen”; it is the best thing MAX can <em>force</em>.</p>
+      <p><strong>Trap 2 — answering with a number when an action was asked for.</strong> The notes say this explicitly: “the number 4 isn't quite the answer we are looking for at the root… we need to select an action.” Write both: <em>value 6, action Right.</em></p>
+      <p><strong>Trap 3 — the layer alternation.</strong> With three plies, the layer directly above the leaves is MAX again, not MIN. Mislabel it and you get root $= \max(\min(5,2\,{\to}\,2), \ldots)$ and a confidently wrong answer. Count plies from the root downward before you start.</p>
+    </div></details>
+  </div>
+
+  <div class="guided">
+    <div class="g-head"><span class="tag">Problem 8</span>α-β pruning: mark every pruned branch <span class="pill">exam level</span></div>
+    <div class="g-body">
+      <p>Root is MAX with three actions; each child is a MIN node with three leaves. Leaves, left to right:</p>
+      <p class="center"><strong>8, 5, 12 &nbsp;|&nbsp; 3, 10, 2 &nbsp;|&nbsp; 7, 4, 9</strong></p>
+
+      <div class="viz">
+        <div class="viz-title">The tree (traverse strictly left to right)</div>
+        <svg viewBox="0 0 640 300" role="img" aria-label="Alpha-beta pruning tree, one MAX root with three MIN children of three leaves each">
+          <g stroke="var(--line-2)" stroke-width="2" fill="none">
+            <line x1="320" y1="47" x2="110" y2="118"/><line x1="320" y1="47" x2="320" y2="118"/><line x1="320" y1="47" x2="530" y2="118"/>
+            <line x1="110" y1="142" x2="35" y2="230"/><line x1="110" y1="142" x2="110" y2="230"/><line x1="110" y1="142" x2="185" y2="230"/>
+            <line x1="320" y1="142" x2="245" y2="230"/>
+          </g>
+          <g stroke="var(--rose)" stroke-width="2.5" stroke-dasharray="6 5" fill="none">
+            <line x1="320" y1="142" x2="320" y2="230"/><line x1="320" y1="142" x2="395" y2="230"/>
+            <line x1="530" y1="142" x2="605" y2="230"/>
+          </g>
+          <g stroke="var(--line-2)" stroke-width="2" fill="none">
+            <line x1="530" y1="142" x2="455" y2="230"/><line x1="530" y1="142" x2="530" y2="230"/>
+          </g>
+          <polygon points="320,19 302,47 338,47" fill="var(--accent-2)" stroke="var(--ink)" stroke-width="1.5"/>
+          <g fill="var(--rose)" stroke="var(--ink)" stroke-width="1.5">
+            <polygon points="110,146 92,118 128,118"/><polygon points="320,146 302,118 338,118"/><polygon points="530,146 512,118 548,118"/>
+          </g>
+          <g fill="var(--panel)" stroke="var(--line-2)" stroke-width="1.5">
+            <rect x="18" y="230" width="34" height="28" rx="5"/><rect x="93" y="230" width="34" height="28" rx="5"/>
+            <rect x="168" y="230" width="34" height="28" rx="5"/><rect x="228" y="230" width="34" height="28" rx="5"/>
+            <rect x="438" y="230" width="34" height="28" rx="5"/><rect x="513" y="230" width="34" height="28" rx="5"/>
+          </g>
+          <g fill="var(--panel)" stroke="var(--rose)" stroke-width="1.5" stroke-dasharray="4 3">
+            <rect x="303" y="230" width="34" height="28" rx="5"/><rect x="378" y="230" width="34" height="28" rx="5"/>
+            <rect x="588" y="230" width="34" height="28" rx="5"/>
+          </g>
+          <g fill="var(--ink)" font-size="15" font-weight="700" text-anchor="middle" dominant-baseline="middle">
+            <text x="35" y="245">8</text><text x="110" y="245">5</text><text x="185" y="245">12</text>
+            <text x="245" y="245">3</text><text x="320" y="245" fill="var(--rose)">10</text><text x="395" y="245" fill="var(--rose)">2</text>
+            <text x="455" y="245">7</text><text x="530" y="245">4</text><text x="605" y="245" fill="var(--rose)">9</text>
+          </g>
+          <g fill="var(--ink-mute)" font-size="12.5" text-anchor="middle">
+            <text x="196" y="86">Left</text><text x="348" y="86">Centre</text><text x="452" y="86">Right</text>
+            <text x="320" y="286" fill="var(--rose)">dashed = pruned, never evaluated</text>
+          </g>
+        </svg>
+        <div class="caption">α is MAX's best value so far on the path to the root; β is MIN's best value so far on the path to the root.</div>
+      </div>
+
+      <p>Traverse left to right. Give (i) the root's minimax value and best action, (ii) the α and β values in force at each node, and (iii) <strong>every</strong> leaf that gets pruned.</p>
+    </div>
+    <details class="step"><summary>Step 1 — What are we actually being asked?</summary><div>
+      <p>Write the two rules down before you touch a number.</p>
+      <pre><code>def max-value(state, α, β):          def min-value(state, α, β):
+    v = -∞                               v = +∞
+    for each successor:                  for each successor:
+        v = max(v, value(succ, α, β))        v = min(v, value(succ, α, β))
+        if v ≥ β: return v   # prune        if v ≤ α: return v   # prune
+        α = max(α, v)                        β = min(β, v)
+    return v                             return v</code></pre>
+      <p>Read the prune conditions in words. At a MIN node, if the value I can already force is $\le \alpha$, then MAX — who already has an option worth $\alpha$ somewhere above me — will never route the game through me, so my remaining children are irrelevant. At a MAX node, symmetric with $\beta$.</p>
+      <p>Crucially: <strong>$\alpha$ and $\beta$ are passed <em>down</em>, and only $v$ comes back up.</strong> A sibling's $\alpha$ update reaches the next sibling through the parent, not sideways.</p>
+    </div></details>
+    <details class="step"><summary>Step 2 — The Left branch</summary><div>
+      <p>Root is MAX, called with $\alpha = -\infty$, $\beta = +\infty$. It calls MIN$_1$ with the same $(\alpha,\beta)$.</p>
+      <table class="tight center">
+        <thead><tr><th>Step</th><th>$v$</th><th>$\alpha$</th><th>$\beta$</th><th>Prune?</th></tr></thead>
+        <tbody>
+          <tr><td>MIN$_1$ sees 8</td><td>8</td><td>$-\infty$</td><td>$8$</td><td>$8 \le -\infty$? no</td></tr>
+          <tr><td>MIN$_1$ sees 5</td><td>5</td><td>$-\infty$</td><td>$5$</td><td>$5 \le -\infty$? no</td></tr>
+          <tr><td>MIN$_1$ sees 12</td><td>5</td><td>$-\infty$</td><td>$5$</td><td>—</td></tr>
+        </tbody>
+      </table>
+      <p>MIN$_1$ returns <strong>5</strong>. No pruning here: with $\alpha = -\infty$ nothing can ever satisfy $v \le \alpha$. The first branch is <em>always</em> fully explored.</p>
+      <p>Back at the root: $v = 5$, so $\alpha \leftarrow \max(-\infty, 5) = \mathbf{5}$.</p>
+    </div></details>
+    <details class="step"><summary>Step 3 — The Centre branch (first prune)</summary><div>
+      <p>Root calls MIN$_2$ with $\alpha = 5$, $\beta = +\infty$.</p>
+      <p>MIN$_2$ sees leaf $3$: $v = 3$. Check $v \le \alpha$: $3 \le 5$ — <strong>true</strong>. Return immediately.</p>
+      <p><strong>Pruned: the leaves 10 and 2.</strong></p>
+      <p>Why this is safe: MIN$_2$'s value is now known to be $\le 3$ (MIN can only go down from here). The root already has an option worth 5. Whatever 10 and 2 turn out to be, this branch can never beat 5, so their exact values cannot change the root.</p>
+      <p>Back at the root: $v = \max(5, 3) = 5$; $\alpha$ stays $5$.</p>
+    </div></details>
+    <details class="step"><summary>Step 4 — The Right branch (second prune)</summary><div>
+      <p>Root calls MIN$_3$ with $\alpha = 5$, $\beta = +\infty$.</p>
+      <table class="tight center">
+        <thead><tr><th>Step</th><th>$v$</th><th>$\alpha$</th><th>$\beta$</th><th>Prune?</th></tr></thead>
+        <tbody>
+          <tr><td>MIN$_3$ sees 7</td><td>7</td><td>5</td><td>7</td><td>$7 \le 5$? no</td></tr>
+          <tr><td>MIN$_3$ sees 4</td><td>4</td><td>5</td><td>7</td><td>$4 \le 5$? <strong>yes</strong></td></tr>
+        </tbody>
+      </table>
+      <p><strong>Pruned: the leaf 9.</strong> MIN$_3$ returns 4.</p>
+      <p>Root: $v = \max(5, 4) = \mathbf{5}$.</p>
+    </div></details>
+    <details class="step"><summary>Solution</summary><div>
+      <p><strong>(i)</strong> Root minimax value $= \mathbf{5}$; best action $=$ <strong>Left</strong>.</p>
+      <p><strong>(ii)</strong> α/β in force on entry to each node:</p>
+      <table class="tight center">
+        <thead><tr><th>Node</th><th>α on entry</th><th>β on entry</th><th>Value returned</th></tr></thead>
+        <tbody>
+          <tr><td>Root (MAX)</td><td>$-\infty$</td><td>$+\infty$</td><td>5</td></tr>
+          <tr><td>MIN$_1$ (Left)</td><td>$-\infty$</td><td>$+\infty$</td><td>5 (exact)</td></tr>
+          <tr><td>MIN$_2$ (Centre)</td><td>5</td><td>$+\infty$</td><td>3 (an upper bound, not the true value 2)</td></tr>
+          <tr><td>MIN$_3$ (Right)</td><td>5</td><td>$+\infty$</td><td>4 (exact, by luck)</td></tr>
+        </tbody>
+      </table>
+      <p><strong>(iii)</strong> Pruned leaves: <strong>10 and 2</strong> (Centre branch, children 2 and 3) and <strong>9</strong> (Right branch, child 3). Three of nine leaves never evaluated.</p>
+      <p>Check against full minimax: $\min(8,5,12)=5$, $\min(3,10,2)=2$, $\min(7,4,9)=4$, root $=\max(5,2,4)=5$. Same root value. α-β never changes the root — that is the theorem — even though it reported 3 instead of 2 for the Centre branch.</p>
+    </div></details>
+    <details class="step"><summary>Why this is the exam version of this idea</summary><div>
+      <p><strong>Trap 1 — “MIN$_2$ returns 2.”</strong> No: it returns <strong>3</strong>, because it stopped. The values α-β reports for <em>pruned</em> subtrees are bounds, not minimax values. Only the root is guaranteed exact. Exams love asking “what value does node X return?” about a pruned node.</p>
+      <p><strong>Trap 2 — pruning the first branch.</strong> Impossible: $\alpha = -\infty$ on entry. If your answer prunes anything in the leftmost subtree, you have made an arithmetic slip.</p>
+      <p><strong>Trap 3 — counting one pruned leaf when the condition fires early.</strong> When MIN$_2$ returns at its first child, <em>all</em> remaining children are pruned — here two of them, plus their entire subtrees in a deeper tree. Mark them all.</p>
+      <p><strong>Trap 4 — "order doesn't matter".</strong> It does. Had the Centre branch been ordered $2, 10, 3$, MIN$_2$ would still prune after one leaf. Had Left been ordered $12, 8, 5$, nothing changes for Left but α would still end at 5. With <em>perfect</em> ordering, time drops from $O(b^m)$ to $O(b^{m/2})$ — doubling the depth you can search. The root value never changes; only the work does.</p>
+    </div></details>
+  </div>
+
+  <div class="guided">
+    <div class="g-head"><span class="tag">Problem 9</span>Expectimax with chance nodes <span class="pill">exam level</span></div>
+    <div class="g-body">
+      <p>MAX chooses one of three actions. Each action leads to a <strong>chance node</strong> (a die roll) with the probabilities shown; each outcome leads to a MIN node with two leaves. Compute the value of every node and name MAX's action.</p>
+
+      <div class="viz">
+        <div class="viz-title">Expectiminimax tree</div>
+        <svg viewBox="0 0 680 310" role="img" aria-label="Expectimax tree with three chance nodes">
+          <g stroke="var(--line-2)" stroke-width="2" fill="none">
+            <line x1="340" y1="44" x2="120" y2="89"/><line x1="340" y1="44" x2="340" y2="89"/><line x1="340" y1="44" x2="560" y2="89"/>
+            <line x1="120" y1="121" x2="65" y2="172"/><line x1="120" y1="121" x2="175" y2="172"/>
+            <line x1="340" y1="121" x2="285" y2="172"/><line x1="340" y1="121" x2="395" y2="172"/>
+            <line x1="560" y1="121" x2="505" y2="172"/><line x1="560" y1="121" x2="615" y2="172"/>
+            <line x1="65" y1="196" x2="33" y2="248"/><line x1="65" y1="196" x2="97" y2="248"/>
+            <line x1="175" y1="196" x2="143" y2="248"/><line x1="175" y1="196" x2="207" y2="248"/>
+            <line x1="285" y1="196" x2="253" y2="248"/><line x1="285" y1="196" x2="317" y2="248"/>
+            <line x1="395" y1="196" x2="363" y2="248"/><line x1="395" y1="196" x2="427" y2="248"/>
+            <line x1="505" y1="196" x2="473" y2="248"/><line x1="505" y1="196" x2="537" y2="248"/>
+            <line x1="615" y1="196" x2="583" y2="248"/><line x1="615" y1="196" x2="647" y2="248"/>
+          </g>
+          <polygon points="340,16 322,44 358,44" fill="var(--accent-2)" stroke="var(--ink)" stroke-width="1.5"/>
+          <g fill="var(--gold)" stroke="var(--ink)" stroke-width="1.5">
+            <circle cx="120" cy="105" r="16"/><circle cx="340" cy="105" r="16"/><circle cx="560" cy="105" r="16"/>
+          </g>
+          <g fill="var(--rose)" stroke="var(--ink)" stroke-width="1.5">
+            <polygon points="65,200 47,172 83,172"/><polygon points="175,200 157,172 193,172"/>
+            <polygon points="285,200 267,172 303,172"/><polygon points="395,200 377,172 413,172"/>
+            <polygon points="505,200 487,172 523,172"/><polygon points="615,200 597,172 633,172"/>
+          </g>
+          <g fill="var(--panel)" stroke="var(--line-2)" stroke-width="1.5">
+            <rect x="16" y="248" width="34" height="27" rx="5"/><rect x="80" y="248" width="34" height="27" rx="5"/>
+            <rect x="126" y="248" width="34" height="27" rx="5"/><rect x="190" y="248" width="34" height="27" rx="5"/>
+            <rect x="236" y="248" width="34" height="27" rx="5"/><rect x="300" y="248" width="34" height="27" rx="5"/>
+            <rect x="346" y="248" width="34" height="27" rx="5"/><rect x="410" y="248" width="34" height="27" rx="5"/>
+            <rect x="456" y="248" width="34" height="27" rx="5"/><rect x="520" y="248" width="34" height="27" rx="5"/>
+            <rect x="566" y="248" width="34" height="27" rx="5"/><rect x="630" y="248" width="34" height="27" rx="5"/>
+          </g>
+          <g fill="var(--ink)" font-size="14.5" font-weight="700" text-anchor="middle" dominant-baseline="middle">
+            <text x="33" y="262">10</text><text x="97" y="262">4</text><text x="143" y="262">8</text><text x="207" y="262">12</text>
+            <text x="253" y="262">16</text><text x="317" y="262">14</text><text x="363" y="262">2</text><text x="427" y="262">9</text>
+            <text x="473" y="262">20</text><text x="537" y="262">18</text><text x="583" y="262">6</text><text x="647" y="262">2</text>
+          </g>
+          <g fill="var(--accent-3)" font-size="12.5" font-weight="700" text-anchor="middle">
+            <text x="78" y="144">0.5</text><text x="166" y="144">0.5</text>
+            <text x="292" y="144">0.25</text><text x="392" y="144">0.75</text>
+            <text x="512" y="144">0.2</text><text x="606" y="144">0.8</text>
+          </g>
+          <g fill="var(--ink-mute)" font-size="12.5" text-anchor="middle">
+            <text x="206" y="80">Left</text><text x="356" y="78">Centre</text><text x="470" y="80">Right</text>
+            <text x="340" y="300">▲ MAX &nbsp;·&nbsp; ● chance &nbsp;·&nbsp; ▼ MIN &nbsp;·&nbsp; □ utility for MAX</text>
+          </g>
+        </svg>
+        <div class="caption">At a chance node, $V(s) = \sum_{s'} P(s')\,V(s')$ — no max, no min, just the weighted average.</div>
+      </div>
+    </div>
+    <details class="step"><summary>Step 1 — What are we actually being asked?</summary><div>
+      <p>Three node types, three rules:</p>
+      $$V_{\text{MAX}}(s) = \max_{a} V(s'), \qquad V_{\text{MIN}}(s) = \min_{a} V(s'), \qquad V_{\text{CHANCE}}(s) = \sum_{s'} P(s')\,V(s').$$
+      <p>Every symbol: $s$ is the current state, $s'$ ranges over its children, $P(s')$ is the probability the chance event produces $s'$ (these sum to 1 at each chance node), $V$ is the value from MAX's point of view.</p>
+      <p>Still strictly bottom-up: MIN layer first, then the expectations, then the root.</p>
+    </div></details>
+    <details class="step"><summary>Step 2 — The MIN layer</summary><div>
+      <ul>
+        <li>Left, outcome 1: $\min(10, 4) = 4$ &nbsp;·&nbsp; Left, outcome 2: $\min(8, 12) = 8$</li>
+        <li>Centre, outcome 1: $\min(16, 14) = 14$ &nbsp;·&nbsp; Centre, outcome 2: $\min(2, 9) = 2$</li>
+        <li>Right, outcome 1: $\min(20, 18) = 18$ &nbsp;·&nbsp; Right, outcome 2: $\min(6, 2) = 2$</li>
+      </ul>
+    </div></details>
+    <details class="step"><summary>Step 3 — The chance nodes</summary><div>
+      <p><strong>Left:</strong> $0.5 \times 4 + 0.5 \times 8 = 2 + 4 = \mathbf{6.0}$</p>
+      <p><strong>Centre:</strong> $0.25 \times 14 + 0.75 \times 2 = 3.5 + 1.5 = \mathbf{5.0}$</p>
+      <p><strong>Right:</strong> $0.2 \times 18 + 0.8 \times 2 = 3.6 + 1.6 = \mathbf{5.2}$</p>
+      <p>Check each set of probabilities sums to 1 before you multiply: $0.5{+}0.5$, $0.25{+}0.75$, $0.2{+}0.8$. All good.</p>
+    </div></details>
+    <details class="step"><summary>Solution</summary><div>
+      <p>Root $= \max(6.0,\ 5.0,\ 5.2) = \mathbf{6.0}$; MAX should play <strong>Left</strong>.</p>
+      <table class="tight center">
+        <thead><tr><th>Action</th><th>MIN children</th><th>Expectation</th><th>Worst case</th><th>Best case</th></tr></thead>
+        <tbody>
+          <tr><td>Left</td><td>4, 8</td><td><strong>6.0</strong></td><td>4</td><td>8</td></tr>
+          <tr><td>Centre</td><td>14, 2</td><td>5.0</td><td>2</td><td>14</td></tr>
+          <tr><td>Right</td><td>18, 2</td><td>5.2</td><td>2</td><td>18</td></tr>
+        </tbody>
+      </table>
+      <p>Two things worth staring at. Right contains the leaf $20$, the largest number anywhere in the tree, and Right is not chosen — a 20% chance of a great outcome does not beat a reliable 6. And Left also happens to be the best <em>worst case</em> (4 vs 2 vs 2), so here expectimax and minimax agree on the action — but they agree by coincidence, not by principle.</p>
+    </div></details>
+    <details class="step"><summary>Why this is the exam version of this idea</summary><div>
+      <p><strong>Trap 1 — treating the chance node like a MIN node.</strong> If you replace the expectations with minima you get $\min(4,8)=4$, $\min(14,2)=2$, $\min(18,2)=2$ and root $4$ via Left. Right answer, wrong reasoning, and on a tree with different numbers it would be the wrong action too. The whole point of expectimax is that pessimism about a <em>dice roll</em> is not caution, it's a modelling error.</p>
+      <p><strong>Trap 2 — forgetting the weights.</strong> Averaging $18$ and $2$ to $10$ instead of weighting $0.2/0.8$ to get $5.2$ makes Right the winner. Write $P$ next to every branch before you compute.</p>
+      <p><strong>Trap 3 — thinking α-β applies.</strong> With unbounded leaf values you cannot prune at a chance node: one unseen child can swing the average arbitrarily, so no bound is available from the children seen so far. (If leaf values are bounded, limited pruning becomes possible. <span class="pill">beyond syllabus</span>)</p>
+      <p><strong>Trap 4 — “expectimax value 6 means I'll score 6.”</strong> No outcome in the tree equals 6; you get 4 or 8. Expected values are properties of the <em>decision</em>, not of any single play.</p>
+    </div></details>
+  </div>
+
+  <h2 id="csps">4. Constraint satisfaction problems</h2>
+
+  <p>Chapter reference: <a href="csps.html">Constraint Satisfaction</a>.</p>
+
+  <div class="guided">
+    <div class="g-head"><span class="tag">Problem 10</span>Formulate a puzzle as a CSP <span class="pill">warm-up</span></div>
+    <div class="g-body">
+      <p>A department must schedule four seminars — <strong>A</strong>lgorithms, <strong>B</strong>iology, <strong>C</strong>hemistry and <strong>D</strong>esign — into the four time slots 1, 2, 3, 4 of a single day. The rules:</p>
+      <ol>
+        <li>Algorithms must finish before Biology starts.</li>
+        <li>Biology must finish before Chemistry starts.</li>
+        <li>Chemistry and Design share a lecturer, so they cannot be in the same slot.</li>
+        <li>Algorithms and Design share a room, so they cannot be in the same slot.</li>
+        <li>Two seminars <em>may</em> otherwise share a slot (there are two lecture halls).</li>
+      </ol>
+      <p>Write this as a CSP: variables, domains, constraints. Draw the constraint graph. Then say whether this is an <em>identification</em> problem or a <em>planning</em> problem, and why that matters.</p>
+    </div>
+    <details class="step"><summary>Step 1 — What are we actually being asked?</summary><div>
+      <p>A CSP formulation is exactly three lists. Nothing else counts.</p>
+      <div class="box defn"><span class="label">Definition — CSP</span>
+        <p>A <strong>CSP</strong> is given by variables $X_1,\dots,X_n$; a domain $D_i$ of allowed values for each $X_i$; and a set of constraints, each specifying the allowable combinations of values for some subset of the variables. A state is an assignment (possibly partial); the goal test is “complete and satisfies every constraint”.</p>
+      </div>
+      <p>The skill being tested: choosing variables so that the constraints come out <em>binary</em> (each touching at most two variables), because every algorithm in this unit — forward checking, arc consistency, AC-3 — is defined on binary constraints and a binary constraint graph.</p>
+    </div></details>
+    <details class="step"><summary>Step 2 — Variables and domains</summary><div>
+      <p>The natural choice: one variable per seminar, whose value is its slot.</p>
+      $$\text{Variables: } A, B, C, D \qquad \text{Domains: } D_A = D_B = D_C = D_D = \{1,2,3,4\}.$$
+      <p>The alternative — one variable per <em>slot</em>, valued by which seminar goes there — is worse here: rule 5 lets two seminars share a slot, so a slot-variable would need a set-valued domain, and the constraints stop being binary.</p>
+      <p>Note that rule 5 is not a constraint at all. It is the <em>absence</em> of an all-different constraint. Exam papers phrase absences as if they were rules, precisely to see whether you write a constraint for them.</p>
+    </div></details>
+    <details class="step"><summary>Solution</summary><div>
+      <p><strong>Constraints</strong> (all binary):</p>
+      <table class="tight center">
+        <thead><tr><th>#</th><th>Scope</th><th>Constraint</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>$\{A,B\}$</td><td>$A &lt; B$</td></tr>
+          <tr><td>2</td><td>$\{B,C\}$</td><td>$B &lt; C$</td></tr>
+          <tr><td>3</td><td>$\{C,D\}$</td><td>$C \ne D$</td></tr>
+          <tr><td>4</td><td>$\{A,D\}$</td><td>$A \ne D$</td></tr>
+        </tbody>
+      </table>
+      <p><strong>Constraint graph:</strong> nodes are variables, edges are constraints. Four nodes, four edges, forming a cycle $A - B - C - D - A$.</p>
+
+      <div class="viz">
+        <div class="viz-title">Constraint graph</div>
+        <svg viewBox="0 0 400 220" role="img" aria-label="Constraint graph: cycle A B C D">
+          <g stroke="var(--line-2)" stroke-width="2" fill="none">
+            <line x1="100" y1="55" x2="300" y2="55"/><line x1="300" y1="55" x2="300" y2="165"/>
+            <line x1="300" y1="165" x2="100" y2="165"/><line x1="100" y1="165" x2="100" y2="55"/>
+          </g>
+          <g fill="var(--accent)" font-size="14" font-weight="700" text-anchor="middle">
+            <text x="200" y="45">A &lt; B</text><text x="345" y="115">B &lt; C</text>
+            <text x="200" y="186">C ≠ D</text><text x="58" y="115">A ≠ D</text>
+          </g>
+          <g fill="var(--panel)" stroke="var(--ink)" stroke-width="2">
+            <circle cx="100" cy="55" r="22"/><circle cx="300" cy="55" r="22"/>
+            <circle cx="300" cy="165" r="22"/><circle cx="100" cy="165" r="22"/>
+          </g>
+          <g fill="var(--ink)" font-size="16" font-weight="700" text-anchor="middle" dominant-baseline="middle">
+            <text x="100" y="55">A</text><text x="300" y="55">B</text><text x="300" y="165">C</text><text x="100" y="165">D</text>
+          </g>
+        </svg>
+        <div class="caption">Every edge is one binary constraint. Note $A &lt; B$ is <em>directed in meaning</em> but the graph edge is undirected — arc consistency will later treat it as two arcs, $A\!\to\!B$ and $B\!\to\!A$.</div>
+      </div>
+
+      <p><strong>Identification, not planning.</strong> In a planning problem (Chapters 1–2) the <em>path</em> is the answer and costs matter. Here nobody cares in what order you assigned the variables; only the final assignment matters, and all complete assignments sit at the same depth ($n = 4$) of the search tree. That is exactly why CSPs get their own specialised algorithms: since the path is worthless, we can throw away everything except the current partial assignment, and we can spend our effort on <em>filtering</em> (killing doomed branches early) and <em>ordering</em> instead of on path cost.</p>
+    </div></details>
+    <details class="step"><summary>Why this is the exam version of this idea</summary><div>
+      <p><strong>Trap 1 — inventing an all-different constraint.</strong> Rule 5 explicitly permits sharing. Most students write “all four slots distinct” out of habit, which changes the answer set completely (and would make $A&lt;B&lt;C$ plus distinctness almost deterministic).</p>
+      <p><strong>Trap 2 — writing $A \le B$ instead of $A &lt; B$.</strong> “Finish before it starts” is strict.</p>
+      <p><strong>Trap 3 — a non-binary formulation.</strong> If you index by slot you get constraints over sets and you cannot run AC-3 as taught. When a formulation question is followed by a filtering question, the formulation is being steered toward binary; take the hint.</p>
+    </div></details>
+  </div>
+
+  <div class="guided">
+    <div class="g-head"><span class="tag">Problem 11</span>Forward checking to the first failure <span class="pill">exam level</span></div>
+    <div class="g-body">
+      <p>Map colouring. Five regions $A,B,C,D,E$; adjacent regions must get different colours. Available colours $\{R, G, B\}$ for every region <em>except</em> $A$, which has already been restricted to $\{R, G\}$ by a planning rule.</p>
+
+      <div class="viz">
+        <div class="viz-title">Constraint graph — every edge means “≠”</div>
+        <svg viewBox="0 0 420 320" role="img" aria-label="Constraint graph with five nodes A B C D E and eight not-equal edges">
+          <g stroke="var(--line-2)" stroke-width="2" fill="none">
+            <line x1="210" y1="40" x2="70" y2="140"/><line x1="210" y1="40" x2="350" y2="140"/>
+            <line x1="70" y1="140" x2="350" y2="140"/>
+            <line x1="70" y1="140" x2="130" y2="270"/><line x1="70" y1="140" x2="290" y2="270"/>
+            <line x1="350" y1="140" x2="130" y2="270"/><line x1="350" y1="140" x2="290" y2="270"/>
+            <line x1="130" y1="270" x2="290" y2="270"/>
+          </g>
+          <g fill="var(--panel)" stroke="var(--ink)" stroke-width="2">
+            <circle cx="210" cy="40" r="23"/><circle cx="70" cy="140" r="23"/><circle cx="350" cy="140" r="23"/>
+            <circle cx="130" cy="270" r="23"/><circle cx="290" cy="270" r="23"/>
+          </g>
+          <g fill="var(--ink)" font-size="17" font-weight="700" text-anchor="middle" dominant-baseline="middle">
+            <text x="210" y="40">A</text><text x="70" y="140">B</text><text x="350" y="140">C</text>
+            <text x="130" y="270">D</text><text x="290" y="270">E</text>
+          </g>
+          <g fill="var(--ink-mute)" font-size="12.5" text-anchor="middle">
+            <text x="210" y="310">Edges: A–B, A–C, B–C, B–D, B–E, C–D, C–E, D–E</text>
+          </g>
+        </svg>
+        <div class="caption">$A$ touches only $B$ and $C$. $B$ and $C$ each touch everything else. $D$ and $E$ touch $B, C$ and each other.</div>
+      </div>
+
+      <p>A backtracking search assigns in the fixed order $A = R$, then $B = G$, then $C = B$, then $D = R$, running <strong>forward checking</strong> after each assignment. Show the domain table after every assignment and say exactly when failure is detected.</p>
+    </div>
+    <details class="step"><summary>Step 1 — What are we actually being asked?</summary><div>
+      <div class="box defn"><span class="label">Definition — forward checking</span>
+        <p>Keep a live domain for every <em>unassigned</em> variable. After assigning $X = v$, look at each constraint between $X$ and an unassigned neighbour $Y$, and <strong>delete from $D_Y$</strong> every value that is inconsistent with $X = v$. Failure is declared the moment some $D_Y$ becomes empty.</p>
+      </div>
+      <p>In the arc-consistency language of the lecture: forward checking enforces arc consistency on the arcs $Y \to X$ for the newly assigned $X$ only — and <strong>deletes from the tail</strong>, i.e. from the unassigned neighbour $Y$, never from $X$.</p>
+      <p>What it does <em>not</em> do: propagate. It never looks at constraints between two unassigned variables. That limitation is the entire point of Problem 12.</p>
+    </div></details>
+    <details class="step"><summary>Step 2 — Assign $A = R$</summary><div>
+      <p>$A$'s unassigned neighbours are $B$ and $C$. Delete $R$ from each. $D$ and $E$ are untouched — they are not adjacent to $A$.</p>
+      <table class="tight center">
+        <thead><tr><th>$A$</th><th>$B$</th><th>$C$</th><th>$D$</th><th>$E$</th></tr></thead>
+        <tbody><tr><td><strong>R</strong></td><td>G B</td><td>G B</td><td>R G B</td><td>R G B</td></tr></tbody>
+      </table>
+    </div></details>
+    <details class="step"><summary>Step 3 — Assign $B = G$</summary><div>
+      <p>$B$'s unassigned neighbours are $C$, $D$, $E$. Delete $G$ from each.</p>
+      <table class="tight center">
+        <thead><tr><th>$A$</th><th>$B$</th><th>$C$</th><th>$D$</th><th>$E$</th></tr></thead>
+        <tbody><tr><td><strong>R</strong></td><td><strong>G</strong></td><td>B</td><td>R B</td><td>R B</td></tr></tbody>
+      </table>
+      <p>$C$ is now a singleton $\{B\}$. Forward checking <em>notices nothing</em> — a domain of size 1 is not a failure. But a human can already see the disaster coming: $D$ and $E$ will both be forced to $R$, and $D \ne E$ is a constraint.</p>
+    </div></details>
+    <details class="step"><summary>Step 4 — Assign $C = B$, then $D = R$</summary><div>
+      <p>$C = B$: delete $B$ from unassigned neighbours $D$ and $E$.</p>
+      <table class="tight center">
+        <thead><tr><th>$A$</th><th>$B$</th><th>$C$</th><th>$D$</th><th>$E$</th></tr></thead>
+        <tbody><tr><td><strong>R</strong></td><td><strong>G</strong></td><td><strong>B</strong></td><td>R</td><td>R</td></tr></tbody>
+      </table>
+      <p>Still no empty domain, so forward checking allows the search to continue. Assign $D = R$: delete $R$ from unassigned neighbour $E$.</p>
+      <table class="tight center">
+        <thead><tr><th>$A$</th><th>$B$</th><th>$C$</th><th>$D$</th><th>$E$</th></tr></thead>
+        <tbody><tr><td><strong>R</strong></td><td><strong>G</strong></td><td><strong>B</strong></td><td><strong>R</strong></td><td style="color:var(--c-warn)">∅</td></tr></tbody>
+      </table>
+      <p><strong>Failure.</strong> $D_E = \varnothing$ after the fourth assignment.</p>
+    </div></details>
+    <details class="step"><summary>Solution</summary><div>
+      <div class="scroll-x">
+      <table class="center">
+        <thead><tr><th>After</th><th>$A$</th><th>$B$</th><th>$C$</th><th>$D$</th><th>$E$</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>(initial)</td><td>R G</td><td>R G B</td><td>R G B</td><td>R G B</td><td>R G B</td><td>—</td></tr>
+          <tr><td>$A=R$</td><td>R</td><td>G B</td><td>G B</td><td>R G B</td><td>R G B</td><td>ok</td></tr>
+          <tr><td>$B=G$</td><td>R</td><td>G</td><td>B</td><td>R B</td><td>R B</td><td>ok</td></tr>
+          <tr><td>$C=B$</td><td>R</td><td>G</td><td>B</td><td>R</td><td>R</td><td>ok</td></tr>
+          <tr><td>$D=R$</td><td>R</td><td>G</td><td>B</td><td>R</td><td>∅</td><td><strong>FAIL</strong></td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p>Forward checking needed <strong>four</strong> assignments to discover a contradiction that was already unavoidable after two. Backtrack: the search now undoes $D=R$, finds no other value for $D$, undoes $C=B$, finds no other value for $C$, undoes $B=G$, and tries $B=B$.</p>
+    </div></details>
+    <details class="step"><summary>Why this is the exam version of this idea</summary><div>
+      <p><strong>The trap is the singleton domain at step 3.</strong> After $B=G$, $C$ has exactly one legal value and $D$, $E$ have the same two values as each other while being constrained unequal. A human sees dead. Forward checking cannot, because it only ever compares an unassigned variable against the <em>just-assigned</em> one. Exams test this by asking “at which assignment is failure detected?” — the answer is later than you'd like, and that lateness is the lesson.</p>
+      <p><strong>Second trap — deleting from the wrong end.</strong> Forward checking deletes from the unassigned neighbour (the tail of the arc $Y \to X$). It never removes the value you just assigned from the assigned variable, and it never touches variables that are not neighbours: $D$ and $E$ survive the $A=R$ step untouched, and writing them as “G B” there is the standard slip.</p>
+      <p><strong>Third trap — stopping at a size-1 domain.</strong> Size 1 is fine. Size 0 is failure.</p>
+    </div></details>
+  </div>
+
+  <div class="guided">
+    <div class="g-head"><span class="tag">Problem 12</span>AC-3, final domains, and MRV/LCV <span class="pill">exam level</span></div>
+    <div class="g-body">
+      <p>Take the seminar CSP of Problem 10, restated in full so this problem stands alone:</p>
+      <p>Variables $A, B, C, D$ (Algorithms, Biology, Chemistry, Design). Domains all $\{1,2,3,4\}$. Constraints: $A &lt; B$, $B &lt; C$, $C \ne D$, $A \ne D$.</p>
+      <ol>
+        <li><strong>(a)</strong> Run AC-3 as a preprocessor (before any assignment). Report the final domains.</li>
+        <li><strong>(b)</strong> Is the CSP solved? How many solutions survive?</li>
+        <li><strong>(c)</strong> With those final domains, which variable does <strong>MRV</strong> select? (Break ties by the degree heuristic, then alphabetically.)</li>
+        <li><strong>(d)</strong> For that variable, which value does <strong>LCV</strong> try first?</li>
+      </ol>
+    </div>
+    <details class="step"><summary>Step 1 — What are we actually being asked?</summary><div>
+      <div class="box defn"><span class="label">Definition — arc consistency</span>
+        <p>An arc $X \to Y$ is <strong>consistent</strong> iff for every value $x \in D_X$ there exists some $y \in D_Y$ such that $(x,y)$ satisfies the constraint. To <em>enforce</em> it, delete from $D_X$ — <strong>the tail</strong> — every $x$ with no such partner.</p>
+        <p><strong>AC-3</strong> keeps a queue of arcs. Pop an arc, enforce it; if anything was deleted from $D_X$, re-enqueue every arc $Z \to X$ pointing <em>into</em> $X$ (other than $Y \to X$), because those may have become inconsistent. Stop when the queue empties, or fail if a domain empties.</p>
+      </div>
+      <p>Each undirected constraint edge gives <strong>two</strong> arcs. Four constraints here, so eight arcs in the initial queue: $A\!\to\!B$, $B\!\to\!A$, $B\!\to\!C$, $C\!\to\!B$, $C\!\to\!D$, $D\!\to\!C$, $A\!\to\!D$, $D\!\to\!A$.</p>
+      <p>One preliminary observation that saves half the work: for a $\ne$ constraint, the arc $X \to Y$ can only delete something if $|D_Y| = 1$. With $|D_Y| \ge 2$ every $x$ has a partner. So the $\ne$ arcs ($C\!\to\!D$, $D\!\to\!C$, $A\!\to\!D$, $D\!\to\!A$) will do nothing unless some domain collapses to a singleton.</p>
+    </div></details>
+    <details class="step"><summary>Step 2 — The ordering arcs do all the work</summary><div>
+      <p>Process the queue in the order listed.</p>
+      <p><strong>$A \to B$</strong> (constraint $A &lt; B$): for each $a \in \{1,2,3,4\}$ is there $b \in \{1,2,3,4\}$ with $b &gt; a$? For $a=4$: no. Delete 4.<br>
+      $D_A = \{1,2,3\}$. Re-enqueue arcs into $A$: $B\!\to\!A$, $D\!\to\!A$.</p>
+      <p><strong>$B \to A$</strong> (i.e. $a &lt; b$ with $b$ in the tail): for $b=1$, is there $a &lt; 1$? No. Delete 1.<br>
+      $D_B = \{2,3,4\}$. Re-enqueue arcs into $B$: $A\!\to\!B$, $C\!\to\!B$.</p>
+      <p><strong>$B \to C$</strong> (constraint $B &lt; C$): for $b=4$, is there $c &gt; 4$? No. Delete 4.<br>
+      $D_B = \{2,3\}$. Re-enqueue arcs into $B$: $A\!\to\!B$, $C\!\to\!B$.</p>
+      <p><strong>$C \to B$</strong>: for $c=1$, need $b &lt; 1$ — none. For $c=2$, need $b &lt; 2$ from $\{2,3\}$ — none. Delete 1 and 2.<br>
+      $D_C = \{3,4\}$. Re-enqueue arcs into $C$: $B\!\to\!C$, $D\!\to\!C$.</p>
+      <p><strong>$A \to B$ again</strong> (it was re-enqueued): $D_B$ has shrunk to $\{2,3\}$. For $a=3$, need $b &gt; 3$ — none. Delete 3.<br>
+      $D_A = \{1,2\}$.</p>
+      <p>Every remaining arc now passes. The four $\ne$ arcs never fire: no domain ever reached size 1.</p>
+    </div></details>
+    <details class="step"><summary>Step 3 — (a) and (b)</summary><div>
+      <p><strong>Final domains:</strong></p>
+      <table class="tight center">
+        <thead><tr><th>$A$</th><th>$B$</th><th>$C$</th><th>$D$</th></tr></thead>
+        <tbody><tr><td>{1, 2}</td><td>{2, 3}</td><td>{3, 4}</td><td>{1, 2, 3, 4}</td></tr></tbody>
+      </table>
+      <p><strong>(b)</strong> No, the CSP is <em>not</em> solved — three variables still have two candidate values and $D$ has all four. Enumerating the assignments consistent with these domains and all four constraints gives <strong>8 solutions</strong>:</p>
+      <p class="tiny muted">(A,B,C,D) = (1,2,3,2), (1,2,3,4), (1,2,4,2), (1,2,4,3), (1,3,4,2), (1,3,4,3), (2,3,4,1), (2,3,4,3).</p>
+      <p>This is the lecture's stated limitation: after enforcing arc consistency you may be left with one solution, many solutions, or none at all (and AC-3 will not always tell you which). Arc consistency is a <em>local</em> condition — it checks pairs, never triples — so it cannot see global impossibility. AC-3 still runs inside a backtracking search.</p>
+      <p>Note $D$ lost nothing. Both of its constraints are $\ne$, and neither neighbour ever became a singleton. Filtering strength is not uniform across variables.</p>
+    </div></details>
+    <details class="step"><summary>Step 4 — (c) MRV and (d) LCV</summary><div>
+      <p><strong>(c) MRV — minimum remaining values</strong>, a.k.a. “most constrained variable”, a.k.a. fail-fast ordering: pick the unassigned variable with the <em>fewest</em> legal values left.</p>
+      <p>Sizes: $|D_A| = 2$, $|D_B| = 2$, $|D_C| = 2$, $|D_D| = 4$. Three-way tie at 2; $D$ is eliminated.</p>
+      <p>Degree heuristic tie-break — number of constraints to other <em>unassigned</em> variables: $A$ has 2 ($B$, $D$), $B$ has 2 ($A$, $C$), $C$ has 2 ($B$, $D$). Still tied. Alphabetical: <strong>choose $A$</strong>.</p>
+      <p><em>Why min and not max?</em> Because a variable with $k$ values creates $k$ branches. Branching on the smallest $k$ keeps the tree narrow, and if the variable has zero or one options you discover the forced move (or the contradiction) immediately, at the top of the subtree rather than after building a doomed prefix.</p>
+      <p><strong>(d) LCV — least constraining value</strong>: among $A$'s values, try the one that rules out the <em>fewest</em> values in the neighbours' domains. $A$'s unassigned neighbours are $B$ (via $A &lt; B$) and $D$ (via $A \ne D$).</p>
+      <table class="tight center">
+        <thead><tr><th>Try</th><th>$B$ survivors</th><th>removed</th><th>$D$ survivors</th><th>removed</th><th>total</th></tr></thead>
+        <tbody>
+          <tr><td>$A = 1$</td><td>{2, 3}</td><td>0</td><td>{2, 3, 4}</td><td>1</td><td><strong>1</strong></td></tr>
+          <tr><td>$A = 2$</td><td>{3}</td><td>1</td><td>{1, 3, 4}</td><td>1</td><td>2</td></tr>
+        </tbody>
+      </table>
+      <p><strong>LCV tries $A = 1$ first.</strong></p>
+      <p><em>Why least and not most?</em> Because you only need <em>one</em> solution. Values are not branches you must all explore — you stop at the first that works. So order them so the first one is most likely to work, i.e. the one that leaves your neighbours the most room.</p>
+    </div></details>
+    <details class="step"><summary>Solution</summary><div>
+      <p><strong>(a)</strong> $D_A = \{1,2\}$, $D_B = \{2,3\}$, $D_C = \{3,4\}$, $D_D = \{1,2,3,4\}$.</p>
+      <p><strong>(b)</strong> Not solved; 8 complete solutions remain.</p>
+      <p><strong>(c)</strong> MRV selects $A$ (three-way tie at 2 values, broken by degree then alphabetically).</p>
+      <p><strong>(d)</strong> LCV tries $A = 1$ first (rules out 1 value total, vs 2 for $A=2$).</p>
+      <div class="box key"><span class="label">Key idea</span>
+        <p><strong>MRV minimises, LCV maximises — and that is not a contradiction.</strong> Variables must <em>all</em> be assigned, so you want the hardest one first (fail fast). Values only need <em>one</em> to succeed, so you want the easiest one first (succeed fast). One rule for things you must do all of, the opposite rule for things you need only one of.</p>
+      </div>
+    </div></details>
+    <details class="step"><summary>Why this is the exam version of this idea</summary><div>
+      <p><strong>Trap 1 — deleting from the head.</strong> “Remember: delete from the tail!” Enforcing $A \to B$ removes values from $D_A$, not from $D_B$. Half of all AC-3 errors are this one, and they show up as suspiciously symmetric final domains.</p>
+      <p><strong>Trap 2 — forgetting to re-enqueue.</strong> The second pass of $A \to B$ is what shrinks $A$ from $\{1,2,3\}$ to $\{1,2\}$. If you process each arc once and stop, you report $D_A = \{1,2,3\}$ and your answer is not arc consistent. Re-enqueue every arc pointing <em>into</em> the variable you just shrank.</p>
+      <p><strong>Trap 3 — “AC-3 solved it”.</strong> It didn't. Eight solutions remain, and a differently-worded CSP could have zero remaining while every domain is non-empty. Arc consistency is necessary, never sufficient.</p>
+      <p><strong>Trap 4 — comparing AC-3 with forward checking.</strong> Problem 11 needed four assignments to detect failure; AC-3 propagates through chains of unassigned variables and so detects failures earlier — at the cost of doing much more work per node. That trade-off ("what's the downside of enforcing arc consistency?") is a standard short-answer question. Answer: time. AC-3 costs $O(n^2 d^3)$ per run and the backtracking search runs it at every node.</p>
+    </div></details>
+  </div>
+
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<script src="assets/site.js"></script>
+</body>
+</html>

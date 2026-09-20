@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ML Problem Formulation · 07-280 Field Guide</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body data-page="ml-formulation">
+<main>
+
+  <div class="eyebrow">Part II · Chapter 5</div>
+  <h1>How a machine learning problem is set up</h1>
+  <p class="subtitle">By the end of this page you can take any vague request — "predict whether this patient is ill" — and write it down as $\X$, $\Y$, $\D$, $\ell$, $\H$, and an $\argmin$, which is the only form a computer can actually solve.</p>
+
+  <div data-toc></div>
+
+  <h2 id="why-learn-from-examples">Why we stopped writing rules</h2>
+
+  <p>For the first few decades, "AI" mostly meant <strong>rule-based AI</strong>: a human expert sat down with a programmer and the two of them wrote out, explicitly, the conditions under which each conclusion should be drawn. <code>IF pressure &gt; 90 AND valve_state = open THEN raise alarm</code>. Thousands of such rules, hand-maintained, in a giant <code>if/else</code> forest.</p>
+
+  <p>This was not stupid, and it was not a failure. The example the course notes give is <strong>AT&amp;T diagnosing faults in telephone lines from logs</strong>. That is a domain where rule-based AI is genuinely the right tool, and it is worth understanding <em>why</em>, because the reason it works there is exactly the reason it collapses elsewhere:</p>
+
+  <ul>
+    <li><strong>The input is already symbolic.</strong> A line log is not raw physics; it is a list of named events — <code>LOOP_CURRENT_LOW</code>, <code>RING_VOLTAGE_FAIL</code>, <code>OPEN_CIRCUIT_AT_KM_3.2</code>. Somebody already did the hard work of turning the world into words.</li>
+    <li><strong>The experts can articulate what they know.</strong> Ask a veteran line technician why they suspect a wet splice and they will tell you: low insulation resistance on the tip-ring pair plus a fault that comes and goes with rain. They can <em>say</em> the rule out loud. So you can type it in.</li>
+    <li><strong>The rule count is finite and stable.</strong> There are maybe a few thousand distinguishable fault modes. Telephone lines do not invent new physics overnight.</li>
+  </ul>
+
+  <p>Now change one thing. Instead of a log, the input is <strong>a photograph</strong>, and the question is "is there a cat in this picture?" The notes put it in one line — <em>how do you describe a picture in pixel space?</em> — and that line is the entire reason the field of machine learning exists. So let us take it slowly and concretely, because if this argument does not land, nothing after it will feel motivated.</p>
+
+  <h3>The pixel-space argument, spelled out</h3>
+
+  <p>A modest $1000 \times 1000$ colour photograph is a list of $1000 \times 1000 \times 3 = 3{,}000{,}000$ numbers, each in $\{0,1,\dots,255\}$. That is the <em>whole</em> input. There is no field called <code>has_cat</code>, no field called <code>whiskers</code>. There is <code>pixel[417][233].red = 118</code>. Your rule has to be written in those terms, because those are the only terms the machine has.</p>
+
+  <p>So try to write one. "If pixel $(417,233)$ is brownish and pixel $(418,233)$ is brownish and …" — and immediately it falls apart:</p>
+
+  <ul>
+    <li><strong>Translation.</strong> Move the cat 40 pixels to the left and every single coordinate in your rule is wrong. You would need a separate rule for every position.</li>
+    <li><strong>Scale and pose.</strong> A cat close up, a cat far away, a cat curled into a doughnut, a cat seen from behind. These share almost no pixel-level structure.</li>
+    <li><strong>Illumination.</strong> The same cat at sunset has completely different RGB values. "Brownish" is not a fixed numeric box; it drifts with the light.</li>
+    <li><strong>Occlusion and clutter.</strong> Half the cat is behind a chair. There are three other objects. There is a cat-shaped cushion.</li>
+    <li><strong>The combinatorics are absurd.</strong> There are $256^{3{,}000{,}000}$ possible images. You are being asked to hand-partition a set of that size into "cat" and "not cat" using explicit conditions on individual coordinates.</li>
+  </ul>
+
+  <div class="box key"><span class="label">Key idea</span>
+    <p>The deepest problem is not that the rules would be <em>numerous</em>. It is that <strong>you do not know what your own rules are.</strong> You recognise a cat in about 150 milliseconds and you cannot introspect a single condition you used. You cannot type in knowledge you do not have conscious access to.</p>
+    <p>But you <em>can</em> do something else easily: you can look at 10,000 pictures and say "cat / not cat" for each one. You can supply <strong>examples</strong> even when you cannot supply rules.</p>
+  </div>
+
+  <p>That asymmetry — examples are cheap, rules are impossible — is the whole pivot. Machine learning is the discipline of turning a pile of examples into a rule <em>automatically</em>, so that the rule never has to pass through a human's conscious vocabulary.</p>
+
+  <div class="box analogy"><span class="label">Analogy</span>
+    <p>Teaching a child what a dog is. You do not hand over a definition ("quadruped, Canis familiaris, non-retractable claws"). You point at things: "dog." "Dog." "No, that's a fox." After a few dozen pointings the child generalises to dogs they have never seen — breeds you never pointed at.</p>
+    <p><em>Where the analogy breaks:</em> the child arrives with a huge amount of pre-wired visual machinery and can ask questions. Our algorithms start from nothing and only ever see the pairs you hand them. That is why they need thousands of examples where a child needs ten.</p>
+  </div>
+
+  <div class="box warn"><span class="label">Common mistake</span>
+    <p>Concluding "rules are obsolete." They are not. The course notes say rule-based AI is "OK for some applications." Tax calculation, chess move legality, payroll, access control, a thermostat — anywhere the rules are known, stable, auditable and legally mandated, a rule system beats a learned model every time. It is exactly reproducible, it can explain itself, and it needs zero data. Reach for learning when the rules exist in the world but not in anyone's head.</p>
+  </div>
+
+  <h2 id="the-setup">The setup: inputs, outputs, and the function in between</h2>
+
+  <p>Here is the formal skeleton. Everything in Part II of this course hangs on it.</p>
+
+  <div class="box defn"><span class="label">Definition</span>
+    <p>Inputs live in a set $\X$ (the <strong>input space</strong>). Outputs, also called <strong>labels</strong>, live in a set $\Y$ (the <strong>output space</strong> or <strong>label space</strong>).</p>
+    <p>Our goal is to come up with a function
+    $$ h : \X \to \Y $$
+    such that for a new input $x \in \X$ whose true label is $y$, we have $h(x) = y$.</p>
+  </div>
+
+  <p>Every symbol, in words:</p>
+
+  <ul>
+    <li>$\X$ — the set of all things you might be shown. For images, $\X = \{0,\dots,255\}^{3{,}000{,}000}$. For a house-price problem, $\X = \R^3$ (size, bedrooms, age). For the apartment example in the professor's decision-tree notes, five yes/no questions gives $\X = \{0,1\}^5$.</li>
+    <li>$\Y$ — the set of all answers you might have to give. $\Y = \{\text{cat}, \text{not cat}\}$, or $\Y = \R$ for a price, or $\Y = \{0,1\}$ for ill / healthy.</li>
+    <li>$h$ — the function itself. It goes by three interchangeable names: the <strong>hypothesis</strong>, the <strong>prediction function</strong>, or the <strong>model</strong>. In this course these are the same object. "Hypothesis" is the statistics word (it is a <em>hypothesis</em> about how the world maps inputs to outputs); "model" is the engineering word; "prediction function" says what it does.</li>
+  </ul>
+
+  <p>Note what $h$ is <em>not</em>. It is not a lookup table of the answers you already have — that would be useless, because you already have those answers. $h$ must be defined on <em>all</em> of $\X$, including inputs nobody has ever seen. That requirement is what makes the problem hard and interesting, and we will give it a name (<a href="#generalization">generalization</a>) shortly.</p>
+
+  <h3>Training data</h3>
+
+  <div class="box defn"><span class="label">Definition</span>
+    <p>We are given examples $\big(x^{(1)}, y^{(1)}\big), \big(x^{(2)}, y^{(2)}\big), \dots, \big(x^{(N)}, y^{(N)}\big)$, collected into
+    $$ \D = \big\{ \big(x^{(i)}, y^{(i)}\big) \big\}_{i=1}^{N}. $$
+    These are called the <strong>training data</strong>, or <strong>samples</strong>, or <strong>datapoints</strong> — three names for the same thing. $N$ is the <strong>sample size</strong>, and $x^{(i)} \in \X,\ y^{(i)} \in \Y$ for all $i \in \{1,2,\dots,N\}$.</p>
+  </div>
+
+  <div class="box warn"><span class="label">Common mistake</span>
+    <p><strong>Notation alert — the single most misread symbol in this course.</strong></p>
+    <p>$x^{(i)}$ is the <strong>$i$-th sample</strong>. The superscript is an <em>index</em>, not an exponent. $x^{(3)}$ is the third datapoint; it is <strong>not</strong> $x$ cubed.</p>
+    <p>The parentheses are doing the work: $x^{(i)}$ (index) versus $x^i$ (power). When you write by hand, do not drop the parentheses. When you read someone else's notes, look for them before you panic.</p>
+    <p>And a second layer: when each input is a vector of $d$ features, we write $x^{(i)}_j$ for the $j$-th feature of the $i$-th sample. <strong>Superscript in parentheses = which datapoint. Subscript = which feature.</strong> So $x^{(4)}_2$ is "sample 4, feature 2". You will see this constantly in <a href="linear-regression.html">linear regression</a>; get it straight now.</p>
+  </div>
+
+  <p>A dataset is naturally a <strong>table</strong>: one row per sample, one column per feature, plus a label column. Here is a concrete one we will reuse — five houses, $d = 3$ features each, $N = 5$:</p>
+
+  <div class="scroll-x">
+  <table class="center">
+    <thead>
+      <tr><th>$i$</th><th>$x^{(i)}_1$ — size (sq ft)</th><th>$x^{(i)}_2$ — bedrooms</th><th>$x^{(i)}_3$ — age (yrs)</th><th>$y^{(i)}$ — price ($1000s)</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>1</td><td>1400</td><td>3</td><td>12</td><td>245</td></tr>
+      <tr><td>2</td><td>2100</td><td>4</td><td>3</td><td>410</td></tr>
+      <tr><td>3</td><td>900</td><td>2</td><td>40</td><td>150</td></tr>
+      <tr><td>4</td><td>1650</td><td>3</td><td>25</td><td>280</td></tr>
+      <tr><td>5</td><td>3000</td><td>5</td><td>8</td><td>520</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>Reading the table in the notation: $N = 5$, $d = 3$, $\X = \R^3$, $\Y = \R$. The third row <em>is</em> the pair $\big(x^{(3)}, y^{(3)}\big)$ with $x^{(3)} = (900, 2, 40)$ and $y^{(3)} = 150$. And $x^{(3)}_3 = 40$ — sample 3, feature 3, the age.</p>
+
+  <h3>Training versus inference</h3>
+
+  <div class="box defn"><span class="label">Definition</span>
+    <p><strong>Training</strong> is the process of using $\D$ to produce $h$. It happens once, offline, with the labels visible.</p>
+    <p><strong>Inference</strong> is the process of applying an already-chosen $h$ to a new input $x^{(\text{new})}$ to predict its label. It happens many times, in deployment, with the true label unknown (or not yet known).</p>
+  </div>
+
+  <p>Keeping these two apart is the discipline of the whole subject. Training consumes labels; inference does not have them. Anything that touches $y^{(\text{new})}$ at inference time is cheating, and nearly every embarrassing ML bug is a version of that cheating (usually called <em>leakage</em>).</p>
+
+  <div class="viz">
+    <div class="viz-title">Figure 1 — the training / inference pipeline</div>
+    <svg viewBox="0 0 720 300" role="img" aria-label="Diagram: training data feeds a learning algorithm which outputs a model h; at inference time a new input is passed through h to produce a prediction, which is scored against the true label by the loss function.">
+      <defs>
+        <marker id="mlfArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--ink-mute)"></path>
+        </marker>
+      </defs>
+
+      <text x="10" y="26" font-size="11" letter-spacing="2" fill="var(--accent)">TRAINING — once, labels visible</text>
+      <rect x="14" y="40" width="160" height="66" rx="8" fill="var(--bg-soft)" stroke="var(--line-2)"></rect>
+      <text x="94" y="66" text-anchor="middle" font-size="13" fill="currentColor">Training data 𝒟</text>
+      <text x="94" y="84" text-anchor="middle" font-size="11.5" fill="var(--ink-mute)">N pairs (x⁽ⁱ⁾, y⁽ⁱ⁾)</text>
+
+      <line x1="180" y1="73" x2="222" y2="73" stroke="var(--ink-mute)" stroke-width="1.6" marker-end="url(#mlfArrow)"></line>
+
+      <rect x="228" y="40" width="186" height="66" rx="8" fill="var(--bg-soft)" stroke="var(--line-2)"></rect>
+      <text x="321" y="64" text-anchor="middle" font-size="13" fill="currentColor">Learning algorithm</text>
+      <text x="321" y="84" text-anchor="middle" font-size="11.5" fill="var(--ink-mute)">pick h ∈ ℋ minimising R̂(h)</text>
+
+      <line x1="420" y1="73" x2="462" y2="73" stroke="var(--ink-mute)" stroke-width="1.6" marker-end="url(#mlfArrow)"></line>
+
+      <rect x="468" y="40" width="140" height="66" rx="8" fill="var(--panel)" stroke="var(--accent)" stroke-width="2"></rect>
+      <text x="538" y="66" text-anchor="middle" font-size="14" fill="var(--accent)">model h</text>
+      <text x="538" y="84" text-anchor="middle" font-size="11.5" fill="var(--ink-mute)">h : 𝒳 → 𝒴</text>
+
+      <path d="M 538 108 C 538 150, 321 150, 321 186" fill="none" stroke="var(--accent)" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#mlfArrow)"></path>
+      <text x="446" y="150" text-anchor="middle" font-size="11" fill="var(--accent)">the same h is reused</text>
+
+      <text x="10" y="176" font-size="11" letter-spacing="2" fill="var(--accent-2)">INFERENCE — many times, label unknown</text>
+      <rect x="14" y="190" width="160" height="66" rx="8" fill="var(--bg-soft)" stroke="var(--line-2)"></rect>
+      <text x="94" y="216" text-anchor="middle" font-size="13" fill="currentColor">new input x⁽ⁿᵉʷ⁾</text>
+      <text x="94" y="234" text-anchor="middle" font-size="11.5" fill="var(--ink-mute)">never seen in 𝒟</text>
+
+      <line x1="180" y1="223" x2="222" y2="223" stroke="var(--ink-mute)" stroke-width="1.6" marker-end="url(#mlfArrow)"></line>
+
+      <rect x="228" y="190" width="186" height="66" rx="8" fill="var(--panel)" stroke="var(--accent)" stroke-width="2"></rect>
+      <text x="321" y="222" text-anchor="middle" font-size="14" fill="var(--accent)">h</text>
+      <text x="321" y="240" text-anchor="middle" font-size="11.5" fill="var(--ink-mute)">apply, don't change</text>
+
+      <line x1="420" y1="223" x2="462" y2="223" stroke="var(--ink-mute)" stroke-width="1.6" marker-end="url(#mlfArrow)"></line>
+
+      <rect x="468" y="190" width="110" height="66" rx="8" fill="var(--bg-soft)" stroke="var(--line-2)"></rect>
+      <text x="523" y="222" text-anchor="middle" font-size="13" fill="currentColor">ŷ = h(x⁽ⁿᵉʷ⁾)</text>
+      <text x="523" y="240" text-anchor="middle" font-size="11.5" fill="var(--ink-mute)">the prediction</text>
+
+      <line x1="584" y1="223" x2="612" y2="223" stroke="var(--ink-mute)" stroke-width="1.6" marker-end="url(#mlfArrow)"></line>
+      <rect x="618" y="190" width="94" height="66" rx="8" fill="var(--panel)" stroke="var(--rose)"></rect>
+      <text x="665" y="216" text-anchor="middle" font-size="12.5" fill="var(--rose)">ℓ(ŷ, y⁽ⁿᵉʷ⁾)</text>
+      <text x="665" y="234" text-anchor="middle" font-size="11" fill="var(--ink-mute)">test error</text>
+    </svg>
+    <div class="caption">What to notice: the dashed arrow. Training runs once and its <em>output is a function</em>; inference runs forever and never modifies that function. The red box on the right can only be evaluated when a true label eventually arrives — which is why we cannot optimise it directly, and why the rest of this page exists.</div>
+  </div>
+
+  <div class="box key"><span class="label">Key idea</span>
+    <p>The two questions the entire course is an answer to:</p>
+    <p><strong>(Q1) How do we come up with $h$?</strong> — answered by empirical risk minimization on this page, then made concrete by <a href="decision-trees.html">decision trees</a>, <a href="linear-regression.html">linear regression</a> and <a href="logistic-regression.html">logistic regression</a>.</p>
+    <p><strong>(Q2) How do we measure its performance?</strong> — answered by loss functions and risk, below.</p>
+    <p>Q2 comes first in practice. You cannot search for a good $h$ until you have written down what "good" means as a number.</p>
+  </div>
+
+  <h2 id="classification-vs-regression">Two kinds of task: classification and regression</h2>
+
+  <p>The notes split ML tasks in two, and the split is made entirely by looking at $\Y$ — not at $\X$, not at the algorithm.</p>
+
+  <div class="box defn"><span class="label">Definition</span>
+    <p><strong>Classification:</strong> $\Y$ is <em>finite</em> and its elements are <em>unordered</em>. The special case $|\Y| = 2$ is called <strong>binary classification</strong>.</p>
+    <p><strong>Regression:</strong> $\Y$ is <em>continuous</em> and <em>ordered</em>.</p>
+  </div>
+
+  <p>The two adjectives each do real work:</p>
+
+  <ul>
+    <li><strong>Finite vs continuous</strong> decides whether "close" is even a coherent idea. Between two house prices there is another house price; between "cat" and "dog" there is nothing.</li>
+    <li><strong>Unordered vs ordered</strong> decides whether being wrong can be wrong <em>by an amount</em>. Predicting 420 when the truth is 410 is a small error. Predicting "dog" when the truth is "cat" is not 10% wrong; it is just wrong.</li>
+  </ul>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="kicker">Classification</div>
+      <ul class="tiny">
+        <li>Spam / not spam. $\Y = \{0,1\}$, binary.</li>
+        <li>Handwritten digit recognition. $\Y = \{0,1,\dots,9\}$ — <em>looks</em> numeric, but "7" is a name, not a quantity, so it is 10-way classification.</li>
+        <li>Which of 3 iris species. $\Y = \{\text{setosa}, \text{versicolor}, \text{virginica}\}$.</li>
+        <li>Does this patient have the disease? $\Y = \{\text{healthy}, \text{ill}\}$.</li>
+        <li>Which of 5 faults is on this phone line? (The AT&amp;T problem, done with ML instead of rules.)</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="kicker">Regression</div>
+      <ul class="tiny">
+        <li>House price from size, bedrooms, age. $\Y = \R$ (really $\R_{\geq 0}$).</li>
+        <li>Tomorrow's temperature in Pittsburgh. $\Y = \R$.</li>
+        <li>Remaining battery life in minutes.</li>
+        <li>How many seconds until this bearing fails.</li>
+        <li>Blood glucose level from a sensor trace.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>A genuinely ambiguous case</h3>
+
+  <p>Predict the <strong>star rating (1–5)</strong> a user will give a restaurant.</p>
+
+  <p>$\Y = \{1,2,3,4,5\}$ is <em>finite</em> — that says classification. But it is also <em>ordered</em> — 4 is genuinely between 3 and 5, and predicting 4 when the truth is 5 is clearly a better mistake than predicting 1. That says regression. The definitions in the notes disagree with each other here, and honestly so: this is a third category, <strong>ordinal regression</strong> <span class="pill">beyond syllabus</span>, which the course will not cover.</p>
+
+  <p>So how do you decide? Decide by asking <em>what the loss function should be</em>, because that is what your choice actually controls:</p>
+
+  <ul>
+    <li>If mistaking 5 stars for 1 star should hurt 16× more than mistaking 5 for 4, you want $(\hat{y}-y)^2$. Treat it as <strong>regression</strong>, predict a real number, and round at the end if you must output an integer.</li>
+    <li>If your product only cares "did we get the exact star count right", you want $\1\{\hat y \neq y\}$. Treat it as <strong>5-way classification</strong>.</li>
+  </ul>
+
+  <div class="box intuition"><span class="label">Intuition</span>
+    <p>Here is the test that never fails: <strong>is the average of two labels a meaningful label?</strong></p>
+    <p>The average of 245 and 410 is 327.5 — a perfectly sensible house price. Regression. The average of "cat" and "dog" is nothing at all. Classification. The average of digit-label 3 and digit-label 9 is 6, which is a <em>different digit</em>, not a blend — so digits are classification, despite the numerals.</p>
+  </div>
+
+  <div class="guided">
+    <div class="g-head"><span class="tag">Guided problem 1</span>Classification or regression?</div>
+    <div class="g-body">
+      <p>For each scenario, state $\X$ and $\Y$, say whether it is classification or regression, and justify from the definition (finite/unordered vs continuous/ordered). Three of these are traps.</p>
+      <ol>
+        <li>From a photo of a skin lesion, predict which of 7 diagnoses applies.</li>
+        <li>From last month's usage, predict a household's electricity bill in dollars.</li>
+        <li>From an address, predict the 5-digit ZIP code.</li>
+        <li>From a patient's vitals, predict how many days they will stay in hospital.</li>
+        <li>From an essay, predict the grade on a 0–100 scale.</li>
+        <li>From a sensor, predict whether a machine will fail in the next hour.</li>
+      </ol>
+      <p>Attempt all six before opening anything.</p>
+    </div>
+    <details class="step"><summary>Step 1 — Apply the "is the average meaningful?" test to each</summary>
+      <div>
+        <p>1. average of "melanoma" and "eczema" = nothing → classification.<br>
+        2. average of $\$84.20$ and $\$97.10$ = $\$90.65$, a fine bill → regression.<br>
+        3. average of ZIP 15213 and ZIP 90210 = 52711.5, which is not a place → classification (the trap).<br>
+        4. average of 3 days and 4 days = 3.5 days, meaningful → regression-ish, but see Step 2.<br>
+        5. average of 78 and 84 = 81, a fine grade → regression.<br>
+        6. average of "fails" and "doesn't fail" = nothing → classification.</p>
+      </div></details>
+    <details class="step"><summary>Step 2 — The traps, in detail</summary>
+      <div>
+        <p><strong>(3) ZIP codes.</strong> Numerals are not numbers. A ZIP code is a <em>name</em> that happens to be spelled with digits, exactly like a digit-recognition label. $\Y$ is finite (~41,000 codes) and unordered. It is classification — a gigantic 41,000-way classification, which is itself a hint that you have formulated the problem badly and should predict latitude/longitude (regression) or a coarse region instead.</p>
+        <p><strong>(4) Length of stay.</strong> $\Y = \{0,1,2,\dots\}$ is discrete and countably infinite, so it is neither "finite unordered" nor strictly "continuous". It is <em>count data</em>. In this course you treat it as regression: it is ordered, magnitude of error matters, and squared error on a real-valued prediction behaves sensibly. (Outside this course you would reach for Poisson regression. <span class="pill">beyond syllabus</span>)</p>
+        <p><strong>(5) Essay grade.</strong> Also boundary — 101 possible values, ordered. Regression, for the same reason as star ratings: you care how far off you are.</p>
+      </div></details>
+    <details class="step"><summary>Answer &amp; the takeaway</summary>
+      <div>
+        <p>1 classification (7-way) · 2 regression · 3 classification (not regression!) · 4 regression (count) · 5 regression (ordinal, treated as regression) · 6 binary classification.</p>
+        <p><strong>Takeaway:</strong> the question "classification or regression?" is never answered by looking at whether the labels are typed with digits. It is answered by asking whether $\Y$ carries a meaningful notion of distance. And the real reason you care is that the answer determines which loss function you are allowed to use — which is the next section.</p>
+      </div></details>
+  </div>
+
+  <div class="quiz" data-answer="1">
+    <div class="q">A colleague is predicting which of 12 bus routes a commuter will take. They encode the routes as $1,\dots,12$ and fit a model with squared error loss. What is the main thing wrong with this?</div>
+    <button class="opt">Nothing — squared error works on any numeric label.</button>
+    <button class="opt">Squared error imposes an order and a distance on labels that have neither, so the model is penalised for confusing route 1 with route 12 more than route 1 with route 2, for no reason.</button>
+    <button class="opt">Squared error is only valid when $|\Y| = 2$.</button>
+    <div class="why"><strong>Why:</strong> $\Y$ here is finite and <em>unordered</em> — route 12 is not "further away" from route 1 than route 2 is. Squared error silently invents a geometry on the label set. The model will happily predict $6.5$, which corresponds to no route at all, and will be pushed toward the numeric middle of the routes. Use zero-one loss (or a 12-way classifier with a proper classification loss) instead. Option C is wrong: squared error is fine for any continuous $\Y$, binary or not — the problem is the label set, not its size.</div>
+  </div>
+
+  <h2 id="loss-functions">Loss functions: writing down what "wrong" costs</h2>
+
+  <p>Q2 was: how do we measure performance? The answer is a <strong>loss function</strong>.</p>
+
+  <div class="box defn"><span class="label">Definition</span>
+    <p>A loss function is a map
+    $$ \ell : \Y \times \Y \to \R, \qquad \text{usually } \ell \geq 0, $$
+    which takes a predicted label and a true label and returns a single number saying how bad that pairing is. <strong>Lower is better</strong>, and $\ell = 0$ means a perfect prediction.</p>
+  </div>
+
+  <p>Read the type signature literally: $\Y \times \Y$ means "a pair of labels", and $\to \R$ means "out comes one real number". Not a vector, not a verdict — <em>one number</em>. That is the entire point. Everything messy about "is this model any good?" has to be crushed into a scalar, because optimisation algorithms can only minimise scalars.</p>
+
+  <div class="box warn"><span class="label">Common mistake</span>
+    <p><strong>The argument-order trap. Your two course documents disagree, and you must check every single time.</strong></p>
+    <ul>
+      <li>The professor's lecture notes (<em>ML Problem Formulation</em>) write $\ell\big(h(x), y\big)$ — <strong>first argument: your guess. Second argument: the true value.</strong> So $\ell(\hat y, y)$.</li>
+      <li>The pre-reading notes (<em>ML Problem Formulation and Decision Trees</em>) write $\ell(y, \hat y)$ — <strong>truth first, guess second.</strong> Their asymmetric loss table is indexed $\ell(y, \hat y)$ with rows $y$ and columns $\hat y$.</li>
+    </ul>
+    <p>Both conventions are standard in the literature. Neither is wrong. For <em>symmetric</em> losses — zero-one, squared error, absolute error — it does not matter, because $\ell(a,b) = \ell(b,a)$. For <strong>asymmetric</strong> losses it matters enormously: swapping the arguments turns a 10-point penalty for missing a sick patient into a 10-point penalty for alarming a healthy one, which is a completely different medical product.</p>
+    <p><strong>Rule for exams and for life:</strong> on every problem, before computing anything, find the sentence or the table header that fixes the convention. If it is a table, look at whether the rows are labelled $y$ or $\hat y$. If the problem does not say, state your assumption in your answer.</p>
+  </div>
+
+  <h3>Classification loss: zero-one</h3>
+
+  <p>For classification the only question is "right or wrong?", so:</p>
+
+  $$ \ell(\hat y, y) \;=\; \1\{\hat y \neq y\} $$
+
+  <p>where $\1\{\cdot\}$ is the <strong>indicator function</strong>:</p>
+
+  $$ \1\{z\} = \begin{cases} 1 &amp; \text{if } z \text{ is true} \\ 0 &amp; \text{if } z \text{ is false.} \end{cases} $$
+
+  <p>So the loss is $1$ when the prediction and the truth differ, and $0$ when they match. That is all. The indicator is just a way of writing "if" inside an algebraic expression so that it can be summed — you will see it again in <a href="decision-trees.html">majority vote</a> and in <a href="information-theory.html">entropy</a>.</p>
+
+  <div class="box example"><span class="label">Example</span>
+    <p>True labels $y = (\text{spam}, \text{ham}, \text{spam}, \text{spam}, \text{ham})$; predictions $\hat y = (\text{spam}, \text{spam}, \text{spam}, \text{ham}, \text{ham})$.</p>
+    <p>Per-sample zero-one losses: $0, 1, 0, 1, 0$. Sum $= 2$, average $= 2/5 = 0.4$. That average is called the <strong>classification error rate</strong> — and, as we will see in a moment, it is literally the empirical risk under zero-one loss. The two names are the same quantity.</p>
+  </div>
+
+  <h3>Asymmetric classification loss</h3>
+
+  <p>Zero-one loss says every mistake costs the same. In medicine that is plainly false. The pre-reading notes define the two failure modes precisely, in the framing where $y = 1$ means <em>ill</em> and $y = 0$ means <em>healthy</em>:</p>
+
+  <ul>
+    <li><strong>False positive:</strong> the prediction is <em>ill</em> but the true output is <em>healthy</em>. ($\hat y = 1$, $y = 0$.) Consequence: an unnecessary biopsy, an anxious month, a wasted $4{,}000$.</li>
+    <li><strong>False negative:</strong> the prediction is <em>healthy</em> but the true output is <em>ill</em>. ($\hat y = 0$, $y = 1$.) Consequence: the patient goes home and the tumour keeps growing.</li>
+  </ul>
+
+  <p>These are not equally bad, so we refuse to give them equal loss. The notes' table, reproduced exactly — note the convention: <strong>rows are the truth $y$, columns are the guess $\hat y$</strong>, i.e. $\ell(y, \hat y)$:</p>
+
+  <table class="tight center">
+    <thead><tr><th>$\ell(y,\hat y)$</th><th>$\hat y = 0$</th><th>$\hat y = 1$</th></tr></thead>
+    <tbody>
+      <tr><th>$y = 0$</th><td>0</td><td>2</td></tr>
+      <tr><th>$y = 1$</th><td>10</td><td>0</td></tr>
+    </tbody>
+  </table>
+
+  <p>Reading the four cells out loud:</p>
+  <ul>
+    <li>$\ell(y=0, \hat y=0) = 0$ — healthy patient, called healthy. Correct, free.</li>
+    <li>$\ell(y=0, \hat y=1) = 2$ — healthy patient, called ill. <strong>False positive</strong>, costs 2.</li>
+    <li>$\ell(y=1, \hat y=0) = 10$ — ill patient, called healthy. <strong>False negative</strong>, costs 10.</li>
+    <li>$\ell(y=1, \hat y=1) = 0$ — ill patient, called ill. Correct, free.</li>
+  </ul>
+
+  <p>The diagonal is zero (correct answers are free) and the off-diagonal is asymmetric: <strong>a false negative is defined to be five times worse than a false positive.</strong></p>
+
+  <div class="box key"><span class="label">Key idea</span>
+    <p>What does an asymmetric loss actually <em>do</em> to the trained model? It makes it <strong>trigger-happy in the expensive direction.</strong></p>
+    <p>Because missing an ill patient costs 10 and falsely flagging a healthy one costs only 2, the model can afford to raise up to <em>five</em> false alarms to avoid one miss and still come out ahead. Training under this loss therefore shifts the decision boundary toward predicting $\hat y = 1$ — it produces a <em>cautious, over-referring</em> model. You have not changed the data, the features or the model family. You changed four numbers in a table, and the behaviour of the deployed system changed completely.</p>
+    <p>This is the most under-appreciated lever in applied ML. The loss function is where your <em>values</em> enter the mathematics.</p>
+  </div>
+
+  <p>Quantitatively: under this loss you should predict "ill" whenever the expected cost of saying healthy exceeds the expected cost of saying ill. If $p$ is the probability the patient is ill, saying healthy costs $10p$ and saying ill costs $2(1-p)$. Predict ill when $10p \gt 2(1-p)$, i.e. $12p \gt 2$, i.e. $p \gt 1/6 \approx 0.167$. Under plain zero-one loss the same computation gives the threshold $p \gt 1/2$. The asymmetric loss has moved the operating threshold from 50% down to 17% — the model refers anyone with better than a one-in-six chance of illness.</p>
+
+  <div class="guided">
+    <div class="g-head"><span class="tag">Guided problem 2</span>The choice of loss flips which model wins</div>
+    <div class="g-body">
+      <p>A clinic has $N = 5$ patients. $y = 1$ means ill, $y = 0$ means healthy. Two candidate models, $h_A$ (eager to refer) and $h_B$ (conservative), give these predictions:</p>
+      <table class="tight center">
+        <thead><tr><th>$i$</th><th>$y^{(i)}$</th><th>$h_A(x^{(i)})$</th><th>$h_B(x^{(i)})$</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>0</td><td>0</td><td>0</td></tr>
+          <tr><td>2</td><td>0</td><td>1</td><td>0</td></tr>
+          <tr><td>3</td><td>0</td><td>1</td><td>0</td></tr>
+          <tr><td>4</td><td>1</td><td>1</td><td>0</td></tr>
+          <tr><td>5</td><td>1</td><td>1</td><td>1</td></tr>
+        </tbody>
+      </table>
+      <p>Compute the average loss of each model (a) under zero-one loss, and (b) under the medical table above. Then say which model you would deploy.</p>
+    </div>
+    <details class="step"><summary>Step 1 — Mark where each model is wrong</summary>
+      <div>
+        <p>$h_A$: correct on $i=1$ ($0{\to}0$), <em>wrong</em> on $i=2$ ($y=0,\hat y=1$, false positive), <em>wrong</em> on $i=3$ (false positive), correct on $i=4$, correct on $i=5$. So 2 mistakes, both false positives.</p>
+        <p>$h_B$: correct on $i=1,2,3$ (all $0{\to}0$), <em>wrong</em> on $i=4$ ($y=1,\hat y=0$, false negative), correct on $i=5$. So 1 mistake, a false negative.</p>
+      </div></details>
+    <details class="step"><summary>Step 2 — Average zero-one loss</summary>
+      <div>
+        <p>$\hat R_{01}(h_A) = \tfrac{1}{5}(0+1+1+0+0) = \tfrac{2}{5} = 0.40$.</p>
+        <p>$\hat R_{01}(h_B) = \tfrac{1}{5}(0+0+0+1+0) = \tfrac{1}{5} = 0.20$.</p>
+        <p><strong>Under zero-one loss, $h_B$ wins</strong> — it has half the error rate.</p>
+      </div></details>
+    <details class="step"><summary>Step 3 — Average asymmetric loss</summary>
+      <div>
+        <p>Look up each mistake in the table. $h_A$'s two errors are false positives at cost 2 each:</p>
+        <p>$\hat R_{\text{med}}(h_A) = \tfrac{1}{5}(0 + 2 + 2 + 0 + 0) = \tfrac{4}{5} = 0.80$.</p>
+        <p>$h_B$'s single error is a false negative at cost 10:</p>
+        <p>$\hat R_{\text{med}}(h_B) = \tfrac{1}{5}(0 + 0 + 0 + 10 + 0) = \tfrac{10}{5} = 2.00$.</p>
+        <p><strong>Under the medical loss, $h_A$ wins</strong>, and it is not close — $h_B$ is 2.5× worse.</p>
+      </div></details>
+    <details class="step"><summary>Answer &amp; the takeaway</summary>
+      <div>
+        <p>Zero-one ranking: $h_B \succ h_A$ (0.20 vs 0.40). Medical ranking: $h_A \succ h_B$ (0.80 vs 2.00). <strong>The ranking flipped with no change to the data or the models.</strong></p>
+        <p>You would deploy $h_A$, because in this application the loss table — not the accuracy — encodes what the clinic actually cares about. $h_B$ has the better <em>accuracy</em> and the worse <em>outcome</em>: it achieves its accuracy by refusing to refer anyone, and one of the people it refuses is genuinely ill.</p>
+        <p><strong>Takeaway:</strong> "which model is better?" is a question with no answer until a loss function is named. When a paper, a vendor or a classmate says "our model is 94% accurate", the correct first question is: <em>accurate under which loss, and is that the loss your problem has?</em></p>
+      </div></details>
+  </div>
+
+  <h3>Regression loss: squared error</h3>
+
+  <p>For regression the magnitude of the miss matters, so the standard choice is the <strong>squared error</strong>:</p>
+
+  $$ \ell(\hat y, y) = (\hat y - y)^2. $$
+
+  <p>The quantity $r = \hat y - y$ is called the <strong>residual</strong>: how far off you were, and in which direction. Squaring throws away the direction (being $10$ over is as bad as $10$ under) and keeps the magnitude.</p>
+
+  <p>But why <em>square</em> it rather than take $|\hat y - y|$, which also throws away the sign and is easier to explain? Four reasons, three of them good:</p>
+
+  <ol>
+    <li><strong>Differentiability.</strong> $\frac{d}{d\hat y}(\hat y - y)^2 = 2(\hat y - y)$ — a clean derivative, defined everywhere, and helpfully <em>proportional to the error</em>: big miss, big push. The absolute value $|\hat y - y|$ has a kink at $0$ where the derivative jumps from $-1$ to $+1$ and is undefined exactly at the optimum. Since every method in <a href="optimization.html">Chapter 9</a> works by following derivatives, this is not a cosmetic difference.</li>
+    <li><strong>It penalises large errors disproportionately.</strong> Doubling the error <em>quadruples</em> the loss. Being off by 10 costs 100, while ten errors of 1 cost 10 in total. So squared error strongly prefers "wrong by a little, everywhere" to "right everywhere but catastrophic once" — usually what you want from a price estimator or a controller.</li>
+    <li><strong>It connects to the mean.</strong> This is the mathematically deep reason. Suppose you must predict a single constant $c$ for all of $y^{(1)},\dots,y^{(N)}$. Minimising $\sum_i (c - y^{(i)})^2$: differentiate and set to zero,
+      $$ \frac{d}{dc}\sum_{i=1}^N (c - y^{(i)})^2 = 2\sum_{i=1}^N (c - y^{(i)}) = 0 \;\Longrightarrow\; Nc = \sum_i y^{(i)} \;\Longrightarrow\; c = \frac{1}{N}\sum_i y^{(i)} = \bar y. $$
+      <strong>The minimiser of squared error is the mean.</strong> (Minimising absolute error instead gives the <em>median</em>.) Every closed-form result in <a href="linear-regression.html">linear regression</a> — including the normal equation — exists because squared error is a quadratic whose derivative is linear, so setting it to zero gives a <em>linear system</em> you can solve exactly. Choose any other loss and you generally lose the closed form.</li>
+    <li><em>The honest fourth reason:</em> it is what everyone else does, which makes results comparable.</li>
+  </ol>
+
+  <div class="box warn"><span class="label">Common mistake</span>
+    <p><strong>The downside of squaring: outliers.</strong> The same property that makes squared error punish large errors makes it hostage to bad data. One mistyped house price of $\$45{,}000{,}000$ contributes a residual of $\sim 4.5\times10^7$, whose square is $\sim 2\times10^{15}$ — which can exceed the total loss of every other point combined. The fitted model will bend itself toward that one typo and fit the other 999 houses worse.</p>
+    <p>Because the minimiser of squared error is the mean, and the mean is not robust, squared-error regression is not robust. If your data has heavy tails or data-entry errors, absolute error (which yields the median, and is robust) or a Huber loss <span class="pill">beyond syllabus</span> — quadratic near zero, linear far away — is the better choice. You give up the closed form to get the robustness.</p>
+  </div>
+
+  <div class="viz">
+    <div class="viz-title">Figure 2 — the three losses as functions of the residual $r = \hat y - y$</div>
+    <svg viewBox="0 0 660 320" role="img" aria-label="Plot of squared loss, absolute loss and zero-one loss against the residual from minus three to three.">
+      <line x1="70" y1="280" x2="640" y2="280" stroke="var(--line-2)" stroke-width="1.2"></line>
+      <line x1="70" y1="30" x2="70" y2="280" stroke="var(--line-2)" stroke-width="1.2"></line>
+
+      <line x1="66" y1="280" x2="70" y2="280" stroke="var(--ink-mute)"></line>
+      <line x1="66" y1="200" x2="70" y2="200" stroke="var(--ink-mute)"></line>
+      <line x1="66" y1="120" x2="70" y2="120" stroke="var(--ink-mute)"></line>
+      <line x1="66" y1="40"  x2="70" y2="40"  stroke="var(--ink-mute)"></line>
+      <text x="60" y="284" text-anchor="end" font-size="11" fill="var(--ink-mute)">0</text>
+      <text x="60" y="204" text-anchor="end" font-size="11" fill="var(--ink-mute)">3</text>
+      <text x="60" y="124" text-anchor="end" font-size="11" fill="var(--ink-mute)">6</text>
+      <text x="60" y="44"  text-anchor="end" font-size="11" fill="var(--ink-mute)">9</text>
+      <text x="22" y="160" font-size="11.5" fill="var(--ink-mute)" transform="rotate(-90 22 160)" text-anchor="middle">loss ℓ</text>
+
+      <line x1="345" y1="30" x2="345" y2="286" stroke="var(--line)" stroke-dasharray="3 4"></line>
+      <text x="70"  y="300" text-anchor="middle" font-size="11" fill="var(--ink-mute)">−3</text>
+      <text x="162" y="300" text-anchor="middle" font-size="11" fill="var(--ink-mute)">−2</text>
+      <text x="253" y="300" text-anchor="middle" font-size="11" fill="var(--ink-mute)">−1</text>
+      <text x="345" y="300" text-anchor="middle" font-size="11" fill="var(--ink-mute)">0</text>
+      <text x="437" y="300" text-anchor="middle" font-size="11" fill="var(--ink-mute)">1</text>
+      <text x="528" y="300" text-anchor="middle" font-size="11" fill="var(--ink-mute)">2</text>
+      <text x="620" y="300" text-anchor="middle" font-size="11" fill="var(--ink-mute)">3</text>
+      <text x="345" y="316" text-anchor="middle" font-size="11.5" fill="var(--ink-mute)">residual r = ŷ − y  (prediction minus truth)</text>
+
+      <polyline points="70,40 115.8,113.3 161.7,173.3 207.5,220 253.3,253.3 299.2,273.3 345,280 390.8,273.3 436.7,253.3 482.5,220 528.3,173.3 574.2,113.3 620,40"
+                fill="none" stroke="var(--accent)" stroke-width="2.4"></polyline>
+      <polyline points="70,200 345,280 620,200" fill="none" stroke="var(--accent-2)" stroke-width="2.4"></polyline>
+      <line x1="70" y1="253.3" x2="340" y2="253.3" stroke="var(--accent-3)" stroke-width="2.4"></line>
+      <line x1="350" y1="253.3" x2="620" y2="253.3" stroke="var(--accent-3)" stroke-width="2.4"></line>
+      <circle cx="345" cy="253.3" r="4" fill="var(--panel)" stroke="var(--accent-3)" stroke-width="2"></circle>
+      <circle cx="345" cy="280" r="4" fill="var(--accent-3)"></circle>
+
+      <g font-size="12">
+        <line x1="205" y1="52" x2="235" y2="52" stroke="var(--accent)" stroke-width="2.4"></line>
+        <text x="243" y="56" fill="currentColor">squared  (ŷ − y)²</text>
+        <line x1="205" y1="74" x2="235" y2="74" stroke="var(--accent-2)" stroke-width="2.4"></line>
+        <text x="243" y="78" fill="currentColor">absolute  |ŷ − y|</text>
+        <line x1="205" y1="96" x2="235" y2="96" stroke="var(--accent-3)" stroke-width="2.4"></line>
+        <text x="243" y="100" fill="currentColor">zero–one  𝟙{ŷ ≠ y}</text>
+      </g>
+    </svg>
+    <div class="caption">What to notice: (1) all three are $0$ only at $r=0$ and non-negative everywhere. (2) The squared curve is <em>flat</em> near $r=0$ — it barely cares about tiny errors — and then explodes; the absolute curve has a constant slope and a kink at the origin. (3) Zero-one is <em>flat everywhere except one point</em>: its derivative is $0$ almost everywhere and undefined at $0$, so gradient-based optimisation is completely blind to it. That single fact is why <a href="logistic-regression.html">logistic regression</a> has to replace zero-one loss with a smooth surrogate. (4) The three curves cross at $|r| = 1$: below it squaring is the gentlest of the three, above it the harshest.</div>
+  </div>
+
+  <div class="viz">
+    <div class="viz-title">Figure 3 — interactive: three losses on the same four predictions</div>
+    <svg id="lossExp" viewBox="0 0 660 375" role="img" aria-label="Interactive bar chart of squared, absolute and zero-one loss for four datapoints, with the empirical risk for each loss."></svg>
+    <div class="controls">
+      <label>ŷ⁽¹⁾ &nbsp;(y⁽¹⁾=2)<input type="range" id="lp0" min="-1" max="5" step="0.25" value="2" data-out="lp0v" data-dp="2"><span class="val" id="lp0v"></span></label>
+      <label>ŷ⁽²⁾ &nbsp;(y⁽²⁾=5)<input type="range" id="lp1" min="2" max="8" step="0.25" value="4" data-out="lp1v" data-dp="2"><span class="val" id="lp1v"></span></label>
+      <label>ŷ⁽³⁾ &nbsp;(y⁽³⁾=3)<input type="range" id="lp2" min="0" max="6" step="0.25" value="3.5" data-out="lp2v" data-dp="2"><span class="val" id="lp2v"></span></label>
+      <label>ŷ⁽⁴⁾ &nbsp;(y⁽⁴⁾=6)<input type="range" id="lp3" min="3" max="9" step="0.25" value="5" data-out="lp3v" data-dp="2"><span class="val" id="lp3v"></span></label>
+      <button class="btn" id="lossReset">Reset</button>
+      <button class="btn" id="lossPerfect">Make all perfect</button>
+    </div>
+    <div class="caption">Each row has its own vertical scale (max 9, 3 and 1 respectively), so compare <em>shapes</em> across rows, not heights. Things to try: (a) push one slider to its extreme and watch the squared bar dominate the whole row while the zero-one bar does not move at all — zero-one cannot tell "slightly wrong" from "catastrophically wrong"; (b) set one prediction exactly on its label and watch only that zero-one bar drop to 0; (c) make two points off by $0.5$ versus one point off by $1$ — identical absolute risk, but the squared risk prefers the two small errors ($0.125$ vs $0.25$). The number on the right of each row is the empirical risk $\hat R(h)$ under that loss.</div>
+  </div>
+
+  <h2 id="generalization">Generalization, test error, and the i.i.d. assumption</h2>
+
+  <p>Now the crucial turn. You have a loss, so you can score $h$ on any labelled point. But <em>which</em> points do you care about?</p>
+
+  <p>Not the training points. You already know their labels; predicting them correctly earns you nothing. The notes are explicit: for any $h$ you choose, you care about its performance on a <strong>new, previously unseen datapoint</strong>, denoted $x^{(\text{new})}$ — "test data". Applying $h$ to $x^{(\text{new})}$ is <em>inference</em>. Given $x^{(\text{new})}$ with true label $y^{(\text{new})}$ (unknown to you), you would like</p>
+
+  $$ \ell\big(h(x^{(\text{new})}),\, y^{(\text{new})}\big) $$
+
+  <p>to be small. This quantity is called the <strong>generalization error</strong> or <strong>test error</strong>. <em>Generalization</em> = performance on unseen data.</p>
+
+  <div class="box analogy"><span class="label">Analogy</span>
+    <p>A student who memorises the answer key to last year's exam has zero training error and has learned nothing. A student who understands the material does slightly worse on last year's paper and far better on this year's. Training error measures recall of the answer key; generalization error measures understanding.</p>
+    <p>The entire tension of machine learning — the bias/variance story, overfitting, regularisation — is this one gap between the two.</p>
+  </div>
+
+  <p>But here is the difficulty: if $x^{(\text{new})}$ could be <em>anything at all</em>, generalization would be hopeless. Nothing in a dataset of cats and dogs tells you what to do with a picture of a tractor, or a recording of a cello. We need an assumption that ties the future to the past. The notes state it:</p>
+
+  <div class="box defn"><span class="label">Definition</span>
+    <p><strong>The i.i.d. assumption.</strong> All datapoints — training <em>and</em> test — are drawn <strong>independently</strong> from the <strong>same</strong> (identical), unknown distribution over $\X \times \Y$. Write that distribution $P$; we assume $(x^{(i)}, y^{(i)}) \sim P$ for every $i$, and $(x^{(\text{new})}, y^{(\text{new})}) \sim P$ too, drawn independently of all the rest.</p>
+  </div>
+
+  <p>The acronym spelled out, one letter at a time:</p>
+
+  <ul>
+    <li><strong>independent</strong> — knowing one sample tells you nothing about the next. Drawing $x^{(7)}$ does not change the odds for $x^{(8)}$. Sampling with replacement from an urn, not dealing a hand of cards.</li>
+    <li><strong>identically</strong> — every sample comes from the <em>same</em> distribution $P$. The urn is not being refilled with different marbles halfway through.</li>
+    <li><strong>distributed</strong> — there <em>is</em> such a distribution $P$, over pairs $(x,y)$ jointly. Not over $x$ alone: $P$ describes both which inputs show up <em>and</em> what labels they tend to carry, including the fact that the label may be noisy (two identical-looking patients can have different outcomes).</li>
+  </ul>
+
+  <div class="box key"><span class="label">Key idea</span>
+    <p>Notice that we never assume we <em>know</em> $P$. We only assume it exists and does not change. That is the minimum needed to make the past informative about the future — and it is the load-bearing assumption under every generalization claim in this course. Every time a deployed ML system fails embarrassingly, the first thing to check is whether i.i.d. quietly stopped holding.</p>
+  </div>
+
+  <h3>When i.i.d. fails: distribution shift</h3>
+
+  <p>A real example. In 2016–2019 several hospitals deployed sepsis-prediction models trained on their own historical records. Then COVID arrived. Patient demographics changed, admission criteria changed, vital-sign patterns for respiratory distress changed, and the base rate of deterioration changed. The models had been trained on $P_{\text{before}}$ and were being applied to $P_{\text{after}}$. Performance degraded sharply, silently — the model kept outputting confident predictions, because nothing in the model can notice that the world moved. This is <strong>distribution shift</strong>, and it is a failure of the <em>identically distributed</em> half of i.i.d.</p>
+
+  <p>What specifically breaks: the empirical risk you measured on held-out historical data is an estimate of $\E_{P_{\text{before}}}[\ell]$, but the quantity you now care about is $\E_{P_{\text{after}}}[\ell]$. They are expectations over different distributions, so the first tells you nothing reliable about the second. Your validation number was not <em>wrong</em>; it was an accurate answer to a question you stopped asking.</p>
+
+  <p>The <em>independence</em> half fails just as often and more sneakily: consecutive frames of a video, consecutive days of stock prices, multiple X-rays of the same patient, multiple survey responses from one household. Here the samples are drawn from the right distribution but are correlated, so your effective sample size is far smaller than $N$ — 10,000 video frames from one 6-minute clip carry maybe a few dozen samples' worth of information — and you will be dramatically overconfident in your risk estimate.</p>
+
+  <div class="guided">
+    <div class="g-head"><span class="tag">Guided problem 3</span>Does this setup violate i.i.d.?</div>
+    <div class="g-body">
+      <p>For each setup, say which half of i.i.d. is violated (independent, identically distributed, both, or neither), what concretely goes wrong, and one thing you could do about it.</p>
+      <ol>
+        <li><strong>Pneumonia detector.</strong> Trained on chest X-rays from Hospital A (one scanner model, mostly patients over 60). Deployed at Hospital B (different scanner, paediatric ward).</li>
+        <li><strong>Stock predictor.</strong> Training set is daily returns for 2015–2019 in chronological order; test set is daily returns for 2020.</li>
+        <li><strong>Face recogniser.</strong> $N = 50{,}000$ photos, but they come from 500 people, 100 photos each. The train/test split is made by shuffling all 50,000 photos randomly.</li>
+        <li><strong>Spam filter.</strong> Trained on last year's spam, deployed, and spammers immediately start rewording messages to get past it.</li>
+        <li><strong>Handwritten digits.</strong> 70,000 digits collected from a fixed pool of writers, split randomly into train and test, and both used only for this one experiment.</li>
+      </ol>
+    </div>
+    <details class="step"><summary>Step 1 — The question to ask each time</summary>
+      <div>
+        <p>Two questions, in this order:</p>
+        <p><strong>(a) Identically distributed?</strong> Is the thing generating the test points the <em>same process</em> as the thing that generated the training points? Different site, different time, different equipment, different population — any of these breaks it.</p>
+        <p><strong>(b) Independent?</strong> If I tell you sample $i$, do you learn anything about sample $j$? Shared source (same patient, same writer, same person, adjacent in time) breaks it.</p>
+      </div></details>
+    <details class="step"><summary>Step 2 — Work through 1 and 2</summary>
+      <div>
+        <p><strong>(1) Hospital A → B.</strong> <em>Identically distributed</em> fails, badly and on both coordinates: $P(x)$ changes (different scanner physics, different anatomy) and $P(y \mid x)$ may change too (different disease prevalence in children). Classic covariate shift plus label shift. Your held-out error at Hospital A is not an estimate of your error at Hospital B. Remedy: collect a labelled sample at B and re-measure; fine-tune or recalibrate on B's data; standardise the image preprocessing across scanners.</p>
+        <p><strong>(2) Stock returns.</strong> <em>Both</em> fail. Independence fails because financial returns are serially correlated and volatility clusters (a turbulent Tuesday predicts a turbulent Wednesday). Identical distribution fails because 2020 markets were not 2015 markets. The chronological split is at least honest — it mimics deployment. Remedy: use rolling-origin (walk-forward) evaluation, never a random shuffle of time series, and expect the risk estimate to be optimistic anyway.</p>
+      </div></details>
+    <details class="step"><summary>Step 3 — Work through 3, 4 and 5</summary>
+      <div>
+        <p><strong>(3) Faces.</strong> <em>Independence</em> fails. The 100 photos of person #37 are highly dependent. Because the split was made photo-wise, nearly every test photo has 99 near-siblings in the training set, so the model can succeed by memorising individuals rather than learning to recognise faces. Your reported accuracy will be wildly optimistic and will collapse on a person the model has never seen. Remedy: split <em>by person</em> (group split), so no identity appears on both sides. This is the most common evaluation bug in real projects.</p>
+        <p><strong>(4) Spam.</strong> <em>Identically distributed</em> fails, and in the nastiest way: the distribution changes <em>because you deployed</em>. This is adversarial/feedback shift — $P$ is a function of your own model. Remedy: continuous retraining on fresh labelled mail, monitoring of the score distribution, and features that are expensive for an adversary to change (sending infrastructure) rather than cheap (word choice).</p>
+        <p><strong>(5) Digits.</strong> <em>Neither</em> is badly violated — this is the intended use case. A caveat: writers are shared across the split, so strictly the samples are not independent, and a random split slightly overstates performance on a <em>new writer</em>. And if you reuse the test set for a hundred design decisions, you have effectively trained on it, and your estimate degrades. But as a single experiment with a fixed pool, i.i.d. is a reasonable idealisation.</p>
+      </div></details>
+    <details class="step"><summary>Answer &amp; the takeaway</summary>
+      <div>
+        <p>1: identical fails. 2: both fail. 3: independent fails. 4: identical fails (adversarially). 5: essentially fine.</p>
+        <p><strong>Takeaway:</strong> i.i.d. is not a technicality buried in the theory — it is the bridge between the number you measured and the number you care about. When it breaks, every guarantee on this page becomes decoration. Before you trust any reported accuracy, ask: <em>where did the test points come from, and is that the same process that will generate tomorrow's inputs?</em></p>
+      </div></details>
+  </div>
+
+  <h2 id="risk">Risk: the thing we actually want to minimise</h2>
+
+  <p>Once we accept i.i.d., we can stop talking about one hypothetical new point and talk about the <em>average over all possible</em> new points. That average is the <strong>risk</strong>.</p>
+
+  <div class="box defn"><span class="label">Definition</span>
+    <p>The <strong>risk</strong> of a hypothesis $h$ is its expected loss:
+    $$ R(h) \;=\; \E_{(x,y)\sim P}\big[\,\ell\big(h(x),\, y\big)\,\big]. $$
+    Equivalently, in the pre-reading's random-variable notation with input r.v. $X$ and output r.v. $Y$: $R(h) = \E_{X,Y}\big[\ell\big(Y, h(X)\big)\big]$. <strong>Risk = expected loss.</strong></p>
+  </div>
+
+  <p>Read the expectation carefully, because this is where students lose the thread:</p>
+
+  <ul>
+    <li><strong>What is random?</strong> The datapoint $(x,y)$. Not $h$ — $h$ is a fixed function we are evaluating. $R(h)$ is a single number attached to each candidate $h$; it is a <em>score for a function</em>.</li>
+    <li><strong>What is the expectation over?</strong> The unknown joint distribution $P$ on $\X \times \Y$ — over both which inputs arise and which labels they carry. If $\X \times \Y$ were discrete, $R(h) = \sum_{x,y} P(x,y)\,\ell(h(x),y)$: a weighted average of the loss, weighted by how often each situation occurs. Inputs that never occur contribute nothing, no matter how badly $h$ handles them.</li>
+    <li><strong>Why can we not compute it?</strong> Because $P$ is unknown. Not "hard to compute" — <em>unknown</em>. As the pre-reading puts it, "we basically never have sufficient models for the real world… it is very difficult to know the true joint probability distribution." If you knew $P$, you would not need machine learning at all: you would just output $\argmin_{\hat y} \E[\ell(\hat y, y) \mid x]$ directly for every $x$, which is the optimal predictor by construction.</li>
+  </ul>
+
+  <div class="box intuition"><span class="label">Intuition</span>
+    <p>$R(h)$ is the score $h$ would get on an infinitely long exam whose questions are drawn from the real world in the proportions the real world actually produces them. It is the number you want. It is also a number no one has ever computed for any real problem.</p>
+  </div>
+
+  <h2 id="empirical-risk">Empirical risk: the thing we can actually compute</h2>
+
+  <p>We cannot average over $P$. But we have $N$ samples drawn from $P$ — so we average over those instead.</p>
+
+  <div class="box defn"><span class="label">Definition</span>
+    <p>For a dataset $\D = \{(x^{(i)}, y^{(i)})\}_{i=1}^N$, the <strong>empirical risk</strong> of $h$ is
+    $$ \hat R(h) \;=\; \frac{1}{N} \sum_{i=1}^{N} \ell\big(y^{(i)},\, h(x^{(i)})\big). $$
+    In words: run $h$ on every training input, score each prediction against its label, take the average. The hat on $\hat R$ means "estimated from data".</p>
+  </div>
+
+  <p>(That is the pre-reading's truth-first ordering; the lecture notes write the same object as $\frac1N\sum_i \ell\big(h(x^{(i)}), y^{(i)}\big)$. For the symmetric losses in this section the two are identical — but see the argument-order warning above.)</p>
+
+  <div class="box key"><span class="label">Key idea</span>
+    <p><strong>Empirical risk is a Monte-Carlo estimate of the risk.</strong></p>
+    <p>That single sentence is the bridge between the computable and the desirable. A Monte-Carlo estimate approximates an expectation $\E_P[f]$ by drawing samples from $P$ and averaging $f$ over them. Here $f$ is the loss. Because the $(x^{(i)},y^{(i)})$ are i.i.d. from $P$, each term $\ell(y^{(i)}, h(x^{(i)}))$ is an unbiased draw of the quantity whose mean is $R(h)$:
+    $$ \E\big[\hat R(h)\big] \;=\; \frac{1}{N}\sum_{i=1}^N \E\big[\ell(y^{(i)}, h(x^{(i)}))\big] \;=\; \frac{1}{N} \cdot N \cdot R(h) \;=\; R(h). $$
+    Each step: linearity of expectation; then each term has the same expectation $R(h)$ because the samples are identically distributed. So for a <em>fixed, pre-chosen</em> $h$, empirical risk is an <strong>unbiased</strong> estimator of true risk, and by the law of large numbers $\hat R(h) \to R(h)$ as $N \to \infty$ — with the usual $1/\sqrt{N}$ error, since (by independence) $\operatorname{Var}[\hat R(h)] = \operatorname{Var}[\ell]/N$.</p>
+    <p>Notice exactly where i.i.d. was used: <em>identically</em> distributed gave every term the same mean, <em>independently</em> gave the variance its $1/N$.</p>
+  </div>
+
+  <div class="viz">
+    <div class="viz-title">Figure 4 — empirical risk converging to true risk as $N$ grows</div>
+    <canvas id="lawCanvas" width="1320" height="580" style="width:100%;height:auto;display:block"></canvas>
+    <div class="controls">
+      <button class="btn primary" id="lawResample">Draw new samples</button>
+      <span class="tiny muted">Four independent datasets, drawn from the same distribution; true risk $R(h)=1$.</span>
+    </div>
+    <div class="caption">What to notice: each coloured trace is the running empirical risk $\hat R(h)$ of one fixed model as its dataset grows from $N=1$ to $N=300$. At small $N$ the traces are wild and can be off by a factor of two in either direction — a model evaluated on 5 points tells you almost nothing. As $N$ grows they are squeezed into the shaded $\pm 2\sqrt{\operatorname{Var}[\ell]/N}$ band and converge on the dashed line $R(h)=1$. The band narrows like $1/\sqrt{N}$: to halve your uncertainty you need <em>four times</em> the data. Crucially the traces converge but never quite land — $\hat R$ is always an estimate.</div>
+  </div>
+
+  <div class="box warn"><span class="label">Common mistake</span>
+    <p><strong>"Empirical risk is unbiased, so training error estimates generalization error." No.</strong> That unbiasedness proof has a hidden condition: $h$ must be fixed <em>before</em> you look at $\D$. The moment you <em>choose</em> $h$ by minimising $\hat R$ over a family of candidates, the argument collapses.</p>
+    <p>Why, precisely: $\hat R(h)$ fluctuates around $R(h)$ with some noise. If you scan many candidate $h$'s and keep the one with the smallest $\hat R$, you preferentially select hypotheses whose noise happened to be <em>negative</em> — ones that got lucky on these particular $N$ points. The minimum of many noisy estimates is systematically below the minimum of their true values: $\E[\min_h \hat R(h)] \leq \min_h R(h)$. So the training error of the <em>selected</em> model is a <strong>biased — optimistically low — estimate</strong> of its generalization error. The bias grows with how many hypotheses you searched over and shrinks with $N$.</p>
+    <p>A pocket demonstration: take $h$ = a lookup table that memorises $\D$ and outputs anything for other inputs. $\hat R(h) = 0$ exactly. $R(h)$ is terrible. The gap between the two is <strong>overfitting</strong>, and it is the entire reason held-out test sets exist. <em>Never report training error as performance.</em></p>
+  </div>
+
+  <div class="quiz" data-answer="2">
+    <div class="q">You fit 200 different models, pick the one with the lowest error on your 1,000-point dataset, and report that error as your model's expected performance. What is the flaw?</div>
+    <button class="opt">None — 1,000 points is plenty, and the estimate is unbiased.</button>
+    <button class="opt">The empirical risk is unbiased but has high variance, so the number is noisy but correct on average.</button>
+    <button class="opt">Selecting the minimum over 200 noisy estimates systematically favours models that got lucky on these 1,000 points, so the reported number is biased optimistically low.</button>
+    <div class="why"><strong>Why:</strong> unbiasedness holds for a hypothesis chosen <em>independently</em> of the data. Choosing by minimisation is the opposite of independent: you are explicitly selecting on the noise. Option B is the common half-right answer — it correctly notes the variance but misses that the <em>selection step</em> converts symmetric noise into a one-sided bias. The fix is to score the selected model on data that played no part in selecting it.</div>
+  </div>
+
+  <h2 id="erm">Empirical risk minimization</h2>
+
+  <p>We now have everything needed to answer Q1. We want to minimise $R(h)$ but cannot evaluate it; we can evaluate $\hat R(h)$; so — the idea, in the notes' words, is simply <strong>minimize the average loss on the training data</strong>.</p>
+
+  <div class="box defn"><span class="label">Definition</span>
+    <p><strong>Empirical Risk Minimization (ERM).</strong> Choose
+    $$ h^* \;=\; \argmin_{h \in \H} \;\hat R(h) \;=\; \argmin_{h \in \H}\; \frac{1}{N}\sum_{i=1}^{N} \ell\big(y^{(i)}, h(x^{(i)})\big), $$
+    where $\H$ is the <strong>hypothesis class</strong>: the set of hypothesis functions we are willing to consider.</p>
+  </div>
+
+  <p>Three pieces of this deserve individual attention.</p>
+
+  <h3>What $\argmin$ means</h3>
+
+  <p>$\min_h \hat R(h)$ is the smallest achievable <em>value</em> of the empirical risk — a number. $\argmin_h \hat R(h)$ is the <em>argument achieving it</em> — a function. ERM returns the function. If $\hat R$ has ties, the $\argmin$ is a set and you pick one by a stated tie-breaking rule (this matters concretely in <a href="decision-trees.html">decision trees</a>, where ties between splits are common).</p>
+
+  <h3>What $\H$ is, and why you must restrict it</h3>
+
+  <p>$\H$ is the menu you are allowed to order from. Some examples you will meet:</p>
+
+  <ul>
+    <li>$\H = \{$ all lines $h(x) = wx + b \}$ — <a href="linear-regression.html">linear regression</a>.</li>
+    <li>$\H = \{$ all decision trees of depth $\leq 3$ on these $d$ attributes $\}$ — <a href="decision-trees.html">decision trees</a>.</li>
+    <li>$\H = \{$ all functions $\X \to \Y \}$ — the unrestricted class.</li>
+  </ul>
+
+  <p>That last one shows why the restriction is not a technicality. If $\H$ contains <em>every</em> function, then ERM has an exact, trivial, useless solution: the lookup table that returns $y^{(i)}$ on each training $x^{(i)}$ and garbage elsewhere achieves $\hat R = 0$. Minimising empirical risk over all functions is a memorisation machine. <strong>$\H$ is what forces the model to compress, and compression is what produces generalization.</strong> Choosing $\H$ too rich gives you overfitting; too poor and no member of $\H$ is any good (underfitting). That trade-off is the spine of the rest of Part II.</p>
+
+  <h3>From $\argmin_{h \in \H}$ to $\argmin_{\theta}$</h3>
+
+  <p>Searching over a set of <em>functions</em> sounds impossible — functions are not the sort of thing a CPU loops over. The trick, exactly as the pre-reading puts it: <strong>fix the structure of the hypothesis function, and then search over parameter values.</strong></p>
+
+  <p>Fix the linear structure $h(x; w, b) = wx + b$. Now a member of $\H$ is completely determined by two numbers $(w,b)$. Collect them into a parameter vector $\theta = (w, b)$, and the search becomes</p>
+
+  $$ \theta^* \;=\; \argmin_{\theta}\; \frac{1}{N}\sum_{i=1}^{N} \ell\big(y^{(i)},\, h(x^{(i)}; \theta)\big). $$
+
+  <p>This is the single most important change of viewpoint in the course. The left-hand side used to be a search over an abstract space of functions; now it is a search over $\R^2$ — a surface you can picture, differentiate, and walk downhill on. <em>Parameterisation turns learning into optimisation.</em> When you see $\argmin_\theta$, read it as "$\argmin_{h \in \H}$ where $\H$ has been pinned down to one shape and only the dials are free."</p>
+
+  <div class="box example"><span class="label">Example</span>
+    <p>Take the two-point dataset $(x,y) = (1,2)$ and $(2,3)$, structure $h(x;w,b) = wx+b$, squared loss. Then
+    $$\hat R(w,b) = \tfrac12\big[(w + b - 2)^2 + (2w + b - 3)^2\big].$$
+    Try $\theta = (1,1)$: predictions $2$ and $3$; losses $0$ and $0$; $\hat R = 0$. Try $\theta = (0, 2.5)$: predictions $2.5$ and $2.5$; losses $0.25$ and $0.25$; $\hat R = 0.25$. So $(1,1)$ beats $(0,2.5)$ — and this concrete "plug in $\theta$, get a number" loop is exactly what gradient descent automates.</p>
+  </div>
+
+  <div class="box key"><span class="label">Key idea</span>
+    <p>The notes end this thread by naming the two questions they are deliberately leaving open — and they are the syllabus for the next four chapters:</p>
+    <p><strong>(1) From what class of functions $\H$ should we draw $h$?</strong> → <a href="decision-trees.html">decision trees</a> (Ch. 6), <a href="linear-regression.html">linear models</a> (Ch. 8), richer features via <a href="feature-engineering.html">feature engineering</a> (Ch. 10), and <a href="logistic-regression.html">logistic regression</a> (Ch. 11) for classification.</p>
+    <p><strong>(2) How do we compute the minimising $h$ efficiently?</strong> → <a href="linear-regression.html">the normal equation</a> when a closed form exists, and <a href="optimization.html">gradient descent and SGD</a> (Ch. 9) when it does not.</p>
+    <p>Everything from here on is one of those two questions with specific choices filled in.</p>
+  </div>
+
+  <div class="quiz" data-answer="0">
+    <div class="q">Why does empirical risk minimization over the class of <em>all</em> functions $\X \to \Y$ fail, even though it drives $\hat R(h)$ to exactly $0$?</div>
+    <button class="opt">Because the minimiser can be a lookup table that memorises $\D$ — zero empirical risk, arbitrary behaviour on unseen inputs, so its true risk $R(h)$ is unconstrained.</button>
+    <button class="opt">Because the minimisation problem has no solution when $\H$ is infinite.</button>
+    <button class="opt">Because zero-one loss is not differentiable, so no optimiser can reach the minimum.</button>
+    <div class="why"><strong>Why:</strong> the minimisation is perfectly solvable — that is the problem. ERM only ever constrains $h$ at the $N$ training points; a class rich enough to fit those points independently of each other leaves $h$ free everywhere else, and "everywhere else" is where you will actually use it. $\H$ must be restrictive enough that fitting the training points <em>forces</em> sensible behaviour in between. (B is false — infinite classes like all lines are fine. C is a real difficulty for a different reason, and applies equally to restricted classes.)</div>
+  </div>
+
+  <h2 id="notation">Holy cow, so much notation</h2>
+
+  <p>That is a direct quote from the course pre-reading, and it is the correct reaction. Here is every symbol introduced on this page, in one table. Come back to it; it will feel automatic in about two weeks.</p>
+
+  <div class="scroll-x">
+  <table>
+    <thead><tr><th>Symbol</th><th>Read aloud as</th><th>Meaning</th><th>Example</th></tr></thead>
+    <tbody>
+      <tr><td>$\X$</td><td>"script X", the input space</td><td>The set every input belongs to</td><td>$\X = \R^3$ (size, beds, age); $\X=\{0,1\}^5$ for 5 yes/no attributes</td></tr>
+      <tr><td>$\Y$</td><td>"script Y", the output/label space</td><td>The set every label belongs to</td><td>$\Y = \R$ (price); $\Y = \{0,1\}$ (healthy/ill)</td></tr>
+      <tr><td>$\H$</td><td>"script H", the hypothesis class</td><td>The set of functions we search over</td><td>$\H = \{h(x)=wx+b : w,b \in \R\}$</td></tr>
+      <tr><td>$x^{(i)}$</td><td>"x super i" — the $i$-th input</td><td>Input of sample $i$. <strong>Index, not power.</strong></td><td>$x^{(3)} = (900,\,2,\,40)$</td></tr>
+      <tr><td>$x^{(i)}_j$</td><td>"x super i sub j"</td><td>Feature $j$ of sample $i$</td><td>$x^{(3)}_2 = 2$ bedrooms</td></tr>
+      <tr><td>$y^{(i)}$</td><td>"y super i"</td><td>True label of sample $i$</td><td>$y^{(3)} = 150$</td></tr>
+      <tr><td>$\hat y$</td><td>"y hat"</td><td>A predicted label, $\hat y = h(x)$. The hat always means "estimated/predicted".</td><td>$\hat y = 162$ when the truth was $150$</td></tr>
+      <tr><td>$N$</td><td>"N"</td><td>Sample size: how many training datapoints</td><td>$N = 5$ houses</td></tr>
+      <tr><td>$d$</td><td>"d"</td><td>Number of features/attributes per input ($\X = \R^d$)</td><td>$d = 3$; for images $d = 3{,}000{,}000$</td></tr>
+      <tr><td>$h$</td><td>"h"</td><td>The hypothesis / prediction function / model, $h : \X \to \Y$</td><td>$h(x) = 0.17x_1 + 20$</td></tr>
+      <tr><td>$\theta$</td><td>"theta"</td><td>The parameters of $h$ once its structure is fixed</td><td>$\theta = (w,b) = (0.17,\,20)$</td></tr>
+      <tr><td>$\ell$</td><td>"ell", the loss function</td><td>$\ell : \Y\times\Y \to \R$, cost of one prediction. <em>Check the argument order.</em></td><td>$\ell(\hat y,y) = (\hat y - y)^2 = 144$</td></tr>
+      <tr><td>$R(h)$</td><td>"risk of h"</td><td>$\E_{(x,y)\sim P}[\ell(h(x),y)]$ — expected loss. What we want. Uncomputable.</td><td>$R(h) = 1.0$ in Figure 4</td></tr>
+      <tr><td>$\hat R(h)$</td><td>"R hat of h", empirical risk</td><td>$\frac1N\sum_i \ell(y^{(i)}, h(x^{(i)}))$ — average loss on $\D$. What we compute.</td><td>$\hat R = 0.4$ error rate</td></tr>
+      <tr><td>$\D$</td><td>"script D", the dataset</td><td>$\{(x^{(i)},y^{(i)})\}_{i=1}^N$, the training data</td><td>the 5-row house table</td></tr>
+      <tr><td>$\1\{\cdot\}$</td><td>"indicator of"</td><td>$1$ if the statement inside is true, $0$ if false</td><td>$\1\{3 \neq 5\} = 1$</td></tr>
+      <tr><td>$\argmin$</td><td>"arg min"</td><td>The <em>argument</em> that minimises, not the minimum value</td><td>$\argmin_{c}\sum_i (c-y^{(i)})^2 = \bar y$</td></tr>
+      <tr><td>$P$</td><td>"P"</td><td>The unknown joint distribution on $\X\times\Y$ that all data is drawn from</td><td>never known explicitly</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="box intuition"><span class="label">Intuition</span>
+    <p>A trick for reading any ML paper: the hat means <em>estimated from data</em> ($\hat y$, $\hat R$, $\hat\theta$), the star means <em>optimal</em> ($h^*$, $\theta^*$), the bar means <em>average</em> ($\bar y$), a superscript in parentheses means <em>which sample</em>, and a subscript means <em>which coordinate</em>. Those five conventions cover about 90% of the notation you will ever see.</p>
+  </div>
+
+  <h2 id="unsupervised">Unsupervised learning</h2>
+
+  <p>Everything so far has been <strong>supervised learning</strong>: every input came with a label, $\D = \{(x^{(i)}, y^{(i)})\}$. The supervision <em>is</em> the labels — somebody, somewhere, wrote down the right answer for each example.</p>
+
+  <p>That somebody is expensive. Labelling a medical image requires a radiologist's hour. Meanwhile, unlabelled data is nearly free: the internet, every camera, every log file. So: what can you do with only $x^{(1)},\dots,x^{(N)} \in \X$ and no $y$ at all?</p>
+
+  <h3>Clustering</h3>
+
+  <p><strong>Group similar $x^{(i)}$'s together.</strong> No label tells you what the groups mean; the algorithm just finds that the points fall into $k$ blobs. A retailer clusters shoppers and discovers a "restocks the same 12 items every Tuesday" group and a "one big trip per month" group. Nobody labelled those groups — they were latent in the geometry of the data, and a human names them afterwards.</p>
+
+  <h3>Dimensionality reduction</h3>
+
+  <p>The notes' setup: suppose $\X = \R^d$ with $d = 10{,}000$. Convert $x^{(1)},\dots,x^{(N)}$ into $\tilde x^{(1)},\dots,\tilde x^{(N)} \in \R^{\tilde d}$ where $\tilde d \ll d$ — say $\tilde d = 10$. ("$\tilde d \ll d$" reads "$d$-tilde is much less than $d$".)</p>
+
+  <p>You cannot keep everything when you throw away 9,990 dimensions, so you keep a <em>property</em>. The one the notes single out:</p>
+
+  $$ x^{(i)} \approx x^{(j)} \;\Longrightarrow\; \tilde x^{(i)} \approx \tilde x^{(j)} $$
+
+  <p>— points that were close in the original 10,000-dimensional space should remain close after compression. Neighbourhood structure survives; everything else is negotiable.</p>
+
+  <p>Why bother? The notes give two reasons, and both are practical:</p>
+  <ul>
+    <li><strong>Human interpretability.</strong> You cannot plot $\R^{10{,}000}$. You can plot $\R^2$. Compressing to 2 or 3 dimensions is often the only way a human ever <em>sees</em> the dataset — and seeing it is how you notice that half your samples came from one broken sensor.</li>
+    <li><strong>Computationally faster processing.</strong> Every downstream algorithm scales with $d$. Cutting $d$ from 10,000 to 10 can turn an overnight job into a coffee break, and it shrinks the model's parameter count, which also reduces overfitting.</li>
+  </ul>
+
+  <div class="box example"><span class="label">Example</span>
+    <p>A $100\times100$ greyscale face photo is a point in $\R^{10{,}000}$. But faces do not fill that space — nearly every point in $\R^{10,000}$ is static noise, not a face. The faces lie on a thin sheet of maybe 10–50 effective dimensions (pose, lighting, identity, expression). Dimensionality reduction finds that sheet, and the resulting 10 numbers are far more useful than the original 10,000.</p>
+  </div>
+
+  <h3>Learning representations, and generation</h3>
+
+  <p>The third bullet in the notes is the ambitious one: learn a <em>representation</em> of the data good enough that you can <strong>generate new samples</strong> from it — new images, new text. If a model can produce a convincing new photograph of a face it has never seen, it must have captured something real about how faces are structured. Generation is a stringent test of understanding.</p>
+
+  <h2 id="self-supervised">Self-supervised learning: the payoff</h2>
+
+  <p>And now the trick that produced the last decade of AI. The notes state it in four sentences; it deserves unpacking, because it is the mechanism behind every large language model you have used.</p>
+
+  <div class="box key"><span class="label">Key idea</span>
+    <p><strong>Self-supervised learning: convert an unsupervised problem into a supervised one</strong> — by manufacturing the labels out of the data itself.</p>
+  </div>
+
+  <p>The pipeline, step by step:</p>
+
+  <ol>
+    <li><strong>Take text from the internet.</strong> Trillions of words. There are <em>no labels</em>. Nobody annotated any of it. By the definitions above this is an unsupervised dataset: just $x$'s.</li>
+    <li><strong>Hide a word, and let that word be the label $y$.</strong> Take the sentence <em>"the cat sat on the mat"</em>. Cover the last word. Now you have manufactured a supervised pair out of thin air:
+      <ul>
+        <li>$x = $ "the cat sat on the" &nbsp;(the preceding text)</li>
+        <li>$y = $ "mat" &nbsp;(the hidden word)</li>
+      </ul>
+      The label was <em>already in the data</em>; you just decided to look away from it and then check yourself. No human annotator was involved, which is why it scales to the whole internet.</li>
+    <li><strong>Now do ordinary supervised learning.</strong> Everything on this page applies verbatim. $\X$ = all finite sequences of tokens. $\Y$ = the vocabulary, a finite unordered set of maybe 50,000 tokens — so this is <em>50,000-way classification</em>, and the loss is a classification loss (in practice a smooth surrogate for zero-one; see <a href="logistic-regression.html">logistic regression</a>). $\H$ is a family of very large neural networks parameterised by $\theta$. Training is $\argmin_\theta \hat R(\theta)$, solved by <a href="optimization.html">stochastic gradient descent</a>.</li>
+    <li><strong>What you get is a next-word predictor</strong> — a function that, given any prefix, produces a distribution over what comes next. Run it forward, feeding each prediction back in as input, and it writes.</li>
+  </ol>
+
+  <p>The notes' closing line is exactly right: <em>you have built a next word predictor, which forms the basis of LLMs.</em></p>
+
+  <div class="box intuition"><span class="label">Intuition</span>
+    <p>Why should "guess the next word" produce anything resembling intelligence? Because doing it <em>well</em>, at scale, requires solving an enormous number of hidden sub-problems. To fill in "the capital of Australia is ___" you need a fact. To fill in "she lifted the heavy box and her back began to ___" you need physics and anatomy. To fill in the last word of a murder mystery you need to have tracked the plot. The label is trivially cheap to generate and arbitrarily hard to predict — which is the best possible property for a learning objective.</p>
+    <p><em>Where the intuition should stop:</em> a next-word predictor optimises $\hat R$ on text that people wrote. It is fitting the distribution of human text, not truth. The i.i.d. and ERM caveats on this page — the bias of training error, distribution shift, the gap between $\hat R$ and $R$ — apply to LLMs in full force.</p>
+  </div>
+
+  <p>The same trick works outside text: hide a patch of an image and predict it; play a video forward and predict the next frame; take a sentence in two languages and predict one from the other. Whenever you can <em>remove</em> part of a datapoint and ask the model to restore it, you have converted free unlabelled data into a supervised problem with the full machinery of this chapter available.</p>
+
+  <div class="quiz" data-answer="1">
+    <div class="q">In next-word-prediction self-supervised training, what are $\X$ and $\Y$, and what type of task is it?</div>
+    <button class="opt">$\X$ = the vocabulary and $\Y = \R$; it is regression, since the model outputs probabilities.</button>
+    <button class="opt">$\X$ = sequences of preceding tokens and $\Y$ = the vocabulary (finite, unordered); it is multi-class classification.</button>
+    <button class="opt">There is no $\Y$ — it is unsupervised learning, so risk and loss do not apply.</button>
+    <div class="why"><strong>Why:</strong> the whole point of "self-supervised" is that there <em>is</em> a $\Y$ — the hidden word — it just was not supplied by a human. $\Y$ is the token vocabulary: finite, and unordered (token 8,431 is not "between" tokens 8,430 and 8,432), which makes it classification by the definition in this chapter. C is the tempting answer: the raw data was unlabelled, but the construction manufactures labels, and after that it is completely ordinary supervised ERM. A confuses the model's <em>output format</em> (a probability vector) with the <em>label space</em>.</div>
+  </div>
+
+  <h2 id="recap">Recap and what comes next</h2>
+
+  <p>The whole chapter in eight lines:</p>
+
+  <ol>
+    <li>Rules work when experts can state them. When they cannot — pixels, speech, language — learn from examples instead.</li>
+    <li>Formalise: inputs $\X$, labels $\Y$, find $h : \X \to \Y$ from data $\D = \{(x^{(i)},y^{(i)})\}_{i=1}^N$.</li>
+    <li>Training produces $h$; inference applies it. Keep them apart.</li>
+    <li>$\Y$ finite and unordered ⇒ classification; $\Y$ continuous and ordered ⇒ regression.</li>
+    <li>A loss $\ell : \Y\times\Y\to\R$ scores one prediction. Zero-one for classification, squared error for regression, asymmetric tables when the mistakes differ in cost. Check the argument order.</li>
+    <li>Averaging the loss over the unknown data distribution gives the risk $R(h)$ — what you want, and cannot compute.</li>
+    <li>Averaging it over your sample gives the empirical risk $\hat R(h)$ — a Monte-Carlo estimate of $R(h)$, unbiased for a fixed $h$, optimistically biased for an $h$ you <em>selected</em> using it.</li>
+    <li>ERM: $h^* = \argmin_{h\in\H} \hat R(h)$, which becomes $\argmin_\theta$ once the structure of $h$ is fixed. Choosing $\H$ and computing the $\argmin$ are the next four chapters.</li>
+  </ol>
+
+  <p>Next: <a href="decision-trees.html">decision trees</a> — the first concrete $\H$, chosen because you can read the resulting model out loud. Then <a href="information-theory.html">entropy and mutual information</a> for choosing splits well, and then <a href="linear-regression.html">linear regression</a>, where for the first time the $\argmin$ has an exact closed-form solution.</p>
+
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<script src="assets/site.js"></script>
+<script>
+document.addEventListener("shellready", () => {
+
+  /* ---------------- Figure 3: interactive loss explorer ---------------- */
+  const TRUE_Y = [2, 5, 3, 6];
+  const DEFAULT_P = [2, 4, 3.5, 5];
+  const sliders = [0, 1, 2, 3].map(k => document.getElementById("lp" + k));
+  const svg = document.getElementById("lossExp");
+
+  const ROWS = [
+    { name: "squared   (ŷ − y)²", f: r => r * r,          max: 9, color: "--accent"   },
+    { name: "absolute  |ŷ − y|",  f: r => Math.abs(r),    max: 3, color: "--accent-2" },
+    { name: "zero–one  𝟙{ŷ ≠ y}", f: r => (Math.abs(r) > 1e-9 ? 1 : 0), max: 1, color: "--accent-3" },
+  ];
+
+  function drawLoss() {
+    const preds = sliders.map(s => parseFloat(s.value));
+    svg.innerHTML = "";
+    const top = 12, rowH = 108, barMaxH = 62, x0 = 168, gap = 112, bw = 56;
+
+    ROWS.forEach((row, ri) => {
+      const base = top + ri * rowH + 84;
+      const col = "var(" + row.color + ")";
+      let total = 0;
+
+      // row separator
+      if (ri > 0) {
+        svg.appendChild(SG.el("line", {
+          x1: 8, y1: top + ri * rowH - 4, x2: 652, y2: top + ri * rowH - 4,
+          stroke: "var(--line)", "stroke-width": 1
+        }));
+      }
+
+      svg.appendChild(SG.el("text", { x: 8, y: base - 46, "font-size": 12.5, fill: col }, row.name));
+      svg.appendChild(SG.el("text", { x: 8, y: base - 26, "font-size": 11, fill: "var(--ink-mute)" },
+        "bar scale: 0 … " + row.max));
+
+      // baseline
+      svg.appendChild(SG.el("line", { x1: x0 - 14, y1: base, x2: 652, y2: base, stroke: "var(--line-2)", "stroke-width": 1.2 }));
+
+      preds.forEach((p, j) => {
+        const r = p - TRUE_Y[j];
+        const L = row.f(r);
+        total += L;
+        const h = (L / row.max) * barMaxH;
+        const bx = x0 + j * gap;
+        svg.appendChild(SG.el("rect", {
+          x: bx, y: base - h, width: bw, height: Math.max(h, 0.6),
+          fill: col, opacity: L === 0 ? 0.28 : 0.85, rx: 2
+        }));
+        svg.appendChild(SG.el("text", {
+          x: bx + bw / 2, y: base - h - 6, "text-anchor": "middle",
+          "font-size": 11, fill: "var(--ink-mute)"
+        }, L.toFixed(2)));
+      });
+
+      const risk = total / preds.length;
+      svg.appendChild(SG.el("text", { x: 8, y: base - 6, "font-size": 13, fill: "currentColor" },
+        "R̂ = " + risk.toFixed(3)));
+    });
+
+    // bottom labels
+    const labelY = top + 3 * rowH + 4;
+    preds.forEach((p, j) => {
+      const bx = 168 + j * 112 + 28;
+      svg.appendChild(SG.el("text", { x: bx, y: labelY, "text-anchor": "middle", "font-size": 11.5, fill: "var(--ink-mute)" },
+        "i = " + (j + 1) + " ,  y = " + TRUE_Y[j]));
+      svg.appendChild(SG.el("text", { x: bx, y: labelY + 16, "text-anchor": "middle", "font-size": 11.5, fill: "currentColor" },
+        "ŷ = " + p.toFixed(2)));
+      svg.appendChild(SG.el("text", { x: bx, y: labelY + 32, "text-anchor": "middle", "font-size": 11, fill: "var(--ink-mute)" },
+        "r = " + (p - TRUE_Y[j]).toFixed(2)));
+    });
+  }
+
+  sliders.forEach(s => s.addEventListener("input", drawLoss));
+  document.getElementById("lossReset").onclick = () => {
+    sliders.forEach((s, k) => { s.value = DEFAULT_P[k]; s.dispatchEvent(new Event("input")); });
+  };
+  document.getElementById("lossPerfect").onclick = () => {
+    sliders.forEach((s, k) => { s.value = TRUE_Y[k]; s.dispatchEvent(new Event("input")); });
+  };
+  drawLoss();
+
+  /* ---------------- Figure 4: empirical risk converging to true risk ------------- */
+  const cv = document.getElementById("lawCanvas");
+  const ctx = cv.getContext("2d");
+  const NMAX = 300, TRUE_R = 1.0, VAR_L = 2.0;   // loss = z^2, z ~ N(0,1): mean 1, var 2
+  let seed = 20260919;
+
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function gauss(rng) {
+    let u = 0, v = 0;
+    while (u === 0) u = rng();
+    while (v === 0) v = rng();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  }
+
+  const W = 660, H = 290, L = 62, Rr = 22, T = 18, B = 44;
+  const xOf = n => L + (n / NMAX) * (W - L - Rr);
+  const yOf = v => (H - B) - (SG.clamp(v, 0, 3) / 3) * (H - B - T);
+
+  function drawLaw() {
+    const ink = SG.css("--ink"), mute = SG.css("--ink-mute"), line = SG.css("--line-2");
+    const cols = [SG.css("--accent"), SG.css("--accent-2"), SG.css("--accent-3"), SG.css("--gold")];
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    ctx.setTransform(2, 0, 0, 2, 0, 0);
+    ctx.lineJoin = "round";
+
+    // +/- 2 sd band around the true risk
+    ctx.fillStyle = SG.css("--line");
+    ctx.globalAlpha = 0.55;
+    ctx.beginPath();
+    for (let n = 1; n <= NMAX; n++) ctx.lineTo(xOf(n), yOf(TRUE_R + 2 * Math.sqrt(VAR_L / n)));
+    for (let n = NMAX; n >= 1; n--) ctx.lineTo(xOf(n), yOf(TRUE_R - 2 * Math.sqrt(VAR_L / n)));
+    ctx.closePath(); ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // axes
+    ctx.strokeStyle = line; ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(L, T); ctx.lineTo(L, H - B); ctx.lineTo(W - Rr, H - B);
+    ctx.stroke();
+
+    ctx.fillStyle = mute; ctx.font = "11px -apple-system, Helvetica, Arial, sans-serif";
+    [0, 1, 2, 3].forEach(v => {
+      ctx.textAlign = "right"; ctx.fillText(v.toFixed(0), L - 7, yOf(v) + 4);
+      ctx.strokeStyle = line; ctx.beginPath(); ctx.moveTo(L - 4, yOf(v)); ctx.lineTo(L, yOf(v)); ctx.stroke();
+    });
+    [1, 50, 100, 150, 200, 250, 300].forEach(n => {
+      ctx.textAlign = "center"; ctx.fillText(String(n), xOf(n), H - B + 16);
+    });
+    ctx.textAlign = "center";
+    ctx.fillText("N  (number of samples averaged)", (L + W - Rr) / 2, H - 10);
+    ctx.save();
+    ctx.translate(14, (T + H - B) / 2); ctx.rotate(-Math.PI / 2);
+    ctx.fillText("R̂(h)  — running average loss", 0, 0);
+    ctx.restore();
+
+    // true risk line
+    ctx.strokeStyle = ink; ctx.setLineDash([6, 5]); ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.moveTo(L, yOf(TRUE_R)); ctx.lineTo(W - Rr, yOf(TRUE_R)); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = ink; ctx.textAlign = "left";
+    ctx.fillText("true risk R(h) = 1", W - Rr - 108, yOf(TRUE_R) - 7);
+
+    // four independent running averages
+    for (let k = 0; k < 4; k++) {
+      const rng = mulberry32(seed + k * 7919);
+      let sum = 0;
+      ctx.strokeStyle = cols[k]; ctx.lineWidth = 1.6; ctx.globalAlpha = 0.9;
+      ctx.beginPath();
+      for (let n = 1; n <= NMAX; n++) {
+        const z = gauss(rng);
+        sum += z * z;
+        const avg = sum / n;
+        if (n === 1) ctx.moveTo(xOf(n), yOf(avg)); else ctx.lineTo(xOf(n), yOf(avg));
+      }
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
+    ctx.fillStyle = mute; ctx.textAlign = "left";
+    ctx.fillText("shaded: ±2·√(Var[ℓ]/N)", L + 8, T + 12);
+  }
+
+  document.getElementById("lawResample").onclick = () => {
+    seed = (seed * 1103515245 + 12345) >>> 0;
+    drawLaw();
+  };
+  document.addEventListener("themechange", () => { drawLoss(); drawLaw(); });
+  drawLaw();
+});
+</script>
+</body>
+</html>

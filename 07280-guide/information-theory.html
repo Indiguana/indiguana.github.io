@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Entropy &amp; Mutual Information · 07-280 Field Guide</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body data-page="information-theory">
+<main>
+
+  <div class="eyebrow">Part II · Chapter 7</div>
+  <h1>Entropy, conditional entropy &amp; mutual information</h1>
+  <p class="subtitle">After this page you can compute entropy, conditional entropy and information gain by hand, prove why gain is never negative, and run <code>BestAttribute</code> on a table of data without a calculator.</p>
+
+  <div data-toc></div>
+
+  <h2 id="where-we-left-off">Where we left off: a criterion that cannot see progress</h2>
+
+  <p><a href="decision-trees.html">Chapter 6</a> ended with a dataset on which splitting on $a$, splitting on $b$, and not splitting at all all produced a training error of exactly $2/8$. The error-rate criterion had no opinion, even though split $b$ purified half the dataset and split $a$ accomplished literally nothing.</p>
+
+  <p>The diagnosis was precise. Training error only asks <em>which label wins the vote</em> in each child. It is blind to <em>by how much</em>. A child that goes from a 50/50 coin flip to a 75/25 near-certainty has made enormous progress, but the majority vote did not flip, so the error count did not move.</p>
+
+  <p>What we actually want to measure is <strong>uncertainty</strong>, on a continuous scale, so that a split that makes the labels <em>more predictable</em> gets credit even when no prediction changes yet. That measure exists, it is unique up to a constant, and it comes from a surprisingly humble place: a parlour game.</p>
+
+  <div class="box key"><span class="label">Key idea</span>
+    <p>The whole chapter is one sentence: <strong>uncertainty about a random variable = the average number of yes/no questions you need to pin it down</strong>. Everything else — entropy, conditional entropy, mutual information, information gain — is bookkeeping around that one sentence.</p>
+  </div>
+
+  <h2 id="twenty-questions">The 20-questions game</h2>
+
+  <p>Here is the professor's setup, verbatim in substance:</p>
+
+  <div class="box example"><span class="label">Example</span>
+    <p>There are $128$ students in the class. I choose one of them <strong>uniformly at random</strong> — every student equally likely, probability $1/128$ each. You may ask me any yes/no questions you like, and then you must name the student I chose. How many questions do you need?</p>
+  </div>
+
+  <p>Notice what "any yes/no question" means. You are not restricted to "Is it Alice?". You may ask "Is the student's surname in the first half of the alphabetical roster?" — any question whose answer is a single bit about the chosen student.</p>
+
+  <h3>The answer, and both halves of the proof</h3>
+
+  <p>The answer is $\mathbf{7}$, and</p>
+
+  $$7 \;=\; \log_2 128 \;=\; \log_2 \frac{1}{1/128} \;=\; \log_2 \frac{1}{P(\text{any particular student})}.$$
+
+  <p>That has to be proved in two directions: $7$ questions <em>suffice</em>, and $6$ questions <em>do not</em>.</p>
+
+  <div class="box proof"><span class="label">Proof — 7 questions suffice</span>
+    <p>Line the $128$ students up in any fixed order you and I both know (say, alphabetically), numbered $0$ through $127$. Keep a set $C$ of "candidates still possible"; initially $|C| = 128$.</p>
+    <p><strong>Halving strategy.</strong> At each step, split $C$ into two halves of equal size and ask "Is the chosen student in the first half?" Whatever the answer, you discard exactly half the candidates:</p>
+    $$128 \to 64 \to 32 \to 16 \to 8 \to 4 \to 2 \to 1.$$
+    <p>Count the arrows: there are $7$ of them, because $128 = 2^7$. After $7$ questions $|C| = 1$ and you name that student with certainty. The strategy never needs more than $7$ and never fewer, so the average is exactly $7$. $\blacksquare$</p>
+  </div>
+
+  <div class="box proof"><span class="label">Proof — 6 questions cannot be enough (counting argument)</span>
+    <p>Fix <em>any</em> strategy that asks at most $k$ yes/no questions. Run it. The only information you ever receive is the sequence of answers, which is a string of $k$ bits. There are at most $2^k$ such strings.</p>
+    <p>Your final guess is a function of that string alone — nothing else reached you. So your strategy can output at most $2^k$ distinct guesses across all possible plays of the game.</p>
+    <p>With $k = 6$: at most $2^6 = 64$ distinct guesses. But there are $128$ students, each of which I might have chosen. At least $128 - 64 = 64$ students are never guessed by your strategy, and each of those has probability $1/128$ of being the one I picked. So</p>
+    $$P(\text{you are correct}) \;\le\; \frac{64}{128} \;=\; \frac{1}{2}.$$
+    <p>You fail at least half the time. Hence $6$ questions are not enough, and $7$ is optimal. $\blacksquare$</p>
+    <p class="tiny muted">The same counting works for any $k$: $k$ yes/no answers can distinguish at most $2^k$ outcomes, so distinguishing $n$ equally likely outcomes requires $k \ge \log_2 n$.</p>
+  </div>
+
+  <div class="box intuition"><span class="label">Intuition</span>
+    <p>A yes/no answer is worth <strong>one bit</strong>, and one bit is exactly the power to cut a set of possibilities in half. To go from $128$ possibilities to $1$ you must halve seven times. That is all $\log_2 128 = 7$ is saying — the logarithm is <em>counting halvings</em>.</p>
+  </div>
+
+  <h2 id="log-one-over-p">Why $\log \frac{1}{p}$, and why the logarithm specifically</h2>
+
+  <p>The notes make the pivotal observation: the probability of the chosen student was $1/128$, and the answer was $\log_2 \frac{1}{1/128}$. So the fundamental quantity is</p>
+
+  $$\boxed{\;\text{surprise}(\text{outcome with probability } p) \;=\; \log \frac{1}{p} \;=\; -\log p.\;}$$
+
+  <p>This is called the <strong>information content</strong> or <strong>surprisal</strong> of the outcome: how many bits it takes to name it, equivalently how startled you should be to see it. Two reasons the logarithm — and nothing else — belongs here.</p>
+
+  <h3>Reason 1: a 1-in-$2^k$ event literally costs $k$ bits to name</h3>
+
+  <p>If an outcome has probability $p = 2^{-k}$ out of a uniform pool, then there are $2^k$ equally likely outcomes, and the counting argument above says you need exactly $k$ yes/no questions. And indeed</p>
+
+  $$\log_2 \frac{1}{p} = \log_2 2^{k} = k.$$
+
+  <p>So $\log_2(1/p)$ is not an analogy for "number of questions" — on powers of two it <em>is</em> the number of questions.</p>
+
+  <h3>Reason 2: additivity over independent events</h3>
+
+  <p>Suppose after picking a student I also flip a fair coin, independently. Now I am describing a pair (student, coin). Intuitively, naming the pair should cost naming the student <em>plus</em> naming the coin: $7 + 1 = 8$ questions. Probabilities <em>multiply</em> for independent events, and the logarithm is exactly the function that turns multiplication into addition:</p>
+
+  $$\log \frac{1}{p \cdot q} \;=\; \log \frac{1}{p} + \log \frac{1}{q}.$$
+
+  $$\log_2 \frac{1}{\tfrac{1}{128}\cdot\tfrac12} \;=\; \log_2 256 \;=\; 8 \;=\; 7 + 1. \quad\checkmark$$
+
+  <div class="box analogy"><span class="label">Analogy</span>
+    <p>Think of surprisal as the <strong>length of the name</strong> you'd have to assign an outcome in a code book. Common outcomes get short names ("the", "a"), rare outcomes get long ones ("antidisestablishmentarianism"). If an outcome happens $1$ time in $2^k$, you cannot give it a name shorter than $k$ bits without stealing a name that some other outcome needs.</p>
+    <p><em>Where the analogy holds exactly:</em> this is Shannon's source coding theorem, and the average name length is precisely entropy. <em>Where it strains:</em> real code words have integer lengths, so you can only hit entropy exactly when every probability is a power of two — see below.</p>
+  </div>
+
+  <h2 id="expected-questions">Averaging: the expected number of questions</h2>
+
+  <p>Now drop the assumption that I choose uniformly. Let there be $k$ outcomes with probabilities $p_1, \dots, p_k$. Outcome $i$ costs $\log \frac{1}{p_i}$ questions and occurs a $p_i$ fraction of the time, so the <strong>expected</strong> number of questions is the probability-weighted average of the surprisals:</p>
+
+  $$\text{Answer} \;=\; \sum_{i=1}^{k} p_i \log \frac{1}{p_i}.$$
+
+  <p>Sanity check against the uniform case: with $p_i = 1/128$ for all $128$ students,</p>
+
+  $$\sum_{i=1}^{128} \frac{1}{128}\log_2 128 \;=\; \log_2 128 \cdot \underbrace{\sum_{i=1}^{128}\frac{1}{128}}_{=\,1} \;=\; 7. \quad\checkmark$$
+
+  <h3>The notes' non-uniform example, computed in full</h3>
+
+  <p>The notes then change the distribution to</p>
+
+  $$p_1 = \tfrac14, \qquad p_2 = p_3 = \cdots = p_7 = \tfrac18, \qquad p_8 = \cdots = p_{128} = 0,$$
+
+  <p>with the convention $0 \cdot \log\frac10 := 0$, and assert the answer is $11/4$. Let us check that it is even a probability distribution, then verify the number.</p>
+
+  <div class="box example"><span class="label">Example — verifying $11/4$, every step</span>
+    <p><strong>Step 0. It is a distribution.</strong> $\tfrac14 + 6 \cdot \tfrac18 = \tfrac14 + \tfrac68 = \tfrac28 + \tfrac68 = \tfrac88 = 1.$ &nbsp;(Students $2$ through $7$ is six students, not seven.) ✓</p>
+    <p><strong>Step 1. Surprisal of student 1.</strong> $\displaystyle \log_2\frac{1}{1/4} = \log_2 4 = 2$ bits.</p>
+    <p><strong>Step 2. Surprisal of students 2–7.</strong> $\displaystyle \log_2\frac{1}{1/8} = \log_2 8 = 3$ bits each.</p>
+    <p><strong>Step 3. Surprisal of students 8–128.</strong> These have $p_i = 0$. The convention says the term is $0$ — see the justification below.</p>
+    <p><strong>Step 4. Weighted sum.</strong></p>
+    $$\sum_i p_i \log_2\frac{1}{p_i} \;=\; \underbrace{\tfrac14 \cdot \log_2 4}_{\text{student 1}} \;+\; \underbrace{6 \cdot \tfrac18 \cdot \log_2 8}_{\text{students 2–7}} \;+\; \underbrace{121 \cdot 0}_{\text{students 8–128}}$$
+    $$= \tfrac14 \cdot 2 \;+\; 6 \cdot \tfrac18 \cdot 3 \;=\; \tfrac{2}{4} \;+\; 6 \cdot \tfrac38 \;=\; \tfrac12 \;+\; \tfrac{18}{8} \;=\; \tfrac12 + \tfrac94.$$
+    <p><strong>Step 5. Common denominator.</strong> $\displaystyle \tfrac12 + \tfrac94 = \tfrac24 + \tfrac94 = \tfrac{11}{4} = 2.75$ questions on average. ✓ &nbsp;This matches the notes exactly.</p>
+  </div>
+
+  <div class="box defn"><span class="label">Definition</span>
+    <p><strong>The $0\log\frac10 := 0$ convention.</strong> An outcome that never happens should contribute nothing to the average. Formally this is not a fudge, it is the limit:</p>
+    $$\lim_{p\to 0^+} p \log_2 \frac{1}{p} \;=\; \lim_{p\to 0^+} \frac{-\log_2 p}{1/p} \;\overset{\text{L'Hôpital}}{=}\; \lim_{p\to 0^+} \frac{-1/(p\ln 2)}{-1/p^2} \;=\; \lim_{p\to 0^+} \frac{p}{\ln 2} \;=\; 0.$$
+    <p>So defining the term as $0$ makes $H$ continuous. The surprisal $\log\frac10 = \infty$ is infinite, but it is multiplied by a probability heading to zero faster, and zero wins.</p>
+  </div>
+
+  <h3>Does a real question strategy actually achieve $11/4$?</h3>
+
+  <p>Yes, here — and it is worth seeing why, because it also shows when it <em>fails</em>.</p>
+
+  <div class="box example"><span class="label">Example — a strategy hitting $2.75$ exactly</span>
+    <p>Ask: <strong>Q1: "Is it student 1?"</strong> If yes (prob $\tfrac14$) you are done in $1$ question... but that is <em>not</em> optimal. Do it the other way:</p>
+    <p><strong>Q1: "Is it student 1 or 2?"</strong> — the two halves each carry probability $\tfrac14 + \tfrac18 = \tfrac38$... not a clean half either. The clean strategy pairs probability mass into exact halves:</p>
+    <ul>
+      <li><strong>Q1:</strong> "Is it in $\{1, 2, 3\}$?" &nbsp;→ mass $\tfrac14+\tfrac18+\tfrac18 = \tfrac12$. Exactly half. ✓</li>
+      <li>If <em>yes</em> — <strong>Q2:</strong> "Is it student 1?" (mass $\tfrac14$ out of $\tfrac12$ = half of the branch ✓). If yes, <strong>done in 2 questions</strong>. If no, <strong>Q3</strong> separates $2$ from $3$: <strong>done in 3</strong>.</li>
+      <li>If <em>no</em> — the survivors are $\{4,5,6,7\}$, each with mass $\tfrac18$, i.e. four equally likely outcomes. Two more questions (binary search) pin it down: <strong>done in 3</strong>.</li>
+    </ul>
+    <p>Cost accounting: student 1 costs $2$ questions with probability $\tfrac14$; students $2$–$7$ cost $3$ questions each with probability $\tfrac18$:</p>
+    $$\mathbb{E}[\#\text{questions}] = \tfrac14(2) + 6\cdot\tfrac18(3) = \tfrac12 + \tfrac94 = \tfrac{11}{4}. \quad\checkmark$$
+    <p>Notice the number of questions spent on outcome $i$ came out to exactly $\log_2(1/p_i)$ in every case: $2 = \log_2 4$, $3 = \log_2 8$.</p>
+  </div>
+
+  <div class="box warn"><span class="label">Common mistake</span>
+    <p><strong>"So entropy is the number of questions."</strong> Only when every $p_i$ is a power of two, as above. In general $\log_2(1/p_i)$ is not an integer, and you cannot ask $1.58$ questions.</p>
+    <p>What is true in general: entropy is a <strong>lower bound</strong>, and you can always get within one question of it. If $H$ is the entropy and $L^\star$ the expected length of the best strategy,</p>
+    $$H \;\le\; L^\star \;\lt\; H + 1,$$
+    <p>achieved by rounding each ideal length up, $\lceil \log_2(1/p_i)\rceil$. Example: three equally likely outcomes have $H = \log_2 3 \approx 1.585$ bits, but any real strategy costs $\tfrac13(1) + \tfrac13(2) + \tfrac13(2) = \tfrac53 \approx 1.667$ questions. The gap is the rounding.</p>
+    <p>For decision trees none of this matters — we only ever <em>compare</em> entropies, never cash them in for actual questions.</p>
+  </div>
+
+  <div class="guided">
+    <div class="g-head"><span class="tag">Guided problem</span>Entropy and an optimal question strategy</div>
+    <div class="g-body">
+      <p>I pick one of four objects with probabilities $p_1 = \tfrac12$, $p_2 = \tfrac14$, $p_3 = \tfrac18$, $p_4 = \tfrac18$.</p>
+      <p>(a) Compute the entropy. (b) Design a yes/no question strategy and verify its expected cost equals the entropy. (c) Compare against the "just ask <em>is it object 1? is it object 2?</em> in order" strategy.</p>
+    </div>
+    <details class="step"><summary>Step 1 — Write down the surprisal of each outcome</summary>
+      <div>
+        <p>$\log_2\frac{1}{1/2} = \log_2 2 = 1$; &nbsp; $\log_2\frac{1}{1/4} = \log_2 4 = 2$; &nbsp; $\log_2\frac{1}{1/8} = \log_2 8 = 3$ (twice).</p>
+        <p>All powers of two, so we should expect a strategy to match the bound exactly.</p>
+      </div></details>
+    <details class="step"><summary>Step 2 — Take the weighted average</summary>
+      <div>
+        $$H = \tfrac12(1) + \tfrac14(2) + \tfrac18(3) + \tfrac18(3) = \tfrac12 + \tfrac12 + \tfrac38 + \tfrac38 = 1 + \tfrac68 = \tfrac{7}{4} = 1.75 \text{ bits}.$$
+        <p>Check it is a distribution first: $\tfrac12+\tfrac14+\tfrac18+\tfrac18 = \tfrac48+\tfrac28+\tfrac18+\tfrac18 = 1$ ✓.</p>
+      </div></details>
+    <details class="step"><summary>Step 3 — Build the strategy by splitting the mass in half each time</summary>
+      <div>
+        <p><strong>Q1:</strong> "Is it object 1?" Mass on each side: $\tfrac12$ vs $\tfrac12$ — a perfect half. Yes → done in $1$.</p>
+        <p><strong>Q2</strong> (given no): "Is it object 2?" Remaining mass is $\tfrac14+\tfrac18+\tfrac18 = \tfrac12$, and object 2 holds $\tfrac14$ of it — half again ✓. Yes → done in $2$.</p>
+        <p><strong>Q3</strong> (given no again): "Is it object 3?" Two outcomes of mass $\tfrac18$ each — half ✓. Either way, done in $3$.</p>
+        <p>Cost: $\tfrac12(1)+\tfrac14(2)+\tfrac18(3)+\tfrac18(3) = 1.75$. Identical to $H$. ✓</p>
+        <p>The rule that made it work: <em>every question split the remaining probability mass exactly in half</em>, so every answer carried a full bit of information. That is the general recipe.</p>
+      </div></details>
+    <details class="step"><summary>Answer &amp; the takeaway</summary>
+      <div>
+        <p>(a) $H = 7/4 = 1.75$ bits. (b) The strategy above costs exactly $1.75$. (c) Here the naive "is it object 1? is it object 2? …" strategy <em>is</em> the optimal one, because the probabilities were arranged to halve at each step. Change the distribution to uniform ($\tfrac14$ each) and the naive strategy costs $\tfrac14(1)+\tfrac14(2)+\tfrac14(3)+\tfrac14(3) = 2.25$, while balanced binary search costs $2 = \log_2 4 = H$. </p>
+        <p><strong>Takeaway:</strong> low entropy = one outcome hogs the mass = you can find it fast. High entropy = the mass is spread out = every question buys you less. That is exactly the property we want from a splitting criterion.</p>
+      </div></details>
+  </div>
+
+  <h2 id="entropy-definition">Entropy: the definition and its properties</h2>
+
+  <div class="box defn"><span class="label">Definition</span>
+    <p>For a discrete distribution $p = (p_1, \dots, p_k)$ over $k$ outcomes, the <strong>entropy</strong> is</p>
+    $$H(p) \;=\; \sum_{i=1}^{k} p_i \log \frac{1}{p_i} \;=\; -\sum_{i=1}^{k} p_i \log p_i,$$
+    <p>with the convention $0\log\frac10 := 0$. Every symbol:</p>
+    <ul>
+      <li>$k$ — the number of possible outcomes (for us: the number of class labels).</li>
+      <li>$p_i$ — the probability of outcome $i$; in a decision-tree node, the <em>fraction of examples in that node carrying label $i$</em>.</li>
+      <li>$\log\frac{1}{p_i}$ — the surprisal of outcome $i$: how many bits to name it.</li>
+      <li>The sum — an expectation, $H(p) = \mathbb{E}_{i \sim p}\!\left[\log \frac{1}{p_i}\right]$: the <em>average</em> surprisal.</li>
+      <li>The two forms are the same because $\log\frac1{p} = -\log p$. Both appear in the wild; the $-\sum p\log p$ form is the one you will see on exams.</li>
+    </ul>
+    <p><strong>Units.</strong> With $\log_2$, entropy is in <strong>bits</strong>. With $\ln$, it is in <strong>nats</strong> ($1$ nat $= 1/\ln 2 \approx 1.4427$ bits). With $\log_{10}$, "bans". The base only rescales everything by a constant, so it never changes which attribute wins a split. <em>Use $\log_2$ in this course</em> — it makes the 20-questions story literal.</p>
+  </div>
+
+  <h3>Property 1: $H(p) \ge 0$</h3>
+
+  <div class="box proof"><span class="label">Proof</span>
+    <p>Take any term $p_i \log\frac{1}{p_i}$. Since $p_i \in [0,1]$ we have $\frac{1}{p_i} \ge 1$, hence $\log\frac{1}{p_i} \ge \log 1 = 0$. The term is a product of two non-negative numbers, so it is $\ge 0$. A sum of non-negative terms is non-negative. $\blacksquare$</p>
+    <p class="tiny muted">Interpretation: you can never need a negative number of questions. Entropy has no upper limit in general (many outcomes ⟹ large $H$), but it has a hard floor at zero.</p>
+  </div>
+
+  <h3>Property 2: $H(p) = 0$ if and only if the distribution is deterministic</h3>
+
+  <div class="box proof"><span class="label">Proof</span>
+    <p>($\Leftarrow$) If some $p_j = 1$ and all others are $0$: the $j$ term is $1 \cdot \log\frac11 = 1 \cdot 0 = 0$, and every other term is $0\log\frac10 = 0$ by convention. So $H = 0$.</p>
+    <p>($\Rightarrow$) Suppose $H = 0$. By Property 1 every term is $\ge 0$, and a sum of non-negative numbers is zero only if <em>every</em> term is zero. So for each $i$, $p_i \log\frac{1}{p_i} = 0$, which forces $p_i = 0$ or $\log\frac1{p_i}=0 \Rightarrow p_i = 1$. So every $p_i \in \{0,1\}$; since they sum to $1$, exactly one is $1$. $\blacksquare$</p>
+    <p><strong>Decision-tree meaning:</strong> $H = 0$ ⟺ the node is <strong>pure</strong> — every example in it has the same label. Zero questions needed, zero uncertainty, and the recursion stops.</p>
+  </div>
+
+  <h3>Property 3: $H(p) \le \log k$, with equality exactly for the uniform distribution</h3>
+
+  <div class="box proof"><span class="label">Proof (Jensen's inequality)</span>
+    <p>$\log$ is a <strong>concave</strong> function (its second derivative $-1/(x^2\ln 2)$ is negative everywhere on $x&gt;0$). Jensen's inequality for a concave $f$ says $\mathbb{E}[f(Z)] \le f(\mathbb{E}[Z])$ — the average of the function is at most the function of the average.</p>
+    <p>Apply it with $Z = 1/p_i$ where $i \sim p$ (summing only over $i$ with $p_i &gt; 0$, say $m \le k$ of them):</p>
+    $$H(p) = \mathbb{E}\!\left[\log \frac{1}{p_i}\right] \;\le\; \log\left(\mathbb{E}\!\left[\frac{1}{p_i}\right]\right) = \log\left(\sum_{i : p_i &gt; 0} p_i \cdot \frac{1}{p_i}\right) = \log\left(\sum_{i: p_i&gt;0} 1\right) = \log m \;\le\; \log k.$$
+    <p>Every step: (1) definition of $H$ as an expectation; (2) Jensen, legal because $\log$ is concave; (3) expand the expectation as a sum, the $p_i$ cancels; (4) count the surviving terms.</p>
+    <p><strong>Equality.</strong> $\log$ is <em>strictly</em> concave, so Jensen is tight only when $Z$ is constant, i.e. $1/p_i$ is the same for all $i$ in the support — a uniform distribution. And the last inequality is tight only when $m = k$, i.e. no outcome has probability zero. So $H = \log k$ exactly when $p$ is uniform over all $k$ outcomes. $\blacksquare$</p>
+    <p><strong>Meaning:</strong> maximum uncertainty is "all outcomes equally likely", and it costs $\log_2 k$ questions — the 20-questions answer from the start of the chapter, now as a theorem. For $k=2$ the cap is $\log_2 2 = 1$ bit.</p>
+  </div>
+
+  <h3>Property 4: entropy measures uncertainty</h3>
+
+  <p>Not a theorem so much as the summary of Properties 1–3, and the reason we bothered:</p>
+
+  <div class="box key"><span class="label">Key idea</span>
+    <p><strong>More uncertainty $\iff$ more questions needed $\iff$ higher entropy.</strong> The scale runs from $0$ (you already know the answer — a pure node) to $\log_2 k$ (total ignorance — a perfectly balanced node). Everything in between is graded continuously, which is precisely what training error refused to do.</p>
+  </div>
+
+  <div class="quiz" data-answer="2">
+    <div class="q">A node contains 100 examples: 100 labelled "1" and 0 labelled "0". A second node contains 100 examples: 50 and 50. A third contains 100 examples: 99 and 1. Rank their entropies from largest to smallest.</div>
+    <button class="opt">Node 1 &gt; Node 3 &gt; Node 2</button>
+    <button class="opt">They are all equal — entropy only depends on the number of examples</button>
+    <button class="opt">Node 2 &gt; Node 3 &gt; Node 1</button>
+    <button class="opt">Node 3 &gt; Node 2 &gt; Node 1</button>
+    <div class="why"><strong>Why:</strong> Entropy depends only on the <em>proportions</em>, never on the counts. Node 2 is the uniform distribution on $k=2$ outcomes, so $H = \log_2 2 = 1$ bit — the maximum possible. Node 3 has $H(0.99) \approx 0.081$ bits: small but strictly positive, because one stray example still leaves some uncertainty. Node 1 is deterministic, so $H = 0$ exactly (Property 2). Hence $1 &gt; 0.081 &gt; 0$.</div>
+  </div>
+
+  <h2 id="binary-entropy">The binary entropy function</h2>
+
+  <p>Almost every hand computation in this course has two labels, so it is worth learning one function cold. Write $p$ for the probability of label "1"; then label "0" has probability $1-p$ and</p>
+
+  $$H(p) \;=\; -p\log_2 p - (1-p)\log_2(1-p).$$
+
+  <p class="muted tiny">Notation warning: $H(p)$ here takes a single <em>number</em> $p \in [0,1]$ and means the entropy of the two-outcome distribution $(p, 1-p)$. Elsewhere $H(\cdot)$ takes a random variable. Both are standard; context disambiguates.</p>
+
+  <div class="viz">
+    <div class="viz-title">Figure 1 · The binary entropy curve $H(p)$, plotted from computed values</div>
+    <svg viewBox="0 0 660 360" role="img" aria-label="The binary entropy function H(p) plotted against p from 0 to 1. It is zero at p equals 0 and 1, rises to a maximum of 1 bit at p equals one half, and is symmetric and concave. The point at p equals 0.4 with H equal to 0.971 is marked.">
+      <!-- grid -->
+      <g stroke="var(--line)" stroke-width="1">
+        <line x1="80" y1="300" x2="610" y2="300"/>
+        <line x1="80" y1="235" x2="610" y2="235" stroke-dasharray="3 4"/>
+        <line x1="80" y1="170" x2="610" y2="170" stroke-dasharray="3 4"/>
+        <line x1="80" y1="105" x2="610" y2="105" stroke-dasharray="3 4"/>
+        <line x1="80" y1="40"  x2="610" y2="40"  stroke-dasharray="3 4"/>
+        <line x1="80" y1="40" x2="80" y2="300"/>
+        <line x1="345" y1="40" x2="345" y2="300" stroke-dasharray="3 4"/>
+      </g>
+      <!-- axis labels -->
+      <g font-size="11.5" fill="var(--ink-mute)">
+        <text x="72" y="304" text-anchor="end">0</text>
+        <text x="72" y="239" text-anchor="end">0.25</text>
+        <text x="72" y="174" text-anchor="end">0.50</text>
+        <text x="72" y="109" text-anchor="end">0.75</text>
+        <text x="72" y="44"  text-anchor="end">1.00</text>
+        <text x="80"  y="320" text-anchor="middle">0</text>
+        <text x="212.5" y="320" text-anchor="middle">0.25</text>
+        <text x="345" y="320" text-anchor="middle">0.5</text>
+        <text x="477.5" y="320" text-anchor="middle">0.75</text>
+        <text x="610" y="320" text-anchor="middle">1</text>
+        <text x="345" y="342" text-anchor="middle" fill="var(--ink-soft)">p = fraction of examples labelled "1"</text>
+      </g>
+      <g font-size="11.5" fill="var(--ink-soft)">
+        <text x="24" y="175" text-anchor="middle" transform="rotate(-90 24 175)">H(p)  [bits]</text>
+      </g>
+      <!-- the curve -->
+      <polyline fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linejoin="round" points="80.0,300.0 82.7,288.2 85.3,279.0 88.0,270.8 90.6,263.2 93.2,256.1 95.9,249.5 98.5,243.1 101.2,237.0 103.8,231.2 106.5,225.5 109.2,220.1 111.8,214.9 114.5,209.8 117.1,204.9 119.8,200.1 122.4,195.4 125.1,190.9 127.7,186.5 130.3,182.2 133.0,178.1 135.7,174.0 138.3,170.0 140.9,166.1 143.6,162.4 146.2,158.7 148.9,155.1 151.6,151.5 154.2,148.1 156.8,144.7 159.5,141.4 162.2,138.2 164.8,135.1 167.4,132.0 170.1,129.0 172.8,126.1 175.4,123.2 178.1,120.4 180.7,117.6 183.4,114.9 186.0,112.3 188.6,109.7 191.3,107.2 193.9,104.8 196.6,102.4 199.2,100.0 201.9,97.7 204.6,95.5 207.2,93.3 209.8,91.2 212.5,89.1 215.2,87.0 217.8,85.0 220.5,83.1 223.1,81.2 225.8,79.4 228.4,77.6 231.0,75.8 233.7,74.1 236.3,72.5 239.0,70.9 241.7,69.3 244.3,67.8 246.9,66.3 249.6,64.9 252.2,63.5 254.9,62.1 257.6,60.8 260.2,59.5 262.9,58.3 265.5,57.1 268.1,56.0 270.8,54.9 273.4,53.8 276.1,52.8 278.8,51.8 281.4,50.9 284.1,50.0 286.7,49.2 289.4,48.3 292.0,47.6 294.6,46.8 297.3,46.1 299.9,45.4 302.6,44.8 305.2,44.2 307.9,43.7 310.6,43.2 313.2,42.7 315.9,42.3 318.5,41.9 321.1,41.5 323.8,41.2 326.5,40.9 329.1,40.7 331.8,40.5 334.4,40.3 337.1,40.2 339.7,40.1 342.4,40.0 345.0,40.0 347.6,40.0 350.3,40.1 352.9,40.2 355.6,40.3 358.2,40.5 360.9,40.7 363.6,40.9 366.2,41.2 368.9,41.5 371.5,41.9 374.2,42.3 376.8,42.7 379.4,43.2 382.1,43.7 384.8,44.2 387.4,44.8 390.0,45.4 392.7,46.1 395.3,46.8 398.0,47.6 400.6,48.3 403.3,49.2 405.9,50.0 408.6,50.9 411.2,51.8 413.9,52.8 416.6,53.8 419.2,54.9 421.9,56.0 424.5,57.1 427.2,58.3 429.8,59.5 432.5,60.8 435.1,62.1 437.8,63.5 440.4,64.9 443.1,66.3 445.7,67.8 448.3,69.3 451.0,70.9 453.6,72.5 456.3,74.1 458.9,75.8 461.6,77.6 464.2,79.4 466.9,81.2 469.6,83.1 472.2,85.0 474.9,87.0 477.5,89.1 480.1,91.2 482.8,93.3 485.4,95.5 488.1,97.7 490.8,100.0 493.4,102.4 496.1,104.8 498.7,107.2 501.4,109.7 504.0,112.3 506.7,114.9 509.3,117.6 511.9,120.4 514.6,123.2 517.2,126.1 519.9,129.0 522.5,132.0 525.2,135.1 527.8,138.2 530.5,141.4 533.1,144.7 535.8,148.1 538.5,151.5 541.1,155.1 543.8,158.7 546.4,162.4 549.0,166.1 551.7,170.0 554.4,174.0 557.0,178.1 559.7,182.2 562.3,186.5 565.0,190.9 567.6,195.4 570.2,200.1 572.9,204.9 575.5,209.8 578.2,214.9 580.8,220.1 583.5,225.5 586.1,231.2 588.8,237.0 591.5,243.1 594.1,249.5 596.8,256.1 599.4,263.2 602.0,270.8 604.7,279.0 607.4,288.2 610.0,300.0"/>
+      <!-- marked points -->
+      <g>
+        <line x1="292" y1="47.6" x2="292" y2="300" stroke="var(--accent-3)" stroke-width="1.3" stroke-dasharray="4 4"/>
+        <line x1="80" y1="47.6" x2="292" y2="47.6" stroke="var(--accent-3)" stroke-width="1.3" stroke-dasharray="4 4"/>
+        <circle cx="292" cy="47.6" r="5" fill="var(--accent-3)"/>
+        <text x="300" y="36" font-size="12" fill="var(--accent-3)">H(0.4) = 0.971 bits</text>
+        <circle cx="345" cy="40" r="5" fill="var(--accent-2)"/>
+        <text x="353" y="66" font-size="12" fill="var(--accent-2)">max: H(1/2) = 1 bit</text>
+        <circle cx="80" cy="300" r="4.5" fill="var(--ink-mute)"/>
+        <circle cx="610" cy="300" r="4.5" fill="var(--ink-mute)"/>
+        <text x="92" y="292" font-size="12" fill="var(--ink-mute)">H(0) = 0</text>
+        <text x="598" y="292" font-size="12" fill="var(--ink-mute)" text-anchor="end">H(1) = 0</text>
+      </g>
+    </svg>
+    <div class="caption">What to notice: the curve is <strong>symmetric about $p = 1/2$</strong> (a 40/60 node is exactly as uncertain as a 60/40 node — swapping the label names cannot change how uncertain you are), it is <strong>concave</strong> (bulging upward — this single fact is what makes information gain non-negative, proved below), and it is <strong>flat near the top</strong>: moving from 50/50 to 40/60 costs only $0.029$ bits, while moving from 90/10 to 100/0 buys you $0.469$ bits. Purifying an already-lopsided node pays far better than nudging a balanced one.</div>
+  </div>
+
+  <h3>The three facts to memorise, with their one-line reasons</h3>
+
+  <table class="tight center">
+    <thead><tr><th>Fact</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>$H(0) = H(1) = 0$</td><td>Deterministic node (Property 2). Both terms vanish under the $0\log\frac10=0$ convention.</td></tr>
+      <tr><td>$H(1/2) = 1$ bit</td><td>$-\tfrac12\log_2\tfrac12 - \tfrac12\log_2\tfrac12 = \tfrac12(1)+\tfrac12(1) = 1$. The maximum, by Property 3 with $k=2$.</td></tr>
+      <tr><td>$H(p) = H(1-p)$</td><td>Swapping $p \leftrightarrow 1-p$ swaps the two terms of the sum; addition is commutative.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="box proof"><span class="label">Proof — concavity of $H$</span>
+    <p>Work in nats ($\ln$) for cleaner derivatives; the base only multiplies by a positive constant, which cannot change concavity. With $H(p) = -p\ln p - (1-p)\ln(1-p)$:</p>
+    $$H'(p) = -\ln p - 1 + \ln(1-p) + 1 = \ln\frac{1-p}{p},$$
+    $$H''(p) = \frac{d}{dp}\Big[\ln(1-p) - \ln p\Big] = \frac{-1}{1-p} - \frac{1}{p} = -\frac{1}{p(1-p)} \;\lt\; 0 \quad\text{for } p \in (0,1).$$
+    <p>Strictly negative second derivative ⟹ strictly concave. Also $H'(1/2) = \ln 1 = 0$, confirming the maximum sits at $p = 1/2$. $\blacksquare$</p>
+  </div>
+
+  <div class="box example"><span class="label">Example — the running 40/60 node, by hand</span>
+    <p>The notes' example: $40\%$ of labels in $S$ are "1" and $60\%$ are "0", so $P(Y{=}1) = 0.4$, $P(Y{=}0) = 0.6$.</p>
+    $$H(Y) = 0.4\log_2\frac{1}{0.4} + 0.6\log_2\frac{1}{0.6} = 0.4\log_2 2.5 + 0.6\log_2 1.\overline{6}.$$
+    <p>Using $\log_2 2.5 = \log_2 5 - \log_2 2 = 2.321928 - 1 = 1.321928$ and $\log_2 \tfrac53 = \log_2 5 - \log_2 3 = 2.321928 - 1.584963 = 0.736966$:</p>
+    $$H(Y) = 0.4(1.321928) + 0.6(0.736966) = 0.528771 + 0.442179 = \mathbf{0.970951} \text{ bits}.$$
+    <p>Round to $0.971$. Worth committing to memory — a 40/60 split is the most common number on 07-280 problem sets, and it is only $0.029$ bits below the maximum of $1$.</p>
+  </div>
+
+  <h2 id="node-entropy">Entropy of the labels inside a node</h2>
+
+  <p>Everything above was about abstract distributions. Here is the translation into decision-tree language, which is exactly the move the notes make.</p>
+
+  <p>Let $S$ be the set of training examples sitting at some node, and let $\mathcal{Y}$ be the set of possible labels. Define the label distribution empirically — <em>by counting</em>:</p>
+
+  $$P(Y = y) \;=\; \frac{\#\{\text{examples in } S \text{ with label } y\}}{|S|}.$$
+
+  <div class="box defn"><span class="label">Definition</span>
+    <p>The <strong>entropy of the labels at a node</strong> $S$ is</p>
+    $$H(Y) \;=\; \sum_{y \in \mathcal{Y}} P(Y=y)\,\log\frac{1}{P(Y=y)}.$$
+    <p>Every symbol: $Y$ is the random variable "the label of an example drawn uniformly at random from $S$"; $y$ ranges over the possible labels ($\{0,1\}$ for us); $P(Y=y)$ is the <em>fraction</em> of $S$ carrying label $y$.</p>
+  </div>
+
+  <div class="box example"><span class="label">Example</span>
+    <p>The notes' instance: if $40\%$ of the labels in $S$ are "1" and $60\%$ are "0", then $P(Y{=}1) = 0.4$ and $P(Y{=}0) = 0.6$, so $H(Y) = 0.971$ bits (computed in full above).</p>
+    <p>Note that $H(Y)$ did <em>not</em> depend on $|S|$. A node with $4$ ones and $6$ zeros and a node with $400$ ones and $600$ zeros have identical entropy. Size enters later, through the weights in conditional entropy.</p>
+  </div>
+
+  <div class="box warn"><span class="label">Common mistake</span>
+    <p>These probabilities are <strong>empirical frequencies computed from the node's own examples</strong>, not some prior belief and not the frequencies in the full dataset. When you recurse into a child, you recompute from scratch using only the examples that reached the child. Forgetting to recompute is the single most common arithmetic error on this material.</p>
+  </div>
+
+  <h2 id="conditional-entropy">Specific conditional entropy and conditional entropy</h2>
+
+  <p>We want to choose an attribute so that splitting on it reduces uncertainty as much as possible. So we need to answer: <em>after</em> the split, how uncertain are the labels?</p>
+
+  <p>Let $W$ be a random variable — later we will set $W$ to be the attribute we split on, so $W = x_b$ for some attribute index $b$, and $\omega$ ranges over its values ($0$ and $1$ for binary attributes).</p>
+
+  <h3>Specific conditional entropy — the entropy of <em>one</em> child</h3>
+
+  <div class="box defn"><span class="label">Definition</span>
+    $$H(Y \mid W = \omega) \;=\; \sum_{y \in \mathcal{Y}} P(Y = y \mid W = \omega)\,\log\frac{1}{P(Y = y \mid W = \omega)}.$$
+    <p>The professor annotates this formula twice, and both annotations are the whole point:</p>
+    <ul>
+      <li><strong>"The conditioning $\mid W = \omega$ defines left or right child node."</strong> Fixing $\omega$ is <em>literally</em> the act of walking down one branch. $H(Y \mid x_b = 1)$ is "the entropy of the left child"; $H(Y \mid x_b = 0)$ is "the entropy of the right child". There is nothing probabilistic to worry about — just look at a subset of rows.</li>
+      <li><strong>"$P(Y \mid W = \omega)$ is the distribution of labels when you take the subset of $S$ that has attribute $W = \omega$."</strong> So $P(Y{=}y \mid W{=}\omega) = \dfrac{\#\{\text{examples with } W=\omega \text{ and label } y\}}{\#\{\text{examples with } W=\omega\}}$ — count within the child, divide by the child's size.</li>
+    </ul>
+    <p>It is called <em>specific</em> because it is pinned to one specific value $\omega$. It is a single number per child, not an average.</p>
+  </div>
+
+  <div class="box intuition"><span class="label">Intuition</span>
+    <p>Specific conditional entropy is nothing new — it is just $H$ applied to the child's label counts. If you can compute $H$ of a bag of labels, you can compute specific conditional entropy: take the bag, throw away every example whose attribute isn't $\omega$, recount, apply $H$. That's it.</p>
+  </div>
+
+  <h3>Conditional entropy — the <em>weighted average</em> over children</h3>
+
+  <div class="box defn"><span class="label">Definition</span>
+    $$H(Y \mid W) \;=\; \sum_{\omega \in W} P(W = \omega)\cdot H(Y \mid W = \omega).$$
+    <p>Here $P(W=\omega)$ is the fraction of $S$ that lands in the child $\omega$ — for a binary attribute, $\frac{|S_{\omega}|}{|S|}$. So for a binary split:</p>
+    $$H(Y \mid W) = \frac{|S_1|}{|S|}H(Y \mid W{=}1) + \frac{|S_0|}{|S|}H(Y \mid W{=}0).$$
+    <p>In the notes' words: <em>"This is the average entropy across the child nodes (after the current node is split)."</em></p>
+  </div>
+
+  <div class="box key"><span class="label">Key idea — why the weighting matters enormously</span>
+    <p>Suppose a node has $100$ examples, $50$ of each label ($H(Y) = 1$ bit), and some attribute isolates a <strong>single example</strong> into the left child and dumps the other $99$ into the right child.</p>
+    <p>The left child is pure, so $H(Y \mid W{=}1) = 0$ — a perfect score! If we naively averaged the two children's entropies without weights we would get $\tfrac12(0) + \tfrac12(0.99993) = 0.49996$ bits and conclude this useless split halved our uncertainty.</p>
+    <p>With the correct weights: $\tfrac{1}{100}(0) + \tfrac{99}{100}(0.99993) = 0.98993$ bits. The split is credited with a gain of a mere $1 - 0.98993 = 0.01007$ bits, which is the truth: it resolved one example out of a hundred.</p>
+    <p><strong>The weight $P(W=\omega)$ is what stops a split that isolates a single point from looking good.</strong> A pure child that contains almost nothing earns almost nothing.</p>
+  </div>
+
+  <div class="viz">
+    <div class="viz-title">Figure 2 · One split, accounted for: parent entropy, child entropies, weighted average, and the gain</div>
+    <svg viewBox="0 0 820 420" role="img" aria-label="A split diagram. The parent node has 3 zeros and 5 ones with entropy 0.954 bits. Splitting on attribute x2 gives a left child with 4 ones and entropy 0, and a right child with 3 zeros and 1 one and entropy 0.811. The weighted average is 0.406 bits. A bar chart on the right shows the drop from 0.954 to 0.406, a gain of 0.549 bits.">
+      <!-- edges -->
+      <g stroke="var(--line-2)" stroke-width="1.6" fill="none">
+        <path d="M220 92 L115 178"/>
+        <path d="M220 92 L325 178"/>
+        <path d="M115 258 L180 298"/>
+        <path d="M325 258 L260 298"/>
+      </g>
+      <g font-size="11.5" fill="var(--ink-mute)" text-anchor="middle">
+        <text x="130" y="132">Yes · weight 4/8</text>
+        <text x="322" y="132">No · weight 4/8</text>
+      </g>
+      <!-- parent -->
+      <rect x="130" y="30" width="180" height="62" rx="9" fill="var(--panel)" stroke="var(--accent)" stroke-width="1.8"/>
+      <g text-anchor="middle" font-size="12.5">
+        <text x="220" y="49" fill="var(--ink)">Parent S · n = 8 · split x₂</text>
+        <text x="220" y="66" fill="var(--ink-mute)">3 zeros, 5 ones</text>
+        <text x="220" y="84" fill="var(--accent)">H(Y) = 0.954 bits</text>
+      </g>
+      <!-- children -->
+      <rect x="25" y="178" width="180" height="80" rx="9" fill="color-mix(in srgb, var(--accent-2) 12%, var(--panel))" stroke="var(--accent-2)" stroke-width="1.8"/>
+      <g text-anchor="middle" font-size="12.5">
+        <text x="115" y="197" fill="var(--ink)">Left: x₂ = 1 · n = 4</text>
+        <text x="115" y="214" fill="var(--ink-mute)">0 zeros, 4 ones — pure</text>
+        <text x="115" y="233" fill="var(--accent-2)">H(Y | x₂=1) = 0.000</text>
+        <text x="115" y="250" fill="var(--ink-mute)" font-size="11">specific conditional entropy</text>
+      </g>
+      <rect x="235" y="178" width="180" height="80" rx="9" fill="color-mix(in srgb, var(--gold) 12%, var(--panel))" stroke="var(--gold)" stroke-width="1.8"/>
+      <g text-anchor="middle" font-size="12.5">
+        <text x="325" y="197" fill="var(--ink)">Right: x₂ = 0 · n = 4</text>
+        <text x="325" y="214" fill="var(--ink-mute)">3 zeros, 1 one</text>
+        <text x="325" y="233" fill="var(--gold)">H(Y | x₂=0) = 0.811</text>
+        <text x="325" y="250" fill="var(--ink-mute)" font-size="11">specific conditional entropy</text>
+      </g>
+      <!-- weighted average -->
+      <rect x="25" y="298" width="390" height="56" rx="9" fill="var(--bg-soft)" stroke="var(--accent-3)" stroke-width="1.8"/>
+      <g text-anchor="middle" font-size="12.5">
+        <text x="220" y="319" fill="var(--ink)">H(Y | x₂) = (4/8)(0.000) + (4/8)(0.811)</text>
+        <text x="220" y="340" fill="var(--accent-3)">= 0.406 bits &#160;&#160;— conditional entropy</text>
+      </g>
+      <text x="220" y="382" text-anchor="middle" font-size="11.5" fill="var(--ink-mute)">weights = fraction of the parent's examples reaching each child</text>
+
+      <!-- divider -->
+      <line x1="450" y1="20" x2="450" y2="400" stroke="var(--line)" stroke-width="1"/>
+
+      <!-- bar chart -->
+      <g stroke="var(--line)" stroke-width="1">
+        <line x1="500" y1="60" x2="800" y2="60" stroke-dasharray="3 4"/>
+        <line x1="500" y1="210" x2="800" y2="210" stroke-dasharray="3 4"/>
+        <line x1="500" y1="360" x2="800" y2="360"/>
+        <line x1="500" y1="40" x2="500" y2="360"/>
+      </g>
+      <g font-size="11.5" fill="var(--ink-mute)" text-anchor="end">
+        <text x="494" y="364">0</text>
+        <text x="494" y="214">0.5</text>
+        <text x="494" y="64">1.0</text>
+      </g>
+      <text x="472" y="200" font-size="11.5" fill="var(--ink-soft)" text-anchor="middle" transform="rotate(-90 472 200)">bits</text>
+      <rect x="520" y="73.7" width="64" height="286.3" rx="3" fill="color-mix(in srgb, var(--accent) 55%, transparent)" stroke="var(--accent)" stroke-width="1.5"/>
+      <rect x="620" y="238.3" width="64" height="121.7" rx="3" fill="color-mix(in srgb, var(--accent-3) 55%, transparent)" stroke="var(--accent-3)" stroke-width="1.5"/>
+      <g font-size="11.5" text-anchor="middle" fill="var(--ink-soft)">
+        <text x="552" y="378">H(Y)</text>
+        <text x="552" y="392">before</text>
+        <text x="652" y="378">H(Y | x₂)</text>
+        <text x="652" y="392">after</text>
+        <text x="552" y="66" fill="var(--accent)">0.954</text>
+        <text x="652" y="231" fill="var(--accent-3)">0.406</text>
+      </g>
+      <!-- gain bracket -->
+      <g stroke="var(--accent-2)" stroke-width="1.6" fill="none">
+        <path d="M700 73.7 L716 73.7 L716 238.3 L700 238.3"/>
+        <path d="M716 73.7 L716 238.3"/>
+      </g>
+      <g font-size="12.5" fill="var(--accent-2)">
+        <text x="722" y="150">I(Y; x₂)</text>
+        <text x="722" y="167">= 0.549</text>
+        <text x="722" y="184">bits</text>
+      </g>
+    </svg>
+    <div class="caption">What to notice: the two specific conditional entropies ($0.000$ and $0.811$) are <em>not</em> averaged naively — each is multiplied by the fraction of examples reaching that child. The gain, drawn as the bracket, is the height the bar dropped: $0.954 - 0.406 = 0.549$ bits. Note also that the right child's entropy ($0.811$) is <em>below</em> the parent's ($0.954$) here, but nothing forced that — see the trap below.</div>
+  </div>
+
+  <h2 id="mutual-information">Mutual information = information gain</h2>
+
+  <div class="box defn"><span class="label">Definition</span>
+    <p>The <strong>mutual information</strong> between the label $Y$ and the attribute $W$ is</p>
+    $$I(Y; W) \;=\; H(Y) - H(Y \mid W).$$
+    <p>In the notes' words: <em>"Amount of reduction in entropy (before vs. after splitting)."</em> In the decision-tree literature the same quantity is called the <strong>information gain</strong> of the split. Same number, two names.</p>
+    <p>Units: bits (with $\log_2$). Reading: "splitting on $W$ saves you $I(Y;W)$ yes/no questions, on average, when you later have to guess the label."</p>
+  </div>
+
+  <div class="box analogy"><span class="label">Analogy</span>
+    <p>You are playing 20 questions to guess a student's label. $H(Y)$ is what the game costs you cold. Then a friend whispers the value of attribute $W$ for free. $I(Y;W)$ is how many questions that whisper saved you, averaged over which whisper you get.</p>
+    <p><em>Where the analogy strains:</em> the saving is an average over whispers, and a particular whisper can make the game <em>harder</em> — see the trap below. It is only the average that can never hurt.</p>
+  </div>
+
+  <h3>Theorem: $I(Y;W) \ge 0$, i.e. $H(Y \mid W) \le H(Y)$</h3>
+
+  <div class="box proof"><span class="label">Proof (concavity of entropy / Jensen)</span>
+    <p><strong>Step 1 — the parent's distribution is a mixture of the children's.</strong> By the law of total probability, for every label $y$,</p>
+    $$P(Y = y) \;=\; \sum_{\omega} P(W=\omega)\, P(Y = y \mid W = \omega).$$
+    <p>Reading this as vectors over $y$: the parent label distribution $P(Y)$ is the <strong>convex combination</strong> of the child label distributions $P(Y \mid W=\omega)$, with weights $P(W=\omega)$ (which are non-negative and sum to $1$). Concretely: pooling the children back together <em>is</em> the parent.</p>
+    <p><strong>Step 2 — $H$ is concave as a function of the distribution.</strong> We showed $H'' \lt 0$ for the binary case; in general $H(p) = \sum_i p_i\log\frac1{p_i}$ is a sum of terms $-p_i \log p_i$, each concave in $p_i$ (second derivative $-1/(p_i \ln 2) \lt 0$), and a sum of concave functions is concave.</p>
+    <p><strong>Step 3 — apply Jensen's inequality to the concave function $H$.</strong> For a concave $f$, $f(\sum_j \lambda_j z_j) \ge \sum_j \lambda_j f(z_j)$. With $f = H$, $\lambda_\omega = P(W=\omega)$ and $z_\omega = P(Y \mid W=\omega)$:</p>
+    $$H(Y) = H\!\left(\sum_\omega P(W{=}\omega)\,P(Y\mid W{=}\omega)\right) \;\ge\; \sum_\omega P(W{=}\omega)\, H\big(P(Y \mid W{=}\omega)\big) \;=\; H(Y \mid W).$$
+    <p>The left side is $H(Y)$ by Step 1; the right side is exactly the definition of conditional entropy. Therefore $I(Y;W) = H(Y) - H(Y\mid W) \ge 0$. $\blacksquare$</p>
+    <p><strong>Equality condition.</strong> $H$ is <em>strictly</em> concave, so Jensen is tight only when all the $z_\omega$ with positive weight are identical: $P(Y \mid W = \omega) = P(Y)$ for every $\omega$. That is precisely the statement that <strong>$Y$ and $W$ are independent</strong>. So</p>
+    $$H(Y \mid W) = H(Y) \iff I(Y;W) = 0 \iff Y \perp W.$$
+  </div>
+
+  <div class="box intuition"><span class="label">Intuition</span>
+    <p>Why can't information hurt, on average? Because you are always free to ignore it. Any guessing strategy that doesn't look at $W$ is still available after you learn $W$, so the best strategy that <em>does</em> look at $W$ can only be at least as good. Averaged over which value of $W$ you see, uncertainty cannot go up.</p>
+    <p>In tree terms: splitting a node and then predicting the majority in each child is at least as accurate as predicting the majority in the parent, because "predict the parent's majority in both children" is one of the options available to you.</p>
+  </div>
+
+  <h3>The exam trap: a <em>specific</em> conditional entropy CAN exceed $H(Y)$</h3>
+
+  <div class="box warn"><span class="label">Common mistake</span>
+    <p>The theorem says $H(Y \mid W) \le H(Y)$ — the <strong>weighted average over children</strong> never exceeds the parent. It does <em>not</em> say $H(Y \mid W = \omega) \le H(Y)$ for each individual $\omega$. That statement is <strong>false</strong>, and it is examined constantly.</p>
+    <p>A particular branch can leave you <em>more</em> confused than you started. Learning "the patient's test came back inconclusive" genuinely increases your uncertainty about the diagnosis; learning "the test was positive" decreases it a lot. On average you win, but not in every branch.</p>
+  </div>
+
+  <div class="box example"><span class="label">Example — worked counterexample, every number verified</span>
+    <p>A node with $|S| = 10$ examples: $9$ labelled "0" and $1$ labelled "1". Attribute $W$ splits it as follows.</p>
+    <table class="tight center">
+      <thead><tr><th>Node</th><th>$n$</th><th>zeros</th><th>ones</th><th>$P(Y{=}1)$</th><th>entropy</th><th>weight</th></tr></thead>
+      <tbody>
+        <tr><td>parent $S$</td><td>10</td><td>9</td><td>1</td><td>0.1</td><td>$H(Y) = 0.469$</td><td>—</td></tr>
+        <tr><td>child $W{=}1$</td><td>2</td><td>1</td><td>1</td><td>0.5</td><td>$H(Y\mid W{=}1) = 1.000$</td><td>$2/10 = 0.2$</td></tr>
+        <tr><td>child $W{=}0$</td><td>8</td><td>8</td><td>0</td><td>0.0</td><td>$H(Y\mid W{=}0) = 0.000$</td><td>$8/10 = 0.8$</td></tr>
+      </tbody>
+    </table>
+    <p><strong>Parent.</strong> $H(Y) = -0.9\log_2 0.9 - 0.1\log_2 0.1 = 0.9(0.152003) + 0.1(3.321928) = 0.136803 + 0.332193 = \mathbf{0.468996}$.</p>
+    <p><strong>Child $W{=}1$.</strong> One of each label, so $P(Y{=}1 \mid W{=}1) = 1/2$ and $H(Y \mid W{=}1) = \mathbf{1.000}$ bit.</p>
+    <p class="center"><strong>$1.000 \;&gt;\; 0.469$ — the specific conditional entropy strictly exceeds the parent's entropy.</strong></p>
+    <p><strong>Child $W{=}0$.</strong> Pure, so $H(Y \mid W{=}0) = \mathbf{0.000}$.</p>
+    <p><strong>The average, however, obeys the theorem:</strong></p>
+    $$H(Y \mid W) = 0.2(1.000) + 0.8(0.000) = \mathbf{0.200} \;\le\; 0.469 = H(Y),$$
+    $$I(Y;W) = 0.468996 - 0.200000 = \mathbf{0.268996} \;&gt;\; 0. \quad\checkmark$$
+    <p>The branch $W{=}1$ made things worse ($0.469 \to 1.000$), but only $20\%$ of the examples go there, while $80\%$ go to a branch that became perfectly certain. The average wins comfortably.</p>
+  </div>
+
+  <h3>Symmetry: $I(Y;W) = I(W;Y)$</h3>
+
+  <div class="box proof"><span class="label">Proof, via the chain rule</span>
+    <p><strong>Chain rule for entropy:</strong> $H(Y, W) = H(W) + H(Y \mid W)$. Derivation, using $P(y,w) = P(w)P(y\mid w)$:</p>
+    $$H(Y,W) = -\sum_{y,w} P(y,w)\log P(y,w) = -\sum_{y,w} P(w)P(y\mid w)\big[\log P(w) + \log P(y\mid w)\big]$$
+    $$= -\sum_{w} P(w)\log P(w)\underbrace{\sum_y P(y\mid w)}_{=1} \;-\; \sum_w P(w)\underbrace{\Big[\sum_y P(y\mid w)\log P(y \mid w)\Big]}_{=\,-H(Y\mid W=w)} \;=\; H(W) + H(Y\mid W).$$
+    <p>Now substitute into the definition of mutual information:</p>
+    $$I(Y;W) = H(Y) - H(Y\mid W) = H(Y) - \big[H(Y,W) - H(W)\big] = H(Y) + H(W) - H(Y,W).$$
+    <p>That expression is <strong>visibly symmetric</strong> in $Y$ and $W$ — swapping the two names leaves it unchanged. Hence $I(Y;W) = I(W;Y)$. $\blacksquare$</p>
+    <p><span class="pill">beyond syllabus</span> The equivalent single-sum form makes symmetry even more obvious:
+    $\displaystyle I(Y;W) = \sum_{y,w} P(y,w)\log\frac{P(y,w)}{P(y)P(w)}$, which is the KL divergence between the joint distribution and the product of the marginals — a direct measure of "how far from independent are they".</p>
+  </div>
+
+  <div class="box intuition"><span class="label">Intuition</span>
+    <p>Symmetry is a genuinely surprising fact. "How much does knowing the attribute tell me about the label" equals "how much does knowing the label tell me about the attribute". Information is a <em>shared</em> quantity, not a directional flow — which is why it is called <em>mutual</em> information.</p>
+  </div>
+
+  <h2 id="best-attribute">BestAttribute, version 2: maximise mutual information</h2>
+
+  <p>We can now fill in the missing subroutine from <a href="decision-trees.html">Chapter 6</a>'s <code>DT</code> algorithm:</p>
+
+<pre><code>function BestAttribute(S, A):
+    H_Y &lt;- entropy of the labels in S                  # one number, fixed
+    best &lt;- none; bestI &lt;- -infinity
+    for each attribute b in A:
+        S1 &lt;- {(x,y) in S : x_b = 1}
+        S0 &lt;- {(x,y) in S : x_b = 0}
+        H_cond &lt;- (|S1|/|S|) * entropy(labels of S1)
+                + (|S0|/|S|) * entropy(labels of S0)
+        I &lt;- H_Y - H_cond                              # information gain
+        if I &gt; bestI: bestI &lt;- I; best &lt;- b
+    return best</code></pre>
+
+  <p>The notes state the rule as: <em>"BestAttribute chooses the attribute that maximizes mutual information (equivalently, minimizes conditional entropy)."</em> Both forms:</p>
+
+  $$b^\star \;=\; \argmax_{b \in A} \; I(Y; x_b) \;=\; \argmax_{b \in A} \big[H(Y) - H(Y \mid x_b)\big] \;=\; \argmin_{b \in A} \; H(Y \mid x_b).$$
+
+  <div class="box proof"><span class="label">Why the two are equivalent</span>
+    <p>$H(Y)$ is computed from the labels in $S$ alone. It does not mention $b$ at all — it is the <strong>same constant</strong> for every candidate attribute at this node. Subtracting a constant from a collection of numbers reverses nothing and shifts everything equally, so</p>
+    $$\argmax_b \big[\underbrace{H(Y)}_{\text{const}} - H(Y\mid x_b)\big] = \argmax_b \big[-H(Y\mid x_b)\big] = \argmin_b H(Y\mid x_b). \quad\blacksquare$$
+    <p><strong>Practical consequence:</strong> at a given node you may skip computing $H(Y)$ entirely and just rank the conditional entropies, smallest wins. Compute $H(Y)$ only when you want to report the gain (or when comparing across nodes, where $H(Y)$ <em>does</em> change).</p>
+  </div>
+
+  <div class="box warn"><span class="label">Common mistake</span>
+    <p>$H(Y)$ is constant <em>within one node</em>, not across the tree. Each recursive call recomputes it from that node's examples. Gains at different nodes are not directly comparable — a gain of $0.3$ bits in a node holding $4$ examples is worth far less than $0.3$ bits in a node holding $400$.</p>
+  </div>
+
+  <h2 id="worked-split">A fully worked split selection</h2>
+
+  <p>This is the poll dataset from <a href="decision-trees.html">Chapter 6</a> — the one the professor left with "Answer: in poll." We solved it there under the training-error criterion. Now we solve it properly.</p>
+
+  <table class="tight center">
+    <thead><tr><th>$i$</th><th>$y$</th><th>$x_1$</th><th>$x_2$</th><th>$x_3$</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>0</td><td>1</td><td>0</td><td>0</td></tr>
+      <tr><td>2</td><td>0</td><td>1</td><td>0</td><td>1</td></tr>
+      <tr><td>3</td><td>0</td><td>1</td><td>0</td><td>0</td></tr>
+      <tr><td>4</td><td>1</td><td>0</td><td>0</td><td>1</td></tr>
+      <tr><td>5</td><td>1</td><td>1</td><td>1</td><td>0</td></tr>
+      <tr><td>6</td><td>1</td><td>1</td><td>1</td><td>1</td></tr>
+      <tr><td>7</td><td>1</td><td>1</td><td>1</td><td>0</td></tr>
+      <tr><td>8</td><td>1</td><td>1</td><td>1</td><td>1</td></tr>
+    </tbody>
+  </table>
+
+  <p class="tiny muted">Reading the table: $i$ indexes the training example; $y \in \{0,1\}$ is its label; $x_1, x_2, x_3 \in \{0,1\}$ are its three binary attributes. Superscripts like $x^{(i)}$ would index the example — here we use a row number instead, to keep the arithmetic readable.</p>
+
+  <h3>Step 0 — the root entropy $H(Y)$</h3>
+
+  <p>Labels down the $y$ column: $0,0,0,1,1,1,1,1$. That is $3$ zeros and $5$ ones out of $8$:</p>
+
+  $$P(Y{=}0) = \tfrac38 = 0.375, \qquad P(Y{=}1) = \tfrac58 = 0.625.$$
+
+  $$\log_2\tfrac38 = \log_2 3 - \log_2 8 = 1.584963 - 3 = -1.415037,$$
+  $$\log_2\tfrac58 = \log_2 5 - \log_2 8 = 2.321928 - 3 = -0.678072,$$
+  $$H(Y) = 0.375(1.415037) + 0.625(0.678072) = 0.530639 + 0.423795 = \mathbf{0.954434}\text{ bits}.$$
+
+  <p>Sanity: a $3$-to-$5$ node should be close to, but below, the maximum of $1$ bit. ✓ (It is the $3/8 : 5/8$ row of the lookup table below.)</p>
+
+  <h3>Step 1 — attribute $x_1$</h3>
+
+  <p>$x_1 = 1$ for rows $1,2,3,5,6,7,8$ and $x_1 = 0$ only for row $4$.</p>
+
+  <table class="tight center">
+    <thead><tr><th>branch</th><th>rows</th><th>labels</th><th>$n$</th><th>0s</th><th>1s</th><th>weight</th></tr></thead>
+    <tbody>
+      <tr><td>$x_1 = 1$</td><td>1,2,3,5,6,7,8</td><td>$0,0,0,1,1,1,1$</td><td>7</td><td>3</td><td>4</td><td>$7/8$</td></tr>
+      <tr><td>$x_1 = 0$</td><td>4</td><td>$1$</td><td>1</td><td>0</td><td>1</td><td>$1/8$</td></tr>
+    </tbody>
+  </table>
+
+  $$H(Y \mid x_1{=}1) = \tfrac37\log_2\tfrac73 + \tfrac47\log_2\tfrac74.$$
+  $$\log_2\tfrac73 = 2.807355 - 1.584963 = 1.222392, \qquad \log_2\tfrac74 = 2.807355 - 2 = 0.807355,$$
+  $$H(Y \mid x_1{=}1) = 0.428571(1.222392) + 0.571429(0.807355) = 0.523882 + 0.461346 = \mathbf{0.985228}.$$
+  $$H(Y \mid x_1{=}0) = \mathbf{0.000000} \quad\text{(pure: a single example, label 1)}.$$
+  $$H(Y \mid x_1) = \tfrac78(0.985228) + \tfrac18(0.000000) = 0.862075 + 0 = \mathbf{0.862075}.$$
+  $$I(Y; x_1) = 0.954434 - 0.862075 = \mathbf{0.092359}\text{ bits}.$$
+
+  <p>Tiny gain. The split peeled off one example and left the other seven almost as confused as the parent — in fact $0.985 \gt 0.954$, another instance of a specific conditional entropy exceeding the parent's.</p>
+
+  <h3>Step 2 — attribute $x_2$</h3>
+
+  <p>$x_2 = 1$ for rows $5,6,7,8$; $x_2 = 0$ for rows $1,2,3,4$.</p>
+
+  <table class="tight center">
+    <thead><tr><th>branch</th><th>rows</th><th>labels</th><th>$n$</th><th>0s</th><th>1s</th><th>weight</th></tr></thead>
+    <tbody>
+      <tr><td>$x_2 = 1$</td><td>5,6,7,8</td><td>$1,1,1,1$</td><td>4</td><td>0</td><td>4</td><td>$4/8$</td></tr>
+      <tr><td>$x_2 = 0$</td><td>1,2,3,4</td><td>$0,0,0,1$</td><td>4</td><td>3</td><td>1</td><td>$4/8$</td></tr>
+    </tbody>
+  </table>
+
+  $$H(Y \mid x_2{=}1) = \mathbf{0.000000} \quad\text{(pure — all four labels are 1)}.$$
+  $$H(Y \mid x_2{=}0) = \tfrac34\log_2\tfrac43 + \tfrac14\log_2 4 = 0.75(0.415037) + 0.25(2) = 0.311278 + 0.5 = \mathbf{0.811278}.$$
+  $$H(Y \mid x_2) = \tfrac12(0.000000) + \tfrac12(0.811278) = \mathbf{0.405639}.$$
+  $$I(Y; x_2) = 0.954434 - 0.405639 = \mathbf{0.548795}\text{ bits}.$$
+
+  <p class="tiny muted">($\log_2\tfrac43 = 2 - \log_2 3 = 2 - 1.584963 = 0.415037$.) This is the split drawn in Figure 2.</p>
+
+  <h3>Step 3 — attribute $x_3$</h3>
+
+  <p>$x_3 = 1$ for rows $2,4,6,8$; $x_3 = 0$ for rows $1,3,5,7$.</p>
+
+  <table class="tight center">
+    <thead><tr><th>branch</th><th>rows</th><th>labels</th><th>$n$</th><th>0s</th><th>1s</th><th>weight</th></tr></thead>
+    <tbody>
+      <tr><td>$x_3 = 1$</td><td>2,4,6,8</td><td>$0,1,1,1$</td><td>4</td><td>1</td><td>3</td><td>$4/8$</td></tr>
+      <tr><td>$x_3 = 0$</td><td>1,3,5,7</td><td>$0,0,1,1$</td><td>4</td><td>2</td><td>2</td><td>$4/8$</td></tr>
+    </tbody>
+  </table>
+
+  $$H(Y \mid x_3{=}1) = \tfrac14\log_2 4 + \tfrac34\log_2\tfrac43 = 0.5 + 0.311278 = \mathbf{0.811278}.$$
+  $$H(Y \mid x_3{=}0) = \tfrac12\log_2 2 + \tfrac12\log_2 2 = \mathbf{1.000000} \quad\text{(perfectly balanced — worst possible)}.$$
+  $$H(Y \mid x_3) = \tfrac12(0.811278) + \tfrac12(1.000000) = 0.405639 + 0.5 = \mathbf{0.905639}.$$
+  $$I(Y; x_3) = 0.954434 - 0.905639 = \mathbf{0.048795}\text{ bits}.$$
+
+  <h3>Step 4 — the scoreboard and the winner</h3>
+
+  <div class="scroll-x">
+  <table class="center">
+    <thead><tr>
+      <th>attribute</th><th>$H(Y\mid \cdot{=}1)$</th><th>$H(Y\mid \cdot{=}0)$</th><th>weights</th>
+      <th>$H(Y\mid\cdot)$</th><th>$I(Y;\cdot)$</th><th>training error</th>
+    </tr></thead>
+    <tbody>
+      <tr><td>— (no split)</td><td colspan="3">$H(Y) = 0.954434$</td><td>—</td><td>—</td><td>$3/8 = 0.375$</td></tr>
+      <tr><td>$x_1$</td><td>$0.985228$</td><td>$0.000000$</td><td>$\tfrac78,\ \tfrac18$</td><td>$0.862075$</td><td>$0.092359$</td><td>$3/8 = 0.375$</td></tr>
+      <tr><td>$\mathbf{x_2}$</td><td>$0.000000$</td><td>$0.811278$</td><td>$\tfrac48,\ \tfrac48$</td><td>$\mathbf{0.405639}$</td><td>$\mathbf{0.548795}$</td><td>$1/8 = 0.125$</td></tr>
+      <tr><td>$x_3$</td><td>$0.811278$</td><td>$1.000000$</td><td>$\tfrac48,\ \tfrac48$</td><td>$0.905639$</td><td>$0.048795$</td><td>$3/8 = 0.375$</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="box key"><span class="label">Key idea — the answer</span>
+    $$b^\star = \argmax_b I(Y;x_b) = x_2, \qquad I(Y;x_2) = 0.548795 \text{ bits}.$$
+    <p>Equivalently $\argmin_b H(Y\mid x_b) = x_2$ with $0.405639$ — the same winner, as the equivalence theorem guarantees. Notice the two columns rank the attributes identically ($x_2 \succ x_1 \succ x_3$ both ways), because they differ only by the constant $0.954434$.</p>
+    <p>So the root of the tree asks <strong>"Is $x_2 = 1$?"</strong> — which is exactly the tree the notes draw ("Is $x_2 = 0$?", the same question with the branches swapped).</p>
+  </div>
+
+  <h3>Step 5 — contrast with the training-error criterion</h3>
+
+  <p>Under training error (Chapter 6's criterion), every split's score is <em>mistakes made by majority vote in each child</em>:</p>
+
+  <ul>
+    <li><strong>$x_1$:</strong> the $x_1{=}1$ child has $3$ zeros and $4$ ones → vote $1$ → $3$ mistakes; the $x_1{=}0$ child is pure → $0$. <strong>Total $3/8$.</strong></li>
+    <li><strong>$x_2$:</strong> $x_2{=}1$ is pure → $0$; $x_2{=}0$ has $3$ zeros, $1$ one → vote $0$ → $1$ mistake. <strong>Total $1/8$.</strong></li>
+    <li><strong>$x_3$:</strong> $x_3{=}1$ has $1$ zero, $3$ ones → vote $1$ → $1$ mistake; $x_3{=}0$ is a $2$–$2$ tie → vote either → $2$ mistakes. <strong>Total $3/8$.</strong></li>
+    <li><strong>No split at all:</strong> vote $1$ → $3$ mistakes. <strong>$3/8$.</strong></li>
+  </ul>
+
+  <div class="box warn"><span class="label">Common mistake — and the reason the course switches criteria</span>
+    <p>Training error does get the winner right here ($x_2$, $1/8$). But look at what it says about the other two: <strong>$x_1$, $x_3$ and doing nothing at all all score $3/8$.</strong> A three-way dead tie, including a tie with "don't split".</p>
+    <p>Mutual information separates them cleanly: $I(Y;x_1) = 0.0924$ versus $I(Y;x_3) = 0.0488$ — $x_1$ is nearly twice as informative as $x_3$, and <em>both</em> are strictly better than not splitting ($I = 0$ would mean useless). Error rate cannot express any of that, because in each case the majority label simply did not flip.</p>
+    <p>On a dataset where the <em>best</em> attribute happens to be one of the tied ones, error rate picks arbitrarily and the greedy algorithm goes down the wrong path. That is the failure Chapter 6 demonstrated, and this is the repair.</p>
+  </div>
+
+  <div class="quiz" data-answer="1">
+    <div class="q">At the root above, suppose someone proposes a fourth attribute $x_4$ that happens to equal $y$ for every training example. What are $H(Y \mid x_4)$ and $I(Y;x_4)$?</div>
+    <button class="opt">$H(Y \mid x_4) = 0.954434$ and $I = 0$ — the attribute adds nothing new</button>
+    <button class="opt">$H(Y \mid x_4) = 0$ and $I = 0.954434$ — the maximum possible gain at this node</button>
+    <button class="opt">$H(Y \mid x_4) = 1$ and $I = -0.045566$ — gain can be negative</button>
+    <button class="opt">Undefined, because you cannot split on the label</button>
+    <div class="why"><strong>Why:</strong> both children would be perfectly pure ($x_4{=}1$ holds only label-1 examples, $x_4{=}0$ only label-0 ones), so each specific conditional entropy is $0$ and so is their weighted average. Then $I = H(Y) - 0 = H(Y) = 0.954434$ — and that is the ceiling: since $H(Y\mid W) \ge 0$ always, gain can never exceed $H(Y)$. Option C is impossible because we proved $I \ge 0$. Option A describes the <em>opposite</em> extreme, independence.</div>
+  </div>
+
+  <h2 id="calculator">Interactive: the entropy calculator</h2>
+
+  <p>Move the sliders to set the class counts in the two children. The parent is their union (that is forced — pooling the children back together <em>is</em> the parent), so the parent's counts update automatically. Watch $I(Y;W)$ and try to make it negative. You cannot.</p>
+
+  <div class="viz">
+    <div class="viz-title">Figure 3 · Live entropy, conditional entropy and information gain</div>
+    <svg id="icSvg" viewBox="0 0 680 250" role="img" aria-label="Bar chart showing parent entropy, the two specific conditional entropies, the weighted conditional entropy and the information gain, all updating live from the slider values.">
+      <g stroke="var(--line)" stroke-width="1">
+        <line x1="190" y1="12" x2="190" y2="208"/>
+        <line x1="390" y1="12" x2="390" y2="208" stroke-dasharray="3 4"/>
+        <line x1="590" y1="12" x2="590" y2="208" stroke-dasharray="3 4"/>
+      </g>
+      <g font-size="11" fill="var(--ink-mute)" text-anchor="middle">
+        <text x="190" y="224">0</text>
+        <text x="390" y="224">0.5</text>
+        <text x="590" y="224">1.0 bit</text>
+      </g>
+      <rect id="icBarP"  x="190" y="20"  width="0" height="24" rx="3" fill="color-mix(in srgb, var(--accent) 55%, transparent)"   stroke="var(--accent)"   stroke-width="1.4"/>
+      <rect id="icBarL"  x="190" y="58"  width="0" height="20" rx="3" fill="color-mix(in srgb, var(--accent-2) 50%, transparent)" stroke="var(--accent-2)" stroke-width="1.4"/>
+      <rect id="icBarR"  x="190" y="86"  width="0" height="20" rx="3" fill="color-mix(in srgb, var(--gold) 50%, transparent)"     stroke="var(--gold)"     stroke-width="1.4"/>
+      <rect id="icBarC"  x="190" y="124" width="0" height="24" rx="3" fill="color-mix(in srgb, var(--accent-3) 55%, transparent)" stroke="var(--accent-3)" stroke-width="1.4"/>
+      <rect id="icBarI"  x="190" y="166" width="0" height="20" rx="3" fill="color-mix(in srgb, var(--rose) 50%, transparent)"     stroke="var(--rose)"     stroke-width="1.4"/>
+      <g font-size="12.5" text-anchor="end" fill="var(--ink-soft)">
+        <text x="182" y="36">H(Y) parent</text>
+        <text x="182" y="72">H(Y | W=1) left</text>
+        <text x="182" y="100">H(Y | W=0) right</text>
+        <text x="182" y="140">H(Y | W) weighted</text>
+        <text x="182" y="180">I(Y;W) gain</text>
+      </g>
+      <g font-size="12.5" text-anchor="start" font-weight="600">
+        <text id="icValP" x="600" y="36"  fill="var(--accent)">—</text>
+        <text id="icValL" x="600" y="72"  fill="var(--accent-2)">—</text>
+        <text id="icValR" x="600" y="100" fill="var(--gold)">—</text>
+        <text id="icValC" x="600" y="140" fill="var(--accent-3)">—</text>
+        <text id="icValI" x="600" y="180" fill="var(--rose)">—</text>
+      </g>
+      <g font-size="11" text-anchor="start" fill="var(--ink-mute)">
+        <text id="icCntP" x="196" y="14">—</text>
+        <text id="icCntL" x="196" y="54">—</text>
+        <text id="icCntR" x="196" y="120">—</text>
+      </g>
+      <text id="icNote" x="190" y="244" font-size="11.5" fill="var(--ink-mute)">—</text>
+    </svg>
+    <div class="controls">
+      <label>Left child · label 0 <input type="range" id="icL0" min="0" max="12" step="1" value="0" data-out="icL0v" data-fmt="int"><span class="val" id="icL0v"></span></label>
+      <label>Left child · label 1 <input type="range" id="icL1" min="0" max="12" step="1" value="4" data-out="icL1v" data-fmt="int"><span class="val" id="icL1v"></span></label>
+      <label>Right child · label 0 <input type="range" id="icR0" min="0" max="12" step="1" value="3" data-out="icR0v" data-fmt="int"><span class="val" id="icR0v"></span></label>
+      <label>Right child · label 1 <input type="range" id="icR1" min="0" max="12" step="1" value="1" data-out="icR1v" data-fmt="int"><span class="val" id="icR1v"></span></label>
+    </div>
+    <div class="controls">
+      <button class="btn primary" id="icP1">The $x_2$ split</button>
+      <button class="btn" id="icP2">A useless split</button>
+      <button class="btn" id="icP3">Isolate one point</button>
+      <button class="btn" id="icP4">A perfect split</button>
+    </div>
+    <div class="caption" id="icCap">Three experiments worth running. <strong>(1) "A useless split":</strong> both children have the same label proportions as the parent — the gain is exactly $0$, which is the independence case of the equality condition. <strong>(2) "Isolate one point":</strong> one child is pure but holds a single example out of 25 — the gain is a mere $0.0388$ bits out of a possible $0.9988$, because the weight $P(W{=}\omega)$ crushes it. <strong>(3)</strong> Drag any slider and watch: the red gain bar never goes below zero, no matter what you do. That is the theorem, live.</div>
+  </div>
+
+  <h2 id="id3">ID3, C4.5, and the bias toward many-valued attributes</h2>
+
+  <p><span class="pill">beyond syllabus</span> The algorithm you just built — recursive splitting with <code>BestAttribute = argmax</code> information gain — is <strong>ID3</strong> (Quinlan, 1986). Its successor <strong>C4.5</strong> adds real-valued thresholds, missing-value handling, pruning, and one fix that matters here.</p>
+
+  <p><strong>The bug.</strong> Information gain systematically prefers attributes with many possible values. Take our 8-row dataset and add an attribute $x_{\text{id}} \in \{1,\dots,8\}$ that is just the row number. Splitting on it gives eight children of one example each, every one pure, so</p>
+
+  $$H(Y \mid x_{\text{id}}) = \sum_{\omega=1}^{8}\tfrac18 \cdot 0 = 0, \qquad I(Y; x_{\text{id}}) = 0.954434 - 0 = 0.954434,$$
+
+  <p>the maximum possible gain — beating $x_2$'s $0.548795$. Yet the resulting "tree" is a lookup table that memorises the training set and generalises to nothing.</p>
+
+  <p><strong>The fix: gain ratio.</strong> Penalise by the entropy of the <em>attribute itself</em> (called the <em>split information</em>):</p>
+
+  $$\text{GainRatio}(Y;W) = \frac{I(Y;W)}{H(W)}, \qquad H(W) = \sum_\omega P(W{=}\omega)\log\frac{1}{P(W{=}\omega)}.$$
+
+  <ul>
+    <li>$x_{\text{id}}$: $H(x_{\text{id}}) = \log_2 8 = 3$ bits, so GainRatio $= 0.954434 / 3 = \mathbf{0.318145}$.</li>
+    <li>$x_2$: it splits $4$–$4$, so $H(x_2) = 1$ bit, and GainRatio $= 0.548795 / 1 = \mathbf{0.548795}$.</li>
+  </ul>
+
+  <p>$x_2$ now wins comfortably. The intuition: an attribute that shatters the data into many tiny pieces has to <em>pay</em> for the shattering, and the price is its own entropy.</p>
+
+  <p class="tiny muted">CART instead uses <strong>Gini impurity</strong> $\sum_y p_y(1-p_y)$, which the notes mention and explicitly do not discuss. It behaves almost identically to entropy — both are concave, both are $0$ exactly at purity, both are maximised at uniform — and the two criteria disagree on roughly $2\%$ of splits in practice. Gini is slightly cheaper because it needs no logarithm.</p>
+
+  <h2 id="lookup">The hand-computation lookup table</h2>
+
+  <p>Exams are computed by hand. Every entropy you will ever need on a small dataset is built from a handful of logarithms and a handful of two-class entropies. Learn these and you will never stall.</p>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="kicker">Logarithms base 2</div>
+      <table class="tight center">
+        <thead><tr><th>$n$</th><th>$\log_2 n$</th></tr></thead>
+        <tbody>
+          <tr><td>2</td><td>1.000000</td></tr>
+          <tr><td>3</td><td>1.584963</td></tr>
+          <tr><td>4</td><td>2.000000</td></tr>
+          <tr><td>5</td><td>2.321928</td></tr>
+          <tr><td>6</td><td>2.584963</td></tr>
+          <tr><td>7</td><td>2.807355</td></tr>
+          <tr><td>8</td><td>3.000000</td></tr>
+          <tr><td>9</td><td>3.169925</td></tr>
+          <tr><td>10</td><td>3.321928</td></tr>
+        </tbody>
+      </table>
+      <p class="tiny muted">Everything else follows from $\log_2\frac{a}{b} = \log_2 a - \log_2 b$ and $\log_2(2n) = 1 + \log_2 n$. E.g. $\log_2 12 = \log_2 4 + \log_2 3 = 3.584963$.</p>
+    </div>
+    <div class="card">
+      <div class="kicker">Two-class entropies $H(p)$</div>
+      <table class="tight center">
+        <thead><tr><th>split</th><th>$p$</th><th>$H$ (bits)</th></tr></thead>
+        <tbody>
+          <tr><td>$1/2 : 1/2$</td><td>0.500</td><td><strong>1.000</strong></td></tr>
+          <tr><td>$2/5 : 3/5$</td><td>0.400</td><td>0.971</td></tr>
+          <tr><td>$3/8 : 5/8$</td><td>0.375</td><td>0.954</td></tr>
+          <tr><td>$1/3 : 2/3$</td><td>0.333</td><td>0.918</td></tr>
+          <tr><td>$1/4 : 3/4$</td><td>0.250</td><td>0.811</td></tr>
+          <tr><td>$1/5 : 4/5$</td><td>0.200</td><td>0.722</td></tr>
+          <tr><td>$1/8 : 7/8$</td><td>0.125</td><td>0.544</td></tr>
+          <tr><td>$0 : 1$</td><td>0.000</td><td><strong>0.000</strong></td></tr>
+        </tbody>
+      </table>
+      <p class="tiny muted">Symmetry gives you the mirror rows for free: $H(0.6)=H(0.4)=0.971$, $H(0.625)=H(0.375)=0.954$, $H(0.75)=H(0.25)=0.811$, $H(0.875)=H(0.125)=0.544$.</p>
+    </div>
+  </div>
+
+  <p>Three more that come up often, derived from the table: $H(3/7) = 0.985$ (the $x_1$ branch above), $H(1/10) = 0.469$ (the counterexample above), $H(1/16) = 0.337$.</p>
+
+  <div class="box intuition"><span class="label">Intuition — the shape of the table</span>
+    <p>Read the right-hand column downward and notice how <strong>slowly</strong> entropy falls at first: going from a $50/50$ node to a $40/60$ node buys $0.029$ bits; going from $40/60$ to $25/75$ buys $0.160$; going from $12.5/87.5$ to pure buys $0.544$. Entropy rewards <em>finishing the job</em> far more than <em>starting it</em> — which is exactly the behaviour you want from a criterion that is trying to build small trees.</p>
+  </div>
+
+  <h2 id="problems">Guided problems</h2>
+
+  <div class="guided">
+    <div class="g-head"><span class="tag">Guided problem</span>Run <code>BestAttribute</code> from scratch on a new dataset</div>
+    <div class="g-body">
+      <p>Should you go for a run? $y = 1$ means "go". Three binary attributes: $x_1$ = it is <em>raining</em>, $x_2$ = it is <em>cold</em>, $x_3$ = you are <em>busy</em>.</p>
+      <table class="tight center">
+        <thead><tr><th>$i$</th><th>$y$</th><th>$x_1$ rain</th><th>$x_2$ cold</th><th>$x_3$ busy</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>1</td><td>0</td><td>0</td><td>0</td></tr>
+          <tr><td>2</td><td>1</td><td>0</td><td>0</td><td>1</td></tr>
+          <tr><td>3</td><td>0</td><td>1</td><td>0</td><td>0</td></tr>
+          <tr><td>4</td><td>0</td><td>1</td><td>1</td><td>1</td></tr>
+          <tr><td>5</td><td>1</td><td>0</td><td>1</td><td>0</td></tr>
+          <tr><td>6</td><td>0</td><td>1</td><td>0</td><td>1</td></tr>
+          <tr><td>7</td><td>1</td><td>0</td><td>1</td><td>1</td></tr>
+          <tr><td>8</td><td>0</td><td>0</td><td>1</td><td>1</td></tr>
+        </tbody>
+      </table>
+      <p>Compute $H(Y)$, then for each attribute both specific conditional entropies, the conditional entropy, and the mutual information. Declare the winner. Then compute each attribute's training error and compare what the two criteria tell you. Work it out before opening the steps.</p>
+    </div>
+    <details class="step"><summary>Step 1 — the root entropy $H(Y)$</summary>
+      <div>
+        <p>Labels: $1,1,0,0,1,0,1,0$ — four ones and four zeros out of eight.</p>
+        $$P(Y{=}1) = P(Y{=}0) = \tfrac12 \;\Longrightarrow\; H(Y) = \tfrac12\log_2 2 + \tfrac12 \log_2 2 = \mathbf{1.000000}\text{ bit}.$$
+        <p>A perfectly balanced root — maximum uncertainty for two classes (Property 3 with $k=2$). Convenient: every conditional entropy we compute is <em>directly</em> the gain subtracted from $1$.</p>
+      </div></details>
+    <details class="step"><summary>Step 2 — attribute $x_1$ (raining)</summary>
+      <div>
+        <p>$x_1{=}1$: rows $3, 4, 6$ → labels $0,0,0$. $n=3$, pure. &nbsp; $x_1{=}0$: rows $1,2,5,7,8$ → labels $1,1,1,1,0$. $n=5$, one zero and four ones.</p>
+        $$H(Y\mid x_1{=}1) = \mathbf{0.000000}.$$
+        $$H(Y\mid x_1{=}0) = \tfrac15\log_2 5 + \tfrac45\log_2\tfrac54 = 0.2(2.321928) + 0.8(0.321928) = 0.464386 + 0.257542 = \mathbf{0.721928}.$$
+        <p>($\log_2\tfrac54 = 2.321928 - 2 = 0.321928$; and this is the $1/5 : 4/5$ row of the lookup table ✓.)</p>
+        $$H(Y\mid x_1) = \tfrac38(0.000000) + \tfrac58(0.721928) = 0 + 0.451205 = \mathbf{0.451205}.$$
+        $$I(Y;x_1) = 1.000000 - 0.451205 = \mathbf{0.548795}\text{ bits}.$$
+      </div></details>
+    <details class="step"><summary>Step 3 — attribute $x_2$ (cold)</summary>
+      <div>
+        <p>$x_2{=}1$: rows $4,5,7,8$ → labels $0,1,1,0$. $n=4$, two of each. &nbsp; $x_2{=}0$: rows $1,2,3,6$ → labels $1,1,0,0$. $n=4$, two of each.</p>
+        $$H(Y\mid x_2{=}1) = \mathbf{1.000000}, \qquad H(Y\mid x_2{=}0) = \mathbf{1.000000}.$$
+        $$H(Y\mid x_2) = \tfrac12(1) + \tfrac12(1) = \mathbf{1.000000}.$$
+        $$I(Y;x_2) = 1.000000 - 1.000000 = \mathbf{0.000000}\text{ bits}.$$
+        <p>Exactly zero — and by the equality condition of the theorem that means <strong>$Y$ and $x_2$ are statistically independent in this dataset</strong>. Check it directly: both children have label distribution $(\tfrac12,\tfrac12)$, identical to the parent's. Knowing whether it is cold tells you literally nothing about whether you go running.</p>
+      </div></details>
+    <details class="step"><summary>Step 4 — attribute $x_3$ (busy)</summary>
+      <div>
+        <p>$x_3{=}1$: rows $2,4,6,7,8$ → labels $1,0,0,1,0$. $n=5$, three zeros and two ones. &nbsp; $x_3{=}0$: rows $1,3,5$ → labels $1,0,1$. $n=3$, one zero and two ones.</p>
+        $$H(Y\mid x_3{=}1) = \tfrac25\log_2\tfrac52 + \tfrac35\log_2\tfrac53 = 0.4(1.321928) + 0.6(0.736966) = 0.528771 + 0.442180 = \mathbf{0.970951}.$$
+        $$H(Y\mid x_3{=}0) = \tfrac13\log_2 3 + \tfrac23\log_2\tfrac32 = 0.333333(1.584963) + 0.666667(0.584963) = 0.528321 + 0.389975 = \mathbf{0.918296}.$$
+        $$H(Y\mid x_3) = \tfrac58(0.970951) + \tfrac38(0.918296) = 0.606844 + 0.344361 = \mathbf{0.951205}.$$
+        $$I(Y;x_3) = 1.000000 - 0.951205 = \mathbf{0.048795}\text{ bits}.$$
+        <p>(Both child entropies are lookup-table rows: $2/5:3/5 = 0.971$ and $1/3:2/3 = 0.918$ ✓.)</p>
+      </div></details>
+    <details class="step"><summary>Step 5 — the scoreboard, and the training-error comparison</summary>
+      <div>
+        <table class="tight center">
+          <thead><tr><th>attribute</th><th>$H(Y\mid\cdot)$</th><th>$I(Y;\cdot)$</th><th>training error</th></tr></thead>
+          <tbody>
+            <tr><td>— (no split)</td><td>$1.000000$</td><td>—</td><td>$4/8 = 0.500$</td></tr>
+            <tr><td>$\mathbf{x_1}$ rain</td><td>$\mathbf{0.451205}$</td><td>$\mathbf{0.548795}$</td><td>$1/8 = 0.125$</td></tr>
+            <tr><td>$x_2$ cold</td><td>$1.000000$</td><td>$0.000000$</td><td>$4/8 = 0.500$</td></tr>
+            <tr><td>$x_3$ busy</td><td>$0.951205$</td><td>$0.048795$</td><td>$3/8 = 0.375$</td></tr>
+          </tbody>
+        </table>
+        <p>Training errors, for the record: $x_1$ — pure child $0$ mistakes, the other child votes $1$ and misses row 8 → $1/8$. $x_2$ — both children are $2$–$2$ ties → $2+2 = 4/8$, no better than not splitting. $x_3$ — the $x_3{=}1$ child votes $0$ and misses rows 2 and 7 ($2$), the $x_3{=}0$ child votes $1$ and misses row 3 ($1$) → $3/8$.</p>
+      </div></details>
+    <details class="step"><summary>Answer &amp; the takeaway</summary>
+      <div>
+        <p><strong>$b^\star = x_1$ (raining)</strong>, with $I(Y;x_1) = 0.548795$ bits, $H(Y\mid x_1) = 0.451205$ bits. Both criteria agree on the winner here.</p>
+        <p>But look at $x_2$: mutual information reports exactly $0.000000$ — a precise, unambiguous statement that this attribute carries no information about the label whatsoever. Training error reports $4/8$ for $x_2$, which is the same score it gives <em>no split at all</em>: the right verdict, but arrived at by coincidence, since a $2$&ndash;$2$ tie in each child produces four mistakes for reasons that have nothing to do with independence. And when comparing $x_3$ ($3/8$) with $x_2$ ($4/8$), error rate tells you $x_3$ is better but gives you no sense of <em>by how much</em>; mutual information says $0.048795$ versus $0.000000$ &mdash; better, but barely worth having.</p>
+        <p>The real payoff: after splitting on $x_1$, the $x_1{=}1$ child is pure and becomes a leaf immediately. The recursion continues only on the five examples with $x_1 = 0$, where $H = 0.721928$ and only $x_2, x_3$ remain. That is Chapter 6's algorithm with the fixed criterion, running correctly.</p>
+      </div></details>
+  </div>
+
+  <div class="guided">
+    <div class="g-head"><span class="tag">Guided problem</span>A child got worse — is the split bad?</div>
+    <div class="g-body">
+      <p>A node holds $12$ examples: $10$ labelled "0" and $2$ labelled "1". Attribute $W$ splits it into</p>
+      <ul>
+        <li>$W{=}1$: $4$ examples — $2$ zeros and $2$ ones;</li>
+        <li>$W{=}0$: $8$ examples — $8$ zeros and $0$ ones.</li>
+      </ul>
+      <p>Your lab partner says: "Throw this split away. The left child has entropy $1.0$, which is <em>higher</em> than the parent's. The split increased uncertainty, and we proved that's impossible, so I must have made an arithmetic error." Is your partner right? Compute everything.</p>
+    </div>
+    <details class="step"><summary>Step 1 — the parent's entropy</summary>
+      <div>
+        <p>$P(Y{=}0) = 10/12 = 0.833333$, $P(Y{=}1) = 2/12 = 0.166667$.</p>
+        $$\log_2\tfrac{12}{10} = \log_2 12 - \log_2 10 = 3.584963 - 3.321928 = 0.263034,$$
+        $$\log_2 6 = 2.584963,$$
+        $$H(Y) = 0.833333(0.263034) + 0.166667(2.584963) = 0.219195 + 0.430827 = \mathbf{0.650022}\text{ bits}.$$
+      </div></details>
+    <details class="step"><summary>Step 2 — the two specific conditional entropies</summary>
+      <div>
+        <p>$W{=}1$: two of each label, so $P(Y{=}1\mid W{=}1) = 1/2$ and</p>
+        $$H(Y \mid W{=}1) = \mathbf{1.000000}\text{ bit}.$$
+        <p>$W{=}0$: all eight are zeros, so the node is pure and</p>
+        $$H(Y \mid W{=}0) = \mathbf{0.000000}.$$
+        <p>Your partner's observation is <em>factually correct</em>: $1.000000 \gt 0.650022$. The left child really is more uncertain than the parent.</p>
+      </div></details>
+    <details class="step"><summary>Step 3 — the theorem says nothing about individual children</summary>
+      <div>
+        <p>The theorem is $H(Y\mid W) \le H(Y)$, where $H(Y\mid W)$ is the <strong>weighted average</strong> $\sum_\omega P(W{=}\omega)H(Y\mid W{=}\omega)$. It is <em>not</em> a claim about each $H(Y\mid W{=}\omega)$ separately, and indeed that claim is false — this problem is the counterexample.</p>
+        <p>Why it can happen: Jensen's inequality concerns the value of a concave function at a <em>mixture</em> of points versus the mixture of the values. Nothing stops one of the individual points from sitting higher than the mixture point; what's guaranteed is that the <em>average</em> of the values sits below.</p>
+        <p>Weights: $P(W{=}1) = 4/12 = 1/3$ and $P(W{=}0) = 8/12 = 2/3$.</p>
+      </div></details>
+    <details class="step"><summary>Answer &amp; the takeaway</summary>
+      <div>
+        $$H(Y\mid W) = \tfrac13(1.000000) + \tfrac23(0.000000) = \mathbf{0.333333}\text{ bits}.$$
+        $$I(Y;W) = 0.650022 - 0.333333 = \mathbf{0.316689}\text{ bits} \;\gt\; 0. \quad\checkmark$$
+        <p><strong>Your partner is wrong, and there is no arithmetic error.</strong> The split is a good one: it cut uncertainty roughly in half. Two thirds of the data landed in a perfectly pure child that never needs another question; the remaining third became a coin flip, but it is only a third.</p>
+        <p><strong>Takeaway — memorise the two statements separately:</strong></p>
+        <ul>
+          <li>$H(Y\mid W) \le H(Y)$ &nbsp;— <strong>always true</strong> (the weighted average).</li>
+          <li>$H(Y\mid W{=}\omega) \le H(Y)$ &nbsp;— <strong>often false</strong> (a single branch).</li>
+        </ul>
+        <p>Confusing the two is the most reliably examined error on this material. Set the calculator above to left $= (2, 2)$ and right $= (8, 0)$ and watch it happen.</p>
+      </div></details>
+  </div>
+
+  <div class="guided">
+    <div class="g-head"><span class="tag">Guided problem</span>When maximum gain is the wrong answer</div>
+    <div class="g-body">
+      <p>A dataset of $N = 100$ patients, label $y = $ "has the condition", with $50$ yes and $50$ no. Two candidate attributes:</p>
+      <ul>
+        <li><strong>$W_A$ = "blood test positive"</strong>, binary. Splits $50/50$; the positive child is $45$ yes and $5$ no, the negative child is $5$ yes and $45$ no.</li>
+        <li><strong>$W_B$ = "patient ID"</strong>, taking $100$ distinct values, one per patient.</li>
+      </ul>
+      <p>Compute $I(Y;W_A)$ and $I(Y;W_B)$. Which does information gain pick? Which should you pick, and what fixes the criterion?</p>
+    </div>
+    <details class="step"><summary>Step 1 — the parent, and $W_A$</summary>
+      <div>
+        <p>$H(Y) = H(1/2) = \mathbf{1.000000}$ bit (balanced).</p>
+        <p>Each $W_A$ child is $45$–$5$, i.e. $p = 0.1$:</p>
+        $$H(Y\mid W_A{=}\text{pos}) = H(Y\mid W_A{=}\text{neg}) = 0.9\log_2\tfrac{10}{9} + 0.1\log_2 10 = 0.9(0.152003)+0.1(3.321928)$$
+        $$= 0.136803 + 0.332193 = \mathbf{0.468996}.$$
+        $$H(Y\mid W_A) = \tfrac12(0.468996) + \tfrac12(0.468996) = \mathbf{0.468996}, \qquad I(Y;W_A) = 1 - 0.468996 = \mathbf{0.531004}.$$
+      </div></details>
+    <details class="step"><summary>Step 2 — $W_B$, the ID attribute</summary>
+      <div>
+        <p>Each of the $100$ values selects exactly one patient. A one-example node is pure, so <em>every</em> specific conditional entropy is $0$:</p>
+        $$H(Y\mid W_B) = \sum_{\omega=1}^{100}\tfrac{1}{100}\cdot 0 = \mathbf{0.000000}, \qquad I(Y;W_B) = 1 - 0 = \mathbf{1.000000}\text{ bit}.$$
+        <p>The absolute maximum — you cannot gain more than $H(Y)$, and $W_B$ takes all of it. Information gain picks $W_B$.</p>
+      </div></details>
+    <details class="step"><summary>Step 3 — why that is catastrophic</summary>
+      <div>
+        <p>The resulting tree has $100$ leaves, one per training patient. Training error: $0$. Test error: for a new patient with an unseen ID, the tree has no branch at all — and if you force one, the prediction is a coin flip. It has memorised, not learned.</p>
+        <p>The mechanism of the failure: gain measures reduction in entropy <em>on the training set</em>, and any attribute fine enough to separate every example drives that to zero regardless of whether the attribute means anything. This is <strong>overfitting</strong> showing up inside the splitting criterion itself.</p>
+      </div></details>
+    <details class="step"><summary>Answer &amp; the takeaway</summary>
+      <div>
+        <p>$I(Y;W_A) = 0.531004$, $I(Y;W_B) = 1.000000$. Raw information gain picks $W_B$. Gain ratio repairs it:</p>
+        $$H(W_A) = H(1/2) = 1 \Rightarrow \text{GainRatio}(W_A) = \frac{0.531004}{1} = \mathbf{0.531004},$$
+        $$H(W_B) = \log_2 100 = 6.643856 \Rightarrow \text{GainRatio}(W_B) = \frac{1.000000}{6.643856} = \mathbf{0.150515}.$$
+        <p>$W_A$ now wins by more than a factor of three. <span class="pill">beyond syllabus</span></p>
+        <p><strong>Takeaway:</strong> information gain is the right <em>local</em> criterion but it has no notion of generalisation. In this course we split on binary attributes, where every attribute has $H(W) \le 1$ and the bias is invisible. The moment you allow many-valued or real-valued attributes, you need gain ratio (C4.5), a depth limit, or pruning.</p>
+      </div></details>
+  </div>
+
+  <div class="quiz" data-answer="3">
+    <div class="q">A node has $100$ examples, $50$ of each label. Split A produces children of sizes $50$ and $50$, each $40$–$10$ and $10$–$40$. Split B produces children of sizes $2$ and $98$, where the size-2 child is pure. Without computing exactly, which split has the larger information gain, and why?</div>
+    <button class="opt">Split B, because it produced a perfectly pure child and purity is the goal</button>
+    <button class="opt">They are equal, because both produce two children from one parent</button>
+    <button class="opt">Split B, because entropy of a 2-example node is much easier to reduce</button>
+    <button class="opt">Split A, because the weights $P(W{=}\omega)$ mean a pure child holding 2 of 100 examples contributes almost nothing</button>
+    <div class="why"><strong>Why:</strong> conditional entropy is a <em>weighted</em> average. For split A, both children are $p = 0.2$, so $H(Y\mid W) = 0.5(0.721928) + 0.5(0.721928) = 0.721928$ and the gain is $1 - 0.721928 = 0.278$ bits. For split B, the pure child carries weight $2/100 = 0.02$ and contributes $0$, while the $98$-example child is still nearly balanced ($48$–$50$, $H \approx 0.9997$), contributing $0.98(0.9997) = 0.9797$; the gain is about $0.020$ bits. Split A wins by more than a factor of thirteen. The weighting is the entire reason — it is what stops "isolate one point" from scoring well.</div>
+  </div>
+
+  <h2 id="recap">Recap</h2>
+
+  <table class="center">
+    <thead><tr><th>Quantity</th><th>Formula</th><th>In tree language</th></tr></thead>
+    <tbody>
+      <tr><td>Surprisal</td><td>$\log_2\frac{1}{p}$</td><td>bits needed to name one outcome</td></tr>
+      <tr><td>Entropy</td><td>$H(Y) = \sum_y P(Y{=}y)\log\frac{1}{P(Y{=}y)}$</td><td>impurity of the labels at a node; $0$ = pure, $1$ = 50/50</td></tr>
+      <tr><td>Specific conditional entropy</td><td>$H(Y\mid W{=}\omega) = \sum_y P(y\mid\omega)\log\frac{1}{P(y\mid\omega)}$</td><td>impurity of <em>one</em> child</td></tr>
+      <tr><td>Conditional entropy</td><td>$H(Y\mid W) = \sum_\omega P(W{=}\omega)H(Y\mid W{=}\omega)$</td><td>size-weighted average impurity <em>after</em> the split</td></tr>
+      <tr><td>Mutual information</td><td>$I(Y;W) = H(Y) - H(Y\mid W)$</td><td>information gain of the split</td></tr>
+      <tr><td>BestAttribute</td><td>$\argmax_b I(Y;x_b) = \argmin_b H(Y\mid x_b)$</td><td>which question to ask at this node</td></tr>
+    </tbody>
+  </table>
+
+  <ul>
+    <li><strong>$7 = \log_2 128$.</strong> Halving seven times gets you from $128$ candidates to $1$; the counting argument ($k$ bits distinguish at most $2^k$ outcomes) shows $6$ leaves you right at most half the time.</li>
+    <li><strong>$\sum_i p_i\log\frac1{p_i}$ is the expected number of questions</strong>, exactly achievable when all the $p_i$ are powers of two ($\tfrac14, \tfrac18\times 6 \Rightarrow \tfrac{11}{4}$), and a lower bound otherwise.</li>
+    <li><strong>$0 \le H \le \log_2 k$</strong>, with $0$ iff deterministic (pure node) and $\log_2 k$ iff uniform (worst node).</li>
+    <li><strong>$I(Y;W)\ge 0$ always</strong>, by concavity of $H$ plus Jensen; equality iff $Y \perp W$. <strong>But a single $H(Y\mid W{=}\omega)$ can exceed $H(Y)$.</strong></li>
+    <li><strong>$I$ is symmetric</strong>: $I(Y;W) = H(Y)+H(W)-H(Y,W) = I(W;Y)$.</li>
+    <li><strong>The weights are not decoration.</strong> They are what stops a pure-but-empty child from winning.</li>
+    <li>On the poll dataset the answer is $x_2$: $I = 0.548795$ bits versus $0.092359$ for $x_1$ and $0.048795$ for $x_3$ — a ranking training error could not produce.</li>
+  </ul>
+
+  <p>Next up: <a href="linear-regression.html">linear regression</a>, where the labels become real numbers, the "impurity" becomes squared error, and we finally get a model we can differentiate.</p>
+
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<script src="assets/site.js"></script>
+<script>
+document.addEventListener("shellready", () => {
+
+  /* ---------------- Figure 3: live entropy calculator ---------------- */
+  const S = {
+    l0: document.getElementById("icL0"),
+    l1: document.getElementById("icL1"),
+    r0: document.getElementById("icR0"),
+    r1: document.getElementById("icR1"),
+  };
+  if (!S.l0) return;
+
+  const g = id => document.getElementById(id);
+  const MAXW = 400, X0 = 190;
+
+  /* entropy of a two-class count pair, in bits */
+  function H2(a, b) {
+    const n = a + b;
+    if (n === 0) return 0;
+    let h = 0;
+    [a, b].forEach(c => { if (c > 0) { const p = c / n; h -= p * Math.log2(p); } });
+    return h;
+  }
+
+  const fmt = v => v.toFixed(4);
+  const bar = (rect, val) => rect.setAttribute("width", Math.max(0, Math.min(MAXW, val * MAXW)).toFixed(1));
+
+  function update() {
+    const l0 = +S.l0.value, l1 = +S.l1.value, r0 = +S.r0.value, r1 = +S.r1.value;
+    const nL = l0 + l1, nR = r0 + r1, N = nL + nR;
+
+    const HL = H2(l0, l1), HR = H2(r0, r1);
+    const HY = H2(l0 + r0, l1 + r1);
+    const wL = N ? nL / N : 0, wR = N ? nR / N : 0;
+    const HC = wL * HL + wR * HR;
+    const I  = HY - HC;
+
+    bar(g("icBarP"), HY); bar(g("icBarL"), HL); bar(g("icBarR"), HR);
+    bar(g("icBarC"), HC); bar(g("icBarI"), Math.max(0, I));
+
+    g("icValP").textContent = N ? fmt(HY) : "—";
+    g("icValL").textContent = nL ? fmt(HL) : "empty";
+    g("icValR").textContent = nR ? fmt(HR) : "empty";
+    g("icValC").textContent = N ? fmt(HC) : "—";
+    g("icValI").textContent = N ? fmt(I) : "—";
+
+    g("icCntP").textContent = "parent: n=" + N + "  (" + (l0 + r0) + " zeros, " + (l1 + r1) + " ones)";
+    g("icCntL").textContent = "left child: n=" + nL + "  (" + l0 + " zeros, " + l1 + " ones)  weight " + (N ? wL.toFixed(3) : "0");
+    g("icCntR").textContent = "right child: n=" + nR + "  (" + r0 + " zeros, " + r1 + " ones)  weight " + (N ? wR.toFixed(3) : "0");
+
+    let note;
+    if (N === 0) {
+      note = "Both children are empty — set some counts.";
+    } else if (Math.abs(I) < 1e-12) {
+      note = "I = 0 exactly: the children have the same label proportions as the parent, so Y and W are independent here.";
+    } else if (HC === 0) {
+      note = "Both children are pure: H(Y|W) = 0, so the gain takes ALL of the parent's entropy. This split finishes the job.";
+    } else if (HL > HY + 1e-12 || HR > HY + 1e-12) {
+      note = "Note: one child's entropy EXCEEDS the parent's " + fmt(HY) + " — allowed! Only the weighted average is guaranteed to drop.";
+    } else {
+      note = "Gain " + fmt(I) + " bits: the split removed " + (HY > 0 ? (100 * I / HY).toFixed(1) : "0") + "% of the parent's uncertainty.";
+    }
+    g("icNote").textContent = note;
+  }
+
+  function setAll(l0, l1, r0, r1) {
+    S.l0.value = l0; S.l1.value = l1; S.r0.value = r0; S.r1.value = r1;
+    Object.values(S).forEach(s => s.dispatchEvent(new Event("input", { bubbles: true })));
+  }
+
+  Object.values(S).forEach(s => s.addEventListener("input", update));
+  g("icP1").onclick = () => setAll(0, 4, 3, 1);   /* the x2 split from the worked example */
+  g("icP2").onclick = () => setAll(2, 2, 3, 3);   /* identical proportions -> I = 0       */
+  g("icP3").onclick = () => setAll(0, 1, 12, 12); /* pure but tiny child (1 of 25)        */
+  g("icP4").onclick = () => setAll(0, 5, 6, 0);   /* both children pure                   */
+
+  update();
+});
+</script>
+</body>
+</html>

@@ -16,6 +16,16 @@ export interface ResearchProject {
 
 export const researchProjects: ResearchProject[] = [
 	{
+		slug: "g1-vla-manipulation",
+		title: "Building a Vision-Language-Action Data Pipeline for the Unitree G1 Humanoid",
+		dates: "Aug 2026 – Sep 2026",
+		description:
+			"Built a robot-learning pipeline end to end, on a laptop with no GPU: a MuJoCo tabletop scene for Unitree's G1 humanoid, a parallel-jaw gripper (the stock model's hands don't collide with anything), and a controller that can reach and grasp. Re-solving inverse kinematics against the measured gripper position every control step cut fingertip error from 79 mm to 3–5 mm. A scripted policy hit 86% on pick-and-place and 100% on a language-conditioned task (“put the red block in the left bin”), with colors and instructions balanced so a policy can't ignore the words. The 95 episodes (21,186 frames, head and wrist cameras) were exported to LeRobot, the format GR00T N1.5 and π0 train on.",
+		githubLink: "https://github.com/Indiguana/g1-manipulation",
+		poster: null,
+		writeup: true,
+	},
+	{
 		slug: "agent-skill-retrieval",
 		title: "Comparative Approaches to Agent Retrieval over Large Skill Libraries",
 		dates: "Jul 2026 – Aug 2026",

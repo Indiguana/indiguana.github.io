@@ -1,0 +1,1311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Decision Trees · 07-280 Field Guide</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body data-page="decision-trees">
+<main>
+
+  <div class="eyebrow">Part II · Chapter 6</div>
+  <h1>Decision trees</h1>
+  <p class="subtitle">After this page you can take a table of labelled examples, build the decision tree by hand the way the algorithm would, compute its training error, and say exactly why the error-rate splitting criterion has to be thrown away.</p>
+
+  <div data-toc></div>
+
+  <h2 id="apartment">The apartment problem</h2>
+
+  <p>You are moving to Pittsburgh and there are four hundred apartments listed. You cannot tour four hundred apartments. You need a cheap, fast rule that says <em>go see this one</em> or <em>skip it</em>, and you need to be able to explain that rule to your roommate.</p>
+
+  <p>So you write one down. Not as a formula — as a sequence of questions, each one narrowing things down:</p>
+
+  <div class="viz">
+    <div class="viz-title">Figure 1 · The hand-written apartment tree</div>
+    <svg viewBox="0 0 800 440" role="img" aria-label="Decision tree for apartment hunting: root asks Rent low, branching into Deposit low and Within 1 mile of campus, with further splits on Within 2 miles and Near bus stop.">
+      <g stroke="var(--line-2)" stroke-width="1.5" fill="none">
+        <path d="M400 57 L190 100"/><path d="M400 57 L620 100"/>
+        <path d="M190 139 L90 182"/><path d="M190 139 L290 182"/>
+        <path d="M620 139 L550 182"/><path d="M620 139 L700 182"/>
+        <path d="M290 221 L215 270"/><path d="M290 221 L400 270"/>
+        <path d="M400 309 L350 356"/><path d="M400 309 L460 356"/>
+      </g>
+      <g font-size="11" fill="var(--ink-mute)" text-anchor="middle">
+        <text x="283" y="74">Yes</text><text x="519" y="74">No</text>
+        <text x="127" y="158">Yes</text><text x="252" y="158">No</text>
+        <text x="576" y="158">Yes</text><text x="673" y="158">No</text>
+        <text x="240" y="246">Yes</text><text x="359" y="246">No</text>
+        <text x="362" y="333">Yes</text><text x="446" y="333">No</text>
+      </g>
+
+      <g fill="var(--panel)" stroke="var(--accent)" stroke-width="1.6">
+        <rect x="340" y="16" width="120" height="40" rx="8"/>
+        <rect x="128" y="99" width="124" height="40" rx="8"/>
+        <rect x="552" y="99" width="136" height="40" rx="8"/>
+        <rect x="222" y="181" width="136" height="40" rx="8"/>
+        <rect x="336" y="269" width="128" height="40" rx="8"/>
+      </g>
+      <g font-size="13" fill="var(--ink)" text-anchor="middle">
+        <text x="400" y="41">Rent low?</text>
+        <text x="190" y="124">Deposit low?</text>
+        <text x="620" y="114">Within 1mi</text><text x="620" y="130">of campus?</text>
+        <text x="290" y="196">Within 2mi</text><text x="290" y="212">of campus?</text>
+        <text x="400" y="294">Near bus stop?</text>
+      </g>
+
+      <g stroke-width="1.6">
+        <circle cx="90" cy="202" r="17" fill="color-mix(in srgb, var(--accent-2) 18%, var(--panel))" stroke="var(--accent-2)"/>
+        <circle cx="550" cy="202" r="17" fill="color-mix(in srgb, var(--accent-2) 18%, var(--panel))" stroke="var(--accent-2)"/>
+        <circle cx="700" cy="202" r="17" fill="color-mix(in srgb, var(--rose) 16%, var(--panel))" stroke="var(--rose)"/>
+        <circle cx="215" cy="290" r="17" fill="color-mix(in srgb, var(--accent-2) 18%, var(--panel))" stroke="var(--accent-2)"/>
+        <circle cx="350" cy="376" r="17" fill="color-mix(in srgb, var(--accent-2) 18%, var(--panel))" stroke="var(--accent-2)"/>
+        <circle cx="460" cy="376" r="17" fill="color-mix(in srgb, var(--rose) 16%, var(--panel))" stroke="var(--rose)"/>
+      </g>
+      <g font-size="17" text-anchor="middle" dominant-baseline="middle">
+        <text x="90" y="203" fill="var(--accent-2)">&#10003;</text>
+        <text x="550" y="203" fill="var(--accent-2)">&#10003;</text>
+        <text x="700" y="203" fill="var(--rose)">&#10007;</text>
+        <text x="215" y="291" fill="var(--accent-2)">&#10003;</text>
+        <text x="350" y="377" fill="var(--accent-2)">&#10003;</text>
+        <text x="460" y="377" fill="var(--rose)">&#10007;</text>
+      </g>
+      <g font-size="11.5" fill="var(--ink-mute)">
+        <text x="20" y="420">&#10003; = go see it &#160;&#160; &#10007; = skip it &#160;&#160; boxes = internal nodes (questions) &#160;&#160; circles = leaves (answers)</text>
+      </g>
+    </svg>
+    <div class="caption">What to notice: nothing here is symmetric. The <em>No</em> side of "Rent low?" is willing to accept an expensive place only if it is really close to campus (1 mile); the <em>Yes</em> side, having already saved money on rent, is far more forgiving — it will walk 2 miles, or take a bus. The tree encodes that trade-off without ever writing a utility function.</div>
+  </div>
+
+  <p>Read it out loud and it is a policy: <em>if the rent is low and the deposit is low, go. If the rent is low, the deposit is high, but you're within 2 miles, go. If the rent is high, you only bother if it's within a mile.</em> That is a <strong>decision tree</strong>.</p>
+
+  <h2 id="anatomy">Anatomy, and what interpretability actually buys you</h2>
+
+  <div class="box defn"><span class="label">Definition</span>
+    <p>A <strong>decision tree</strong> is a hypothesis function $\hat y = h(x)$ built from two kinds of node:</p>
+    <ul>
+      <li><strong>Internal nodes</strong> split on some <strong>attribute</strong> (also called a <em>feature</em>) $x_j$ of the input. The value of $x_j$ decides which branch you follow. Two branches is the usual case, but a node can split into more.</li>
+      <li><strong>Leaves</strong> carry <strong>output labels</strong> — here $\checkmark$ or $\times$. Reaching a leaf ends the computation and the leaf's label is the prediction $\hat y$.</li>
+    </ul>
+  </div>
+
+  <p>The professor flags one benefit in capital letters, and it is the right one to flag:</p>
+
+  <div class="box key"><span class="label">Key idea</span>
+    <p><strong>Major benefit: human interpretable.</strong> You can print a decision tree on one page, hand it to a person with no mathematical training, and they can both <em>execute</em> it and <em>argue with it</em>.</p>
+  </div>
+
+  <p>Be honest about what that is worth, because "interpretable" gets used as a magic word. Here is the real ledger.</p>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="kicker">What interpretability buys</div>
+      <p style="margin-top:8px">You can <strong>audit</strong> the model: "it rejected this apartment because the deposit was high and it's 2.3 miles out" is a complete, checkable explanation. You can <strong>debug</strong> it: a nonsense split is visible instantly. You can <strong>deploy it legally</strong> in domains (credit, medicine) where a decision must be justified. And you can <strong>edit it by hand</strong> — bolt on a rule the data never saw.</p>
+    </div>
+    <div class="card">
+      <div class="kicker">What it costs</div>
+      <p style="margin-top:8px">Accuracy, on hard problems. A neural network for image classification has millions of parameters and no human-readable story; a tree that tried to classify raw pixels with "is pixel 4,117 bright?" would be both huge and terrible. Trees also carve feature space into <em>axis-aligned boxes</em> (see <a href="#real-valued">below</a>), so a genuinely diagonal rule costs them a staircase of splits.</p>
+    </div>
+  </div>
+
+  <div class="box analogy"><span class="label">Analogy</span>
+    <p>A decision tree is a <strong>triage flowchart</strong> taped to the wall of an emergency room. A neural network is an <strong>experienced attending physician</strong>. The attending is usually more accurate. But when the flowchart is wrong you can find the box and fix it, and when the attending is wrong all you can do is ask them to explain, and hope the explanation is the actual reason.</p>
+    <p class="tiny muted" style="margin-bottom:0">Where the analogy breaks: the flowchart on the wall was written by a committee of experts. The whole point of this chapter is that we are going to <em>learn</em> the flowchart from data instead.</p>
+  </div>
+
+  <h2 id="rules-vs-learning">Rule-based vs. learned: the actual ML question</h2>
+
+  <p>Look again at Figure 1 and ask: where did it come from? You made it up. You already knew that rent matters more than bus access, and you guessed the thresholds. That is a <strong>rule-based approach</strong>, and it is perfectly legitimate when you have the rules.</p>
+
+  <p>The notes' objection is two-part, and both halves matter:</p>
+
+  <ul>
+    <li><strong>You often don't have the rules.</strong> Nobody can write down, from first principles, which combination of 40 blood-panel numbers indicates sepsis.</li>
+    <li><strong>The setting is too complex.</strong> Even where rules exist, with $d = 30$ binary attributes there are $2^{30}$ possible inputs and astronomically many trees. Hand-authoring is hopeless.</li>
+  </ul>
+
+  <div class="box key"><span class="label">Key idea</span>
+    <p><strong>The ML question for this chapter:</strong> given a set of labelled examples, how do you <em>construct</em> a decision tree?</p>
+    <p style="margin-bottom:0">Everything that follows — stumps, majority vote, the recursion, <code>BestAttribute</code>, entropy in <a href="information-theory.html">Chapter 7</a> — is an answer to that one question.</p>
+  </div>
+
+  <h2 id="examples">What the examples comprise</h2>
+
+  <p>Before you can learn anything you have to say precisely what one "example" is. In the apartment problem:</p>
+
+  <ul>
+    <li><strong>Each example is one prospective apartment.</strong></li>
+    <li>$x$ is the vector of answers to the five questions: "Rent low?", "Deposit low?", "Within 1 mi?", "Within 2 mi?", "Near bus stop?"</li>
+    <li>$y$ is the answer to "should I go check this apartment out or not?"</li>
+  </ul>
+
+  <p>Written formally, exactly as the notes have it:</p>
+
+  $$N = \#\text{ prospective apartments},\qquad \X = \{\text{Yes},\text{No}\}^5 = \{0,1\}^5, \qquad \Y = \{Y, N\} = \{0,1\}$$
+
+  <div class="box warn"><span class="label">Common mistake</span>
+    <p>Read those three lines slowly, because every symbol is doing work.</p>
+    <ul style="margin-bottom:0">
+      <li>$N$ is a <em>count of examples</em> (rows of your table), not a count of attributes.</li>
+      <li>$\X$ is the <strong>input space</strong> — the set of all <em>possible</em> $x$, not the set you happen to have. $\{0,1\}^5$ has $2^5 = 32$ elements; your dataset might contain 12 apartments, some repeated.</li>
+      <li>The superscript in $x^{(i)}$ is an <strong>index, not a power</strong>. $x^{(3)}$ is the third apartment. $x^{(3)}_2$ is the third apartment's answer to question 2. The subscript indexes attributes, the parenthesised superscript indexes examples.</li>
+      <li>Encoding Yes as $1$ and No as $0$ is a <em>choice</em>. Nothing breaks if you flip it; the learned tree just flips its Yes/No branches.</li>
+    </ul>
+  </div>
+
+  <p>Having fixed the concrete problem, generalise. For the rest of the chapter:</p>
+
+  $$\X = \{0,1\}^d \ \ (d \text{ binary attributes}), \qquad \Y = \{0,1\}$$
+
+  <h3>Inference: running a new point down the tree</h3>
+
+  <p>Once you have a tree, prediction is trivial and that is the point. Given a new apartment $x^{(\mathrm{new})} \in \X$, start at the root, evaluate the question there, follow the matching branch, repeat, and output the label of whatever leaf you land in.</p>
+
+  <div class="box example"><span class="label">Example</span>
+    <p>Take $x^{(\mathrm{new})} = (\text{rent low}=\text{Yes},\ \text{deposit low}=\text{No},\ \text{1mi}=\text{No},\ \text{2mi}=\text{No},\ \text{bus}=\text{Yes})$.</p>
+    <p>Root "Rent low?" &rarr; Yes &rarr; "Deposit low?" &rarr; No &rarr; "Within 2mi of campus?" &rarr; No &rarr; "Near bus stop?" &rarr; Yes &rarr; leaf $\checkmark$.</p>
+    <p style="margin-bottom:0"><strong>Go see it.</strong> Cost: four comparisons. Note that attribute "Within 1mi" was never even read — a tree only looks at the features it needs, which is another quiet advantage over models that must evaluate every coordinate.</p>
+  </div>
+
+  <div class="quiz" data-answer="1">
+    <div class="q">A tree over $d = 5$ binary attributes has depth 3 along the path a particular $x$ takes. How many of the 5 attribute values of that $x$ did the tree actually need to look at?</div>
+    <button class="opt">All 5 — the model is defined on $\{0,1\}^5$</button>
+    <button class="opt">At most 3 — one per internal node on the path</button>
+    <button class="opt">Exactly 1 — the root attribute</button>
+    <div class="why"><strong>Why:</strong> Inference reads one attribute per internal node it passes through, so a depth-3 path reads at most 3 attributes (fewer if the tree reuses an attribute). The model is <em>defined</em> for all of $\{0,1\}^5$, but it <em>consumes</em> only what its path needs. This is why trees are cheap at test time and why they cope gracefully with features that are expensive to measure — an unused feature never has to be collected.</div>
+  </div>
+
+  <h2 id="stump">The key building block: the decision stump</h2>
+
+  <p>Trees are recursive, so we should start with the smallest possible tree that still does something. The notes call it the key building block:</p>
+
+  <div class="box defn"><span class="label">Definition</span>
+    <p>A <strong>decision stump</strong> is a decision tree with exactly one split: a single internal node "Is a certain attribute $= 1$?" branching straight into two leaves, each carrying a chosen output label.</p>
+  </div>
+
+  <div class="viz">
+    <div class="viz-title">Figure 2 · The decision stump, the atom of every tree</div>
+    <svg viewBox="0 0 560 220" role="img" aria-label="A decision stump: one internal node asking whether an attribute equals one, with two leaves each holding a chosen output label.">
+      <g stroke="var(--line-2)" stroke-width="1.5" fill="none">
+        <path d="M280 62 L170 110"/><path d="M280 62 L390 110"/>
+      </g>
+      <text x="205" y="82" font-size="11" fill="var(--ink-mute)" text-anchor="middle">Yes</text>
+      <text x="358" y="82" font-size="11" fill="var(--ink-mute)" text-anchor="middle">No</text>
+      <rect x="168" y="20" width="224" height="42" rx="8" fill="var(--panel)" stroke="var(--accent)" stroke-width="1.6"/>
+      <text x="280" y="46" font-size="14" fill="var(--ink)" text-anchor="middle">Is a certain attribute = 1?</text>
+      <rect x="100" y="110" width="140" height="56" rx="8" fill="color-mix(in srgb, var(--accent-2) 12%, var(--panel))" stroke="var(--accent-2)" stroke-width="1.6"/>
+      <text x="170" y="132" font-size="12.5" fill="var(--ink)" text-anchor="middle">some chosen</text>
+      <text x="170" y="150" font-size="12.5" fill="var(--ink)" text-anchor="middle">output label</text>
+      <rect x="320" y="110" width="140" height="56" rx="8" fill="color-mix(in srgb, var(--accent-3) 12%, var(--panel))" stroke="var(--accent-3)" stroke-width="1.6"/>
+      <text x="390" y="132" font-size="12.5" fill="var(--ink)" text-anchor="middle">some chosen</text>
+      <text x="390" y="150" font-size="12.5" fill="var(--ink)" text-anchor="middle">output label</text>
+      <text x="280" y="196" font-size="11.5" fill="var(--ink-mute)" text-anchor="middle">Two free choices: WHICH attribute, and WHICH label goes in each leaf.</text>
+    </svg>
+    <div class="caption">What to notice: a stump has exactly two degrees of freedom — the attribute at the node and the two leaf labels. With $d$ binary attributes and binary labels there are only $d \times 2 \times 2 = 4d$ possible stumps, so you can brute-force the best one.</div>
+  </div>
+
+  <h3>Constructing a stump, in three steps</h3>
+
+  <p>The pre-reading gives the recipe:</p>
+
+  <ol>
+    <li><strong>Select the attribute and split criterion.</strong> Which feature does the node test, and what test? For binary features the test is just "$x_b = 1$?"; for real-valued features you also pick a threshold.</li>
+    <li><strong>Split the training dataset into subsets</strong> by passing each training point through the decision node. Each leaf then holds a subset of the training data.</li>
+    <li><strong>Each leaf predicts by majority vote</strong> among the output values $y^{(i)}$ of the points that landed there. <em>A tie-breaking scheme must be specified.</em></li>
+  </ol>
+
+  <div class="box defn"><span class="label">Definition</span>
+    <p><strong>Majority vote.</strong> Given a leaf's subset of training points, each with a discrete label $y^{(i)} \in \Y$:</p>
+    $$\hat y \;=\; \argmax_{k \in \Y} \; \sum_i \1\!\left(y^{(i)} = k\right)$$
+    <p style="margin-bottom:0">In words, symbol by symbol: $\1(\cdot)$ is the <strong>indicator function</strong>, which is $1$ when the statement inside is true and $0$ otherwise. So $\sum_i \1(y^{(i)} = k)$ simply <strong>counts how many points in this leaf have label $k$</strong>. The $\argmax_{k}$ then returns the label $k$ with the biggest count. Put plainly: <em>the majority vote is the output class that appears most often in the training subset at that leaf.</em></p>
+  </div>
+
+  <div class="box warn"><span class="label">Common mistake</span>
+    <p>$\argmax$ returns the <strong>argument</strong> (which label), not the <strong>value</strong> (how many). If a leaf holds labels $\{0,0,1\}$, then $\sum_i \1(y^{(i)}=0) = 2$ and $\sum_i \1(y^{(i)}=1)=1$, so the $\max$ is $2$ but the $\argmax$ — and therefore $\hat y$ — is $\mathbf{0}$.</p>
+    <p style="margin-bottom:0">And notice why a tie-break rule is genuinely needed: with labels $\{0,0,1,1\}$ the $\argmax$ is <em>not unique</em>, so the formula alone does not define $\hat y$. <strong>Convention used throughout this guide: on a tie, predict $1$.</strong> Any fixed rule works; what is unacceptable is leaving it unstated, because then two people compute different training errors for the same tree.</p>
+  </div>
+
+  <h3>Why majority vote is the right leaf label</h3>
+
+  <div class="box proof"><span class="label">Proof</span>
+    <p>Claim: among all constant predictors on a leaf, majority vote minimises the number of training mistakes on that leaf.</p>
+    <p>Let the leaf hold $n_k$ points of label $k$, with $n = \sum_k n_k$ total. A constant predictor $\hat y = c$ is wrong on every point whose label is not $c$, so it makes</p>
+    $$\text{mistakes}(c) \;=\; n - n_c$$
+    <p>mistakes. Since $n$ is fixed, minimising $n - n_c$ over $c$ is the same as maximising $n_c$ over $c$, and $\argmax_c n_c$ is exactly the majority vote. $\blacksquare$</p>
+    <p style="margin-bottom:0">This is why leaves are never a design decision: <em>given</em> the tree's structure, the optimal leaf labels are forced. All the intelligence in tree learning lives in choosing the splits.</p>
+  </div>
+
+  <h2 id="algorithm">The recursive construction algorithm</h2>
+
+  <p>From a stump to a tree is one idea: <em>do it again on each leaf</em>. Each leaf holds a subset of the data; run the stump procedure on that subset; repeat until a stopping criterion fires. Here is the algorithm exactly as the professor's notes state it.</p>
+
+<pre><code>Algorithm 1  Decision Tree Construction
+
+1: function DT(dataset S, set of attributes A &#8838; {1, 2, ..., d})
+2:     if A = &#8709;  or  all examples in S have the same label then
+3:         return a leaf with value = majority vote of labels in S
+4:     end if
+5:     let b = BestAttribute(S, A) &#8712; A
+6:     let LeftNode  = DT( {(x,y) &#8712; S | x_b = 1},  A \ {b} )
+7:     let RightNode = DT( {(x,y) &#8712; S | x_b = 0},  A \ {b} )
+8:     return the tree           "Is the b-th attribute equal to 1?"
+                                    /  Yes            No  \
+                                LeftNode            RightNode
+9: end function
+</code></pre>
+
+  <p>It is called initially with the whole training set and the whole attribute list:</p>
+
+  $$S = \{(x^{(i)}, y^{(i)})\}_{i=1}^{N}, \qquad A = \{1, 2, \dots, d\}$$
+
+  <h3>The recursion in words, line by line</h3>
+
+  <ul>
+    <li><strong>Line 2 — the two base cases.</strong> $A = \emptyset$ means you have run out of questions to ask: every attribute has already been used on the path down to here, so no further split is even possible. "All examples in $S$ have the same label" means the node is <strong>pure</strong> — splitting it cannot reduce training error below the zero it already has.</li>
+    <li><strong>Line 3 — the leaf.</strong> Majority vote, as proved above. Note it is needed even in the first base case, where $S$ may well be mixed.</li>
+    <li><strong>Line 5 — the only interesting line.</strong> <code>BestAttribute</code> is a black box for now. Swapping in different implementations of it is what distinguishes the algorithms in the literature; that is the subject of <a href="#best-attribute">the BestAttribute section</a> and all of <a href="information-theory.html">Chapter 7</a>.</li>
+    <li><strong>Lines 6&ndash;7 — the partition.</strong> Every point in $S$ goes to exactly one child, because $x_b$ is either $1$ or $0$ and never both. The two children partition $S$: $|S_{\text{left}}| + |S_{\text{right}}| = |S|$. And $b$ is removed from $A$, so the sub-problems are strictly smaller in <em>both</em> arguments — which is why the recursion terminates: depth can be at most $d$.</li>
+    <li><strong>Line 8 — assembling.</strong> The recursive calls return whole sub-trees, not labels. You hang them off the new node and return the result upward.</li>
+  </ul>
+
+  <div class="box intuition"><span class="label">Intuition</span>
+    <p>This is the same shape as every divide-and-conquer algorithm you already know. Quicksort picks a pivot and recurses on two sub-arrays; <code>DT</code> picks an <em>attribute</em> and recurses on two sub-<em>datasets</em>. The difference is that quicksort's pivot choice only affects speed, whereas <code>DT</code>'s attribute choice affects the answer. That is why <code>BestAttribute</code> gets a whole chapter of theory and quicksort's pivot rule gets a footnote.</p>
+  </div>
+
+  <div class="viz">
+    <div class="viz-title">Figure 3 · The call tree of DT on the 8-row dataset (the recursion, not the model)</div>
+    <svg viewBox="0 0 780 340" role="img" aria-label="Recursion call tree of the DT function showing the dataset and attribute set at each call.">
+      <g stroke="var(--line-2)" stroke-width="1.5" fill="none">
+        <path d="M390 58 L200 104"/><path d="M390 58 L580 104"/>
+        <path d="M200 160 L110 206"/><path d="M200 160 L300 206"/>
+      </g>
+      <g font-size="11" fill="var(--ink-mute)" text-anchor="middle">
+        <text x="278" y="74">x&#8322;=0 (No)</text><text x="500" y="74">x&#8322;=1 (Yes)</text>
+        <text x="136" y="178">x&#8321;=0</text><text x="272" y="178">x&#8321;=1</text>
+      </g>
+      <g fill="var(--panel)" stroke="var(--accent)" stroke-width="1.6">
+        <rect x="270" y="14" width="240" height="44" rx="8"/>
+        <rect x="90" y="104" width="220" height="56" rx="8"/>
+      </g>
+      <g fill="color-mix(in srgb, var(--accent-2) 10%, var(--panel))" stroke="var(--accent-2)" stroke-width="1.6">
+        <rect x="470" y="104" width="220" height="56" rx="8"/>
+        <rect x="14" y="206" width="192" height="56" rx="8"/>
+        <rect x="216" y="206" width="192" height="56" rx="8"/>
+      </g>
+      <g font-size="12.5" fill="var(--ink)" text-anchor="middle">
+        <text x="390" y="33">DT( S = all 8 rows,</text>
+        <text x="390" y="50">A = {1,2,3} )</text>
+
+        <text x="200" y="124">DT( rows 1,2,3,4,</text>
+        <text x="200" y="141">A = {1,3} )</text>
+
+        <text x="580" y="124">DT( rows 5,6,7,8,</text>
+        <text x="580" y="141">A = {1,3} )</text>
+
+        <text x="110" y="226">DT( row 4, A={3} )</text>
+        <text x="110" y="248" font-size="11.5" fill="var(--ink-mute)">pure &#8594; leaf 1</text>
+
+        <text x="312" y="226">DT( rows 1,2,3, A={3} )</text>
+        <text x="312" y="248" font-size="11.5" fill="var(--ink-mute)">pure &#8594; leaf 0</text>
+      </g>
+      <text x="580" y="180" font-size="11.5" fill="var(--ink-mute)" text-anchor="middle">all labels = 1 &#8594; base case &#8594; leaf 1</text>
+      <text x="390" y="304" font-size="12" fill="var(--ink-mute)" text-anchor="middle">Orange = a call that recursed (it chose an attribute). Teal = a call that hit a base case and returned a leaf.</text>
+      <text x="390" y="324" font-size="12" fill="var(--ink-mute)" text-anchor="middle">Note $A$ shrinks by one attribute at every level — that is the termination argument.</text>
+    </svg>
+    <div class="caption">What to notice: the <em>call tree</em> and the <em>model tree</em> have the same shape. Every recursive call becomes an internal node; every base case becomes a leaf. Drawing the recursion is drawing the tree.</div>
+  </div>
+
+  <h3>A wrinkle worth naming: "Is $x_b = 1$?" vs "Is $x_b = 0$?"</h3>
+
+  <p>The pseudocode always asks <strong>"Is $x_b = 1$?"</strong> and sends the Yes group left. But the tree the notes present for the worked example asks <strong>"Is $x_2 = 0$?"</strong>. These are not different algorithms — asking "is it 0?" is the same split as asking "is it 1?" with the two branches swapped. Which phrasing you write down is cosmetic. Keep the <em>partition</em> straight and the labels will take care of themselves.</p>
+
+  <h2 id="best-attribute-error">BestAttribute, version 1: minimise training error</h2>
+
+  <p>We need to fill in <code>BestAttribute</code>. The notes' first proposal is the most obvious one imaginable:</p>
+
+  <div class="box key"><span class="label">Key idea</span>
+    <p>Pretend you are allowed <strong>only one split</strong> — i.e. you must produce a decision stump. Then ask: <em>which choice of attribute to split on (and which labels for the two resulting leaves) gives the lowest training error?</em> Pick that attribute.</p>
+  </div>
+
+  <p>This is a finite search you can do by hand. For each candidate attribute $b \in A$: split $S$ into the $x_b=1$ group and the $x_b=0$ group, majority-vote each group, count the mistakes in each group, add them. The attribute with the smallest total wins.</p>
+
+  <p>The leaf labels do not need a separate search, because of the proof above: given the split, majority vote is already optimal. So "choose attribute and choose labels" collapses to "choose attribute".</p>
+
+  <h2 id="poll">The poll example, solved completely</h2>
+
+  <p>The notes pose this exact question and then say only <em>"Answer: In poll."</em> Here is the full answer, every split, every count.</p>
+
+  <div class="box example"><span class="label">Example</span>
+    <p><strong>Training data.</strong> $N = 8$, $d = 3$, all attributes and labels binary. I have added a row index $i$; the notes give only the four columns.</p>
+    <table class="tight center">
+      <thead><tr><th>$i$</th><th>$y$</th><th>$x_1$</th><th>$x_2$</th><th>$x_3$</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>0</td><td>1</td><td>0</td><td>0</td></tr>
+        <tr><td>2</td><td>0</td><td>1</td><td>0</td><td>1</td></tr>
+        <tr><td>3</td><td>0</td><td>1</td><td>0</td><td>0</td></tr>
+        <tr><td>4</td><td>1</td><td>0</td><td>0</td><td>1</td></tr>
+        <tr><td>5</td><td>1</td><td>1</td><td>1</td><td>0</td></tr>
+        <tr><td>6</td><td>1</td><td>1</td><td>1</td><td>1</td></tr>
+        <tr><td>7</td><td>1</td><td>1</td><td>1</td><td>0</td></tr>
+        <tr><td>8</td><td>1</td><td>1</td><td>1</td><td>1</td></tr>
+      </tbody>
+    </table>
+    <p style="margin-bottom:0"><strong>Question.</strong> Which attribute does <code>BestAttribute</code> pick at the root under the training-error criterion? And what is the final tree?</p>
+  </div>
+
+  <h3>Step 0 — the root before any split</h3>
+
+  <p>Labels in $S$: rows 1, 2, 3 have $y=0$ and rows 4&ndash;8 have $y=1$. So <strong>3 zeros, 5 ones</strong>. If we refused to split at all and just majority-voted the whole dataset, we would predict $\hat y = 1$ and be wrong on the 3 zeros: a baseline training error of $3/8$. Any split has to beat that to be worth anything.</p>
+
+  <h3>Step 1 — try every attribute as a stump</h3>
+
+  <div class="scroll-x">
+  <table class="center">
+    <thead>
+      <tr><th>Split on</th><th>Branch</th><th>Rows that land there</th><th>Labels</th><th>Counts (0 / 1)</th><th>Majority vote $\hat y$</th><th>Mistakes</th></tr>
+    </thead>
+    <tbody>
+      <tr><td rowspan="2"><strong>$x_1$</strong></td><td>$x_1 = 1$</td><td>1, 2, 3, 5, 6, 7, 8</td><td>0,0,0,1,1,1,1</td><td>3 / 4</td><td>1</td><td>3</td></tr>
+      <tr><td>$x_1 = 0$</td><td>4</td><td>1</td><td>0 / 1</td><td>1</td><td>0</td></tr>
+      <tr><td rowspan="2"><strong>$x_2$</strong></td><td>$x_2 = 1$</td><td>5, 6, 7, 8</td><td>1,1,1,1</td><td>0 / 4</td><td>1</td><td>0</td></tr>
+      <tr><td>$x_2 = 0$</td><td>1, 2, 3, 4</td><td>0,0,0,1</td><td>3 / 1</td><td>0</td><td>1</td></tr>
+      <tr><td rowspan="2"><strong>$x_3$</strong></td><td>$x_3 = 1$</td><td>2, 4, 6, 8</td><td>0,1,1,1</td><td>1 / 3</td><td>1</td><td>1</td></tr>
+      <tr><td>$x_3 = 0$</td><td>1, 3, 5, 7</td><td>0,0,1,1</td><td>2 / 2</td><td>1 <span class="tiny muted">(tie &rarr; 1)</span></td><td>2</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>Adding the two branches of each split gives the totals:</p>
+
+  <table class="tight center">
+    <thead><tr><th>Attribute</th><th>Mistakes on $x_b=1$ side</th><th>Mistakes on $x_b=0$ side</th><th>Total training error</th><th>Beats the $3/8$ baseline?</th></tr></thead>
+    <tbody>
+      <tr><td>$x_1$</td><td>3</td><td>0</td><td>$3/8 = 0.375$</td><td>no — ties it</td></tr>
+      <tr><td><strong>$x_2$</strong></td><td>0</td><td>1</td><td>$\mathbf{1/8 = 0.125}$</td><td><strong>yes</strong></td></tr>
+      <tr><td>$x_3$</td><td>1</td><td>2</td><td>$3/8 = 0.375$</td><td>no — ties it</td></tr>
+    </tbody>
+  </table>
+
+  <div class="box key"><span class="label">Key idea</span>
+    <p><strong>$x_2$ is the best first split</strong>, with training error $1/8$ against $3/8$ for the other two. The reason is visible in the table: the $x_2 = 1$ side is <strong>perfectly pure</strong> — all four rows there have $y=1$ — so that entire branch is finished in one step.</p>
+  </div>
+
+  <h3>Step 2 — recurse on the impure branch</h3>
+
+  <p>The call is <code>DT({rows 5,6,7,8}, A = {1,3})</code> on one side and <code>DT({rows 1,2,3,4}, A = {1,3})</code> on the other.</p>
+
+  <p><strong>The $x_2 = 1$ branch</strong> holds rows 5, 6, 7, 8, all with $y = 1$. Line 2 of the algorithm fires: all examples share a label. Return a leaf with value $1$. Done.</p>
+
+  <p><strong>The $x_2 = 0$ branch</strong> holds rows 1, 2, 3, 4 — labels $0,0,0,1$ — which is not pure, and $A = \{1,3\}$ is not empty, so we recurse. The sub-dataset is:</p>
+
+  <table class="tight center">
+    <thead><tr><th>$i$</th><th>$y$</th><th>$x_1$</th><th>$x_3$</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>0</td><td>1</td><td>0</td></tr>
+      <tr><td>2</td><td>0</td><td>1</td><td>1</td></tr>
+      <tr><td>3</td><td>0</td><td>1</td><td>0</td></tr>
+      <tr><td>4</td><td>1</td><td>0</td><td>1</td></tr>
+    </tbody>
+  </table>
+
+  <table class="center">
+    <thead><tr><th>Split on</th><th>Branch</th><th>Rows</th><th>Labels</th><th>Majority $\hat y$</th><th>Mistakes</th><th>Total</th></tr></thead>
+    <tbody>
+      <tr><td rowspan="2"><strong>$x_1$</strong></td><td>$x_1=1$</td><td>1, 2, 3</td><td>0,0,0</td><td>0</td><td>0</td><td rowspan="2"><strong>0 / 4</strong></td></tr>
+      <tr><td>$x_1=0$</td><td>4</td><td>1</td><td>1</td><td>0</td></tr>
+      <tr><td rowspan="2">$x_3$</td><td>$x_3=1$</td><td>2, 4</td><td>0,1</td><td>1 <span class="tiny muted">(tie)</span></td><td>1</td><td rowspan="2">1 / 4</td></tr>
+      <tr><td>$x_3=0$</td><td>1, 3</td><td>0,0</td><td>0</td><td>0</td></tr>
+    </tbody>
+  </table>
+
+  <p><strong>$x_1$ resolves this node completely.</strong> Both of its children are pure, so both are immediately leaves, and the recursion stops.</p>
+
+  <h3>Step 3 — the finished tree</h3>
+
+  <p>Assembling the pieces gives exactly the tree in the notes (written in the notes' "Is $x_2 = 0$?" phrasing):</p>
+
+  <div class="viz">
+    <div class="viz-title">Figure 4 · The learned tree for the poll dataset</div>
+    <svg viewBox="0 0 620 300" role="img" aria-label="Learned decision tree: root asks is x2 equal to 0, No leads to label 1, Yes leads to a node asking is x1 equal to 0, whose Yes is label 1 and No is label 0.">
+      <g stroke="var(--line-2)" stroke-width="1.5" fill="none">
+        <path d="M310 62 L190 108"/><path d="M310 62 L430 108"/>
+        <path d="M190 164 L110 212"/><path d="M190 164 L270 212"/>
+      </g>
+      <g font-size="11" fill="var(--ink-mute)" text-anchor="middle">
+        <text x="233" y="80">Yes</text><text x="392" y="80">No</text>
+        <text x="133" y="186">Yes</text><text x="248" y="186">No</text>
+      </g>
+      <rect x="248" y="20" width="124" height="42" rx="8" fill="var(--panel)" stroke="var(--accent)" stroke-width="1.6"/>
+      <text x="310" y="46" font-size="14" fill="var(--ink)" text-anchor="middle">Is x&#8322; = 0?</text>
+      <rect x="128" y="108" width="124" height="42" rx="8" fill="var(--panel)" stroke="var(--accent)" stroke-width="1.6"/>
+      <text x="190" y="134" font-size="14" fill="var(--ink)" text-anchor="middle">Is x&#8321; = 0?</text>
+
+      <rect x="376" y="108" width="108" height="42" rx="8" fill="color-mix(in srgb, var(--accent-2) 14%, var(--panel))" stroke="var(--accent-2)" stroke-width="1.6"/>
+      <text x="430" y="134" font-size="13.5" fill="var(--ink)" text-anchor="middle">Label 1</text>
+      <rect x="56" y="212" width="108" height="42" rx="8" fill="color-mix(in srgb, var(--accent-2) 14%, var(--panel))" stroke="var(--accent-2)" stroke-width="1.6"/>
+      <text x="110" y="238" font-size="13.5" fill="var(--ink)" text-anchor="middle">Label 1</text>
+      <rect x="216" y="212" width="108" height="42" rx="8" fill="color-mix(in srgb, var(--rose) 13%, var(--panel))" stroke="var(--rose)" stroke-width="1.6"/>
+      <text x="270" y="238" font-size="13.5" fill="var(--ink)" text-anchor="middle">Label 0</text>
+
+      <g font-size="11.5" fill="var(--ink-mute)">
+        <text x="430" y="166" text-anchor="middle">rows 5,6,7,8 (4 ones)</text>
+        <text x="110" y="270" text-anchor="middle">row 4 (1 one)</text>
+        <text x="270" y="270" text-anchor="middle">rows 1,2,3 (3 zeros)</text>
+      </g>
+      <text x="310" y="294" font-size="11.5" fill="var(--ink-mute)" text-anchor="middle">Every leaf is pure &#8594; training error 0.</text>
+    </svg>
+    <div class="caption">What to notice: attribute $x_3$ never appears. The algorithm used two of three attributes and stopped, because both base cases (purity) fired. Unused attributes are not a bug — they are the tree telling you $x_3$ carried no information it needed.</div>
+  </div>
+
+  <h3>Step 4 — verify zero training error by running all 8 rows through it</h3>
+
+  <table class="center">
+    <thead><tr><th>$i$</th><th>$x_1$</th><th>$x_2$</th><th>$x_3$</th><th>Path through the tree</th><th>$\hat y$</th><th>$y$</th><th>$\1(y \ne \hat y)$</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>1</td><td>0</td><td>0</td><td>$x_2{=}0$ Yes &rarr; $x_1{=}0$ No</td><td>0</td><td>0</td><td>0</td></tr>
+      <tr><td>2</td><td>1</td><td>0</td><td>1</td><td>$x_2{=}0$ Yes &rarr; $x_1{=}0$ No</td><td>0</td><td>0</td><td>0</td></tr>
+      <tr><td>3</td><td>1</td><td>0</td><td>0</td><td>$x_2{=}0$ Yes &rarr; $x_1{=}0$ No</td><td>0</td><td>0</td><td>0</td></tr>
+      <tr><td>4</td><td>0</td><td>0</td><td>1</td><td>$x_2{=}0$ Yes &rarr; $x_1{=}0$ Yes</td><td>1</td><td>1</td><td>0</td></tr>
+      <tr><td>5</td><td>1</td><td>1</td><td>0</td><td>$x_2{=}0$ No</td><td>1</td><td>1</td><td>0</td></tr>
+      <tr><td>6</td><td>1</td><td>1</td><td>1</td><td>$x_2{=}0$ No</td><td>1</td><td>1</td><td>0</td></tr>
+      <tr><td>7</td><td>1</td><td>1</td><td>0</td><td>$x_2{=}0$ No</td><td>1</td><td>1</td><td>0</td></tr>
+      <tr><td>8</td><td>1</td><td>1</td><td>1</td><td>$x_2{=}0$ No</td><td>1</td><td>1</td><td>0</td></tr>
+    </tbody>
+  </table>
+
+  <p>Sum of the last column is $0$, so the error rate is $\tfrac{1}{8}\cdot 0 = 0$. The tree fits this training set perfectly. (Whether that is <em>good</em> is a different question — see <a href="#stopping">stopping criteria and overfitting</a>.)</p>
+
+  <div class="guided">
+    <div class="g-head"><span class="tag">Guided problem</span>What if we had been forced to split on $x_3$ first?</div>
+    <div class="g-body">
+      <p>Suppose a stubborn colleague insists the root must test $x_3$. Build the rest of the tree greedily from there (splitting the children on the best remaining attribute), and report the final training error. Is a perfect fit still reachable?</p>
+    </div>
+    <details class="step"><summary>Step 1 — Perform the root split on $x_3$</summary>
+      <div>
+        <p>$x_3 = 1$: rows 2, 4, 6, 8 with labels $0,1,1,1$ (attributes $x_1,x_2$ left).<br>
+        $x_3 = 0$: rows 1, 3, 5, 7 with labels $0,0,1,1$.</p>
+        <p>Neither child is pure, so both recurse with $A = \{1,2\}$.</p>
+      </div></details>
+    <details class="step"><summary>Step 2 — Recurse on the $x_3 = 1$ child (rows 2, 4, 6, 8)</summary>
+      <div>
+        <p>Their $(y, x_1, x_2)$: row 2 = $(0,1,0)$, row 4 = $(1,0,0)$, row 6 = $(1,1,1)$, row 8 = $(1,1,1)$.</p>
+        <p>Split on $x_1$: $x_1{=}1$ &rarr; rows 2,6,8 with labels $0,1,1$ &rarr; vote 1, 1 mistake. $x_1{=}0$ &rarr; row 4, label 1 &rarr; 0 mistakes. Total <strong>1</strong>.</p>
+        <p>Split on $x_2$: $x_2{=}1$ &rarr; rows 6,8, labels $1,1$ &rarr; 0 mistakes. $x_2{=}0$ &rarr; rows 2,4, labels $0,1$ &rarr; tie &rarr; vote 1, 1 mistake. Total <strong>1</strong>.</p>
+        <p>A tie. Take $x_2$ (lowest index among the winners is a fine deterministic rule; the notes do not specify one, so state yours). Then the $x_2{=}1$ leaf is pure, and the $x_2{=}0$ node still holds rows 2 and 4 with labels $0,1$ and $A = \{1\}$ remaining. Split on $x_1$: row 2 has $x_1{=}1$ (label 0), row 4 has $x_1{=}0$ (label 1). Both children pure! So this whole branch reaches <strong>0 mistakes</strong> at depth 3.</p>
+      </div></details>
+    <details class="step"><summary>Step 3 — Recurse on the $x_3 = 0$ child (rows 1, 3, 5, 7)</summary>
+      <div>
+        <p>Their $(y, x_1, x_2)$: row 1 = $(0,1,0)$, row 3 = $(0,1,0)$, row 5 = $(1,1,1)$, row 7 = $(1,1,1)$.</p>
+        <p>Split on $x_1$: every row has $x_1 = 1$. The $x_1{=}0$ child is <strong>empty</strong> and the $x_1{=}1$ child is the whole set — a useless split, 2 mistakes.</p>
+        <p>Split on $x_2$: $x_2{=}1$ &rarr; rows 5,7 (labels $1,1$, pure); $x_2{=}0$ &rarr; rows 1,3 (labels $0,0$, pure). <strong>0 mistakes.</strong></p>
+        <p>So $x_2$ wins here and finishes the branch at depth 2.</p>
+      </div></details>
+    <details class="step"><summary>Answer &amp; the takeaway</summary>
+      <div>
+        <p><strong>Final training error: 0.</strong> The forced-$x_3$ tree still fits perfectly — but it needs <strong>4 internal nodes and depth 3</strong>, where the greedy tree needed <strong>2 internal nodes and depth 2</strong>.</p>
+        <p><strong>Takeaway.</strong> A bad first split usually does not destroy your ability to fit the training data; with enough attributes you can almost always drive training error to zero eventually. What it destroys is <em>compactness</em>. And compactness is not cosmetic: a bigger tree means fewer examples per leaf, which means the leaf labels are estimated from less data, which means worse generalisation. <code>BestAttribute</code> is fighting for a small tree, not merely a correct one.</p>
+      </div></details>
+  </div>
+
+  <h2 id="builder">Build the tree yourself</h2>
+
+  <p>Reading a split table is not the same as feeling it. Below, the 8 rows are live. <strong>Click any leaf</strong> to select it, then split it on an attribute and watch the counts flow into the children and the running training error drop.</p>
+
+  <div class="viz">
+    <div class="viz-title">Figure 5 · Interactive tree builder — the poll dataset</div>
+    <div class="scroll-x">
+    <table class="tight center tiny" id="dtDataTable">
+      <thead><tr><th>$i$</th><th>$y$</th><th>$x_1$</th><th>$x_2$</th><th>$x_3$</th><th>lands in leaf</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    </div>
+    <svg id="dtSvg" viewBox="0 0 760 400" role="img" aria-label="Interactive decision tree being built on the eight-row dataset."></svg>
+    <div class="controls">
+      <button class="btn primary" id="dtX1">Split on x&#8321;</button>
+      <button class="btn primary" id="dtX2">Split on x&#8322;</button>
+      <button class="btn primary" id="dtX3">Split on x&#8323;</button>
+      <button class="btn" id="dtGreedy">Greedy pick here</button>
+      <button class="btn" id="dtReset">Reset</button>
+    </div>
+    <div id="dtStatus" class="tiny" style="margin-top:6px"></div>
+    <div class="caption">What to notice: split the root on $x_2$ and the error drops $3/8 \to 1/8$ in one move; split it on $x_1$ or $x_3$ and the error does not move at all. Then try to reach $0$ starting from $x_3$ — you can, but it takes twice as many nodes. Selected leaf is outlined in the accent colour.</div>
+  </div>
+
+  <h2 id="greedy">Greediness: why this algorithm is not optimal, and why we do it anyway</h2>
+
+  <p>The notes are careful to flag this, and you should be too:</p>
+
+  <div class="box key"><span class="label">Key idea</span>
+    <p>The construction algorithm is a <strong>greedy approach towards ERM</strong> (empirical risk minimisation, see <a href="ml-formulation.html">Chapter 5</a>). Greediness is <strong>suboptimal</strong> but helps <strong>computational efficiency</strong>.</p>
+  </div>
+
+  <p>Unpack both halves.</p>
+
+  <p><strong>Why it is suboptimal.</strong> True ERM would say: search over <em>all</em> trees of some size and return the one with lowest training error. The greedy algorithm instead commits to the root split using a <em>one-step lookahead</em> — it judges an attribute by what it does on its own, immediately, and never reconsiders. A split that looks useless alone can be indispensable in combination.</p>
+
+  <p><strong>Why we do it anyway.</strong> Finding the smallest tree consistent with a dataset is NP-hard. Greedy costs $O(N \cdot d)$ work per node and is the difference between "trains in a second" and "does not train."</p>
+
+  <h3>The canonical failure: XOR</h3>
+
+  <div class="box example"><span class="label">Example</span>
+    <p>Let $d = 2$ and $y = x_1 \oplus x_2$ (exclusive-or). The complete dataset is four rows:</p>
+    <table class="tight center">
+      <thead><tr><th>$i$</th><th>$x_1$</th><th>$x_2$</th><th>$y$</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>0</td><td>0</td><td>0</td></tr>
+        <tr><td>2</td><td>0</td><td>1</td><td>1</td></tr>
+        <tr><td>3</td><td>1</td><td>0</td><td>1</td></tr>
+        <tr><td>4</td><td>1</td><td>1</td><td>0</td></tr>
+      </tbody>
+    </table>
+    <p><strong>Baseline:</strong> 2 zeros, 2 ones &rarr; majority vote is a tie &rarr; predict 1 &rarr; 2 mistakes out of 4.</p>
+    <p><strong>Split on $x_1$:</strong> $x_1{=}1$ gives rows 3, 4 with labels $1, 0$ — a 1&ndash;1 tie, 1 mistake. $x_1{=}0$ gives rows 1, 2 with labels $0,1$ — another tie, 1 mistake. Total $2/4$. <em>The split bought nothing.</em></p>
+    <p><strong>Split on $x_2$:</strong> by symmetry, also $2/4$. Also nothing.</p>
+    <p style="margin-bottom:0">So the one-step criterion reports that <strong>both attributes are worthless</strong>, even though the pair of them determines $y$ exactly. (The same is true of mutual information here: $I(Y;x_1) = I(Y;x_2) = 0$. XOR defeats <em>every</em> one-step-lookahead criterion, not just error rate — this is worth knowing, because students often assume entropy rescues XOR. It does not.)</p>
+  </div>
+
+  <div class="box intuition"><span class="label">Intuition</span>
+    <p>Greedy search is a hiker who always walks in the locally steepest downhill direction. XOR is a landscape where the ground is perfectly flat in both compass directions from where you stand, but there is a deep valley diagonally. No single-direction probe detects it.</p>
+  </div>
+
+  <h3>How the algorithm still recovers</h3>
+
+  <p>Here is the part people forget. Run the algorithm literally on XOR:</p>
+
+  <ol>
+    <li>At the root, all attributes tie. <code>BestAttribute</code> breaks the tie somehow — say it returns $x_1$.</li>
+    <li>Left child ($x_1 = 1$) holds rows 3, 4 with labels $1, 0$. Not pure, and $A = \{2\}$ is not empty, so <strong>recurse</strong>. The only choice is $x_2$: row 3 has $x_2{=}0$ (label 1), row 4 has $x_2{=}1$ (label 0). Both children pure.</li>
+    <li>Right child ($x_1=0$) holds rows 1, 2. Split on $x_2$: both children pure.</li>
+  </ol>
+
+  <p>Final tree: depth 2, <strong>zero training error</strong>, perfect. The greedy criterion was blind, but the <em>recursion kept going anyway</em> because the stopping rule was "pure or out of attributes", not "gain is zero".</p>
+
+  <div class="box warn"><span class="label">Common mistake</span>
+    <p>This is exactly why the stopping criterion <em>"stop if the split doesn't reduce training error by much"</em> — one of the options the notes list — is <strong>dangerous</strong>. On XOR it stops at the root with error $2/4$ and never discovers the perfect depth-2 tree. The cheap fix used in practice is to grow the tree out fully and then <strong>prune</strong> it back, rather than stopping early, because pruning judges a subtree by what it achieved, not by what its first split promised. <span class="pill">beyond syllabus</span></p>
+  </div>
+
+  <div class="quiz" data-answer="2">
+    <div class="q">On the XOR dataset, the greedy criterion assigns both attributes zero benefit. What does the algorithm as written in the pseudocode actually do?</div>
+    <button class="opt">Returns a single leaf, because no split reduces training error</button>
+    <button class="opt">Fails — the argmax is undefined when everything ties</button>
+    <button class="opt">Picks one attribute arbitrarily and recurses, ending with a perfect depth-2 tree</button>
+    <div class="why"><strong>Why:</strong> The base case on line 2 is "$A = \emptyset$ or all examples share a label" — <em>neither</em> is true at the XOR root, so the algorithm must split. It breaks the tie by whatever rule <code>BestAttribute</code> uses, recurses, and at depth 2 the remaining attribute separates each child perfectly. The lesson: greedy scoring can be blind at one level and still be rescued by the recursion below it — provided you did not add an early-stopping rule that quits on zero gain.</div>
+  </div>
+
+  <h2 id="evaluating">Evaluating decision trees</h2>
+
+  <p>The pre-reading asks a deceptively simple question: here are two decision trees for the Iris task — <em>which is better?</em></p>
+
+  <div class="box key"><span class="label">Key idea</span>
+    <p><strong>You cannot tell.</strong> Comparing two models by staring at them is not a thing. You need (a) <strong>data</strong> and (b) a <strong>performance measure</strong>.</p>
+  </div>
+
+  <p>The measure for classification is the <strong>classification error rate</strong>:</p>
+
+  $$\text{err} \;=\; \frac{1}{N} \sum_i \1\!\left(y^{(i)} \ne \hat y^{(i)}\right)$$
+
+  <p>Naming every symbol: $N$ is the number of examples you are evaluating on; $y^{(i)}$ is the true (measured) label of example $i$; $\hat y^{(i)} = h(x^{(i)})$ is what the tree predicts for it; $\1(\cdot)$ is again the indicator, contributing $1$ for a mismatch and $0$ for a match. The sum counts mistakes, and dividing by $N$ turns a count into a rate so datasets of different sizes are comparable.</p>
+
+  <p>This is the <strong>empirical risk</strong> $\hat R(h)$ from <a href="ml-formulation.html">Chapter 5</a> with the <strong>zero-one loss</strong> $\ell(y,\hat y) = \1(y \ne \hat y)$ plugged in. Nothing new — just the general machinery specialised to classification.</p>
+
+  <div class="box warn"><span class="label">Common mistake</span>
+    <p>Error rate treats all mistakes as equally bad. That is often wrong. The pre-reading's own medical example makes the point with an asymmetric loss table, where predicting "healthy" for an ill patient (a false negative) costs $10$ and the reverse costs $2$:</p>
+    <table class="tight center">
+      <thead><tr><th>$\ell(y, \hat y)$</th><th>$\hat y = 0$</th><th>$\hat y = 1$</th></tr></thead>
+      <tbody>
+        <tr><th>$y = 0$</th><td>0</td><td>2</td></tr>
+        <tr><th>$y = 1$</th><td>10</td><td>0</td></tr>
+      </tbody>
+    </table>
+    <p style="margin-bottom:0">Everything in this chapter works with a weighted loss too — you just replace "count the mistakes" with "add up the losses" in the majority vote and in <code>BestAttribute</code>. The leaf then predicts the <em>cost-minimising</em> class rather than the most common one.</p>
+  </div>
+
+  <h3>The Iris comparison, worked in full</h3>
+
+  <div class="box example"><span class="label">Example</span>
+    <p><span class="pill">reconstruction</span> The pre-reading's data table and its two trees are figures that did not survive text extraction from the PDF, so <strong>I have reconstructed a plausible 7-row Iris table and two candidate trees</strong> that reproduce the stated result — Model A errs on $1/7$, Model B on $2/7$. The rows below are genuine measurements from Fisher's Iris dataset; the trees are mine.</p>
+  </div>
+
+  <table class="center">
+    <thead><tr><th>$i$</th><th>sepal len</th><th>sepal wid</th><th>petal len</th><th>petal wid</th><th>species $y$</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>5.1</td><td>3.5</td><td>1.4</td><td>0.2</td><td>setosa</td></tr>
+      <tr><td>2</td><td>4.9</td><td>3.0</td><td>1.5</td><td>0.2</td><td>setosa</td></tr>
+      <tr><td>3</td><td>6.4</td><td>3.2</td><td>4.5</td><td>1.5</td><td>versicolor</td></tr>
+      <tr><td>4</td><td>5.7</td><td>2.8</td><td>4.1</td><td>1.3</td><td>versicolor</td></tr>
+      <tr><td>5</td><td>5.9</td><td>3.2</td><td>4.8</td><td>1.8</td><td>versicolor</td></tr>
+      <tr><td>6</td><td>6.3</td><td>3.3</td><td>6.0</td><td>2.5</td><td>virginica</td></tr>
+      <tr><td>7</td><td>6.5</td><td>3.2</td><td>5.1</td><td>2.0</td><td>virginica</td></tr>
+    </tbody>
+  </table>
+
+  <div class="viz">
+    <div class="viz-title">Figure 6 · Two candidate Iris trees (reconstruction)</div>
+    <svg viewBox="0 0 780 300" role="img" aria-label="Two candidate decision trees for iris classification, model A using petal measurements and model B using sepal measurements.">
+      <text x="185" y="16" font-size="12" font-weight="700" fill="var(--accent)" text-anchor="middle">MODEL A &#8212; petal-based</text>
+      <text x="595" y="16" font-size="12" font-weight="700" fill="var(--accent-3)" text-anchor="middle">MODEL B &#8212; sepal-based</text>
+      <line x1="390" y1="30" x2="390" y2="280" stroke="var(--line)" stroke-width="1" stroke-dasharray="4 4"/>
+
+      <g stroke="var(--line-2)" stroke-width="1.5" fill="none">
+        <path d="M185 70 L90 112"/><path d="M185 70 L262 112"/>
+        <path d="M262 168 L185 210"/><path d="M262 168 L330 210"/>
+        <path d="M595 70 L500 112"/><path d="M595 70 L672 112"/>
+        <path d="M672 168 L595 210"/><path d="M672 168 L740 210"/>
+      </g>
+      <g font-size="10.5" fill="var(--ink-mute)" text-anchor="middle">
+        <text x="122" y="88">Yes</text><text x="240" y="88">No</text>
+        <text x="206" y="186">Yes</text><text x="315" y="186">No</text>
+        <text x="532" y="88">Yes</text><text x="650" y="88">No</text>
+        <text x="616" y="186">Yes</text><text x="725" y="186">No</text>
+      </g>
+
+      <rect x="118" y="30" width="134" height="40" rx="7" fill="var(--panel)" stroke="var(--accent)" stroke-width="1.5"/>
+      <text x="185" y="55" font-size="12.5" fill="var(--ink)" text-anchor="middle">petal len &lt; 2.5?</text>
+      <rect x="196" y="128" width="134" height="40" rx="7" fill="var(--panel)" stroke="var(--accent)" stroke-width="1.5"/>
+      <text x="263" y="153" font-size="12.5" fill="var(--ink)" text-anchor="middle">petal wid &lt; 1.75?</text>
+      <rect x="30" y="112" width="120" height="34" rx="7" fill="color-mix(in srgb, var(--accent-2) 12%, var(--panel))" stroke="var(--accent-2)" stroke-width="1.5"/>
+      <text x="90" y="134" font-size="12" fill="var(--ink)" text-anchor="middle">setosa</text>
+      <rect x="125" y="210" width="120" height="34" rx="7" fill="color-mix(in srgb, var(--accent-2) 12%, var(--panel))" stroke="var(--accent-2)" stroke-width="1.5"/>
+      <text x="185" y="232" font-size="12" fill="var(--ink)" text-anchor="middle">versicolor</text>
+      <rect x="272" y="210" width="120" height="34" rx="7" fill="color-mix(in srgb, var(--accent-2) 12%, var(--panel))" stroke="var(--accent-2)" stroke-width="1.5"/>
+      <text x="332" y="232" font-size="12" fill="var(--ink)" text-anchor="middle">virginica</text>
+
+      <rect x="528" y="30" width="134" height="40" rx="7" fill="var(--panel)" stroke="var(--accent-3)" stroke-width="1.5"/>
+      <text x="595" y="55" font-size="12.5" fill="var(--ink)" text-anchor="middle">sepal len &lt; 5.5?</text>
+      <rect x="606" y="128" width="134" height="40" rx="7" fill="var(--panel)" stroke="var(--accent-3)" stroke-width="1.5"/>
+      <text x="673" y="153" font-size="12.5" fill="var(--ink)" text-anchor="middle">sepal wid &lt; 3.1?</text>
+      <rect x="440" y="112" width="120" height="34" rx="7" fill="color-mix(in srgb, var(--accent-3) 12%, var(--panel))" stroke="var(--accent-3)" stroke-width="1.5"/>
+      <text x="500" y="134" font-size="12" fill="var(--ink)" text-anchor="middle">setosa</text>
+      <rect x="535" y="210" width="120" height="34" rx="7" fill="color-mix(in srgb, var(--accent-3) 12%, var(--panel))" stroke="var(--accent-3)" stroke-width="1.5"/>
+      <text x="595" y="232" font-size="12" fill="var(--ink)" text-anchor="middle">versicolor</text>
+      <rect x="650" y="210" width="110" height="34" rx="7" fill="color-mix(in srgb, var(--accent-3) 12%, var(--panel))" stroke="var(--accent-3)" stroke-width="1.5"/>
+      <text x="705" y="232" font-size="12" fill="var(--ink)" text-anchor="middle">virginica</text>
+
+      <text x="185" y="276" font-size="11.5" fill="var(--ink-mute)" text-anchor="middle">error rate 1/7</text>
+      <text x="595" y="276" font-size="11.5" fill="var(--ink-mute)" text-anchor="middle">error rate 2/7</text>
+    </svg>
+    <div class="caption">What to notice: both trees have the same <em>shape</em> — two internal nodes, three leaves, same three species. Shape tells you nothing about quality. Only running the data through them does.</div>
+  </div>
+
+  <div class="scroll-x">
+  <table class="center">
+    <thead><tr><th>$i$</th><th>true $y$</th><th>A: path</th><th>A: $\hat y$</th><th>A wrong?</th><th>B: path</th><th>B: $\hat y$</th><th>B wrong?</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>setosa</td><td>PL 1.4 &lt; 2.5 &rarr; Yes</td><td>setosa</td><td>&#183;</td><td>SL 5.1 &lt; 5.5 &rarr; Yes</td><td>setosa</td><td>&#183;</td></tr>
+      <tr><td>2</td><td>setosa</td><td>PL 1.5 &lt; 2.5 &rarr; Yes</td><td>setosa</td><td>&#183;</td><td>SL 4.9 &lt; 5.5 &rarr; Yes</td><td>setosa</td><td>&#183;</td></tr>
+      <tr><td>3</td><td>versicolor</td><td>PL 4.5; PW 1.5 &lt; 1.75</td><td>versicolor</td><td>&#183;</td><td>SL 6.4; SW 3.2 &#8817; 3.1</td><td>virginica</td><td><strong>&#10007;</strong></td></tr>
+      <tr><td>4</td><td>versicolor</td><td>PL 4.1; PW 1.3 &lt; 1.75</td><td>versicolor</td><td>&#183;</td><td>SL 5.7; SW 2.8 &lt; 3.1</td><td>versicolor</td><td>&#183;</td></tr>
+      <tr><td>5</td><td>versicolor</td><td>PL 4.8; PW 1.8 &#8817; 1.75</td><td>virginica</td><td><strong>&#10007;</strong></td><td>SL 5.9; SW 3.2 &#8817; 3.1</td><td>virginica</td><td><strong>&#10007;</strong></td></tr>
+      <tr><td>6</td><td>virginica</td><td>PL 6.0; PW 2.5 &#8817; 1.75</td><td>virginica</td><td>&#183;</td><td>SL 6.3; SW 3.3 &#8817; 3.1</td><td>virginica</td><td>&#183;</td></tr>
+      <tr><td>7</td><td>virginica</td><td>PL 5.1; PW 2.0 &#8817; 1.75</td><td>virginica</td><td>&#183;</td><td>SL 6.5; SW 3.2 &#8817; 3.1</td><td>virginica</td><td>&#183;</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>Counting the crosses and dividing by $N = 7$:</p>
+
+  $$\text{err}(A) = \frac{1}{7}\sum_i \1(y^{(i)} \ne \hat y^{(i)}) = \frac{1}{7} \approx 0.143, \qquad \text{err}(B) = \frac{2}{7} \approx 0.286$$
+
+  <p><strong>Model A performs better on this dataset.</strong> That is exactly the pre-reading's conclusion. Notice the qualifier — <em>on this dataset</em>. Seven flowers is far too few to conclude that petal measurements beat sepal measurements in general; with $N=7$, a single flower is 14 percentage points of error rate.</p>
+
+  <div class="quiz" data-answer="0">
+    <div class="q">Model A scores $1/7$ and Model B scores $2/7$ on these seven flowers. What have we learned?</div>
+    <button class="opt">That A is better <em>on this data</em>; the sample is far too small to conclude much else</button>
+    <button class="opt">That A generalises better than B to new flowers</button>
+    <button class="opt">That A is the ERM solution over all decision trees</button>
+    <div class="why"><strong>Why:</strong> The error rate is the <em>empirical</em> risk on these 7 points. Generalisation is about the true risk $R(h) = \mathbb{E}[\ell(Y, h(X))]$, which we never observe; with $N=7$, the difference between $1/7$ and $2/7$ is a single flower and well inside the noise. And neither tree was chosen by searching all trees, so neither is the ERM solution. If you also <em>trained</em> on these 7 rows, the number is a training error and is biased optimistically — see <a href="feature-engineering.html">overfitting</a>.</div>
+  </div>
+
+  <h2 id="other-examples">Two more reconstructed examples</h2>
+
+  <p><span class="pill">reconstruction</span> The pre-reading illustrates "using decision trees" with two figures that did not survive PDF extraction: a medical (cesarean-section) tree and the Iris species tree. Both are redrawn here so the ideas still land. <strong>The structures are mine, not the professor's</strong>, though the attributes are the standard ones for each problem.</p>
+
+  <div class="viz">
+    <div class="viz-title">Figure 7 · Medical classification — should this delivery be a cesarean section? (reconstruction)</div>
+    <svg viewBox="0 0 760 320" role="img" aria-label="Reconstructed cesarean section decision tree splitting on previous cesarean, breech presentation, and fetal distress.">
+      <g stroke="var(--line-2)" stroke-width="1.5" fill="none">
+        <path d="M380 62 L170 106"/><path d="M380 62 L470 106"/>
+        <path d="M470 162 L300 206"/><path d="M470 162 L570 206"/>
+        <path d="M570 262 L520 296"/><path d="M570 262 L680 296"/>
+      </g>
+      <g font-size="10.5" fill="var(--ink-mute)" text-anchor="middle">
+        <text x="252" y="80">Yes</text><text x="440" y="80">No</text>
+        <text x="368" y="180">Yes</text><text x="540" y="180">No</text>
+        <text x="528" y="282">Yes</text><text x="644" y="282">No</text>
+      </g>
+      <g fill="var(--panel)" stroke="var(--accent)" stroke-width="1.5">
+        <rect x="288" y="20" width="184" height="42" rx="7"/>
+        <rect x="390" y="120" width="180" height="42" rx="7"/>
+        <rect x="490" y="220" width="160" height="42" rx="7"/>
+      </g>
+      <g font-size="12.5" fill="var(--ink)" text-anchor="middle">
+        <text x="380" y="46">Previous cesarean?</text>
+        <text x="480" y="146">Breech presentation?</text>
+        <text x="570" y="246">Fetal distress?</text>
+      </g>
+      <g stroke-width="1.5">
+        <rect x="100" y="106" width="140" height="36" rx="7" fill="color-mix(in srgb, var(--rose) 13%, var(--panel))" stroke="var(--rose)"/>
+        <rect x="230" y="206" width="140" height="36" rx="7" fill="color-mix(in srgb, var(--rose) 13%, var(--panel))" stroke="var(--rose)"/>
+        <rect x="450" y="288" width="140" height="36" rx="7" fill="color-mix(in srgb, var(--rose) 13%, var(--panel))" stroke="var(--rose)"/>
+        <rect x="610" y="288" width="140" height="36" rx="7" fill="color-mix(in srgb, var(--accent-2) 13%, var(--panel))" stroke="var(--accent-2)"/>
+      </g>
+      <g font-size="12" fill="var(--ink)" text-anchor="middle">
+        <text x="170" y="129">C-section</text>
+        <text x="300" y="229">C-section</text>
+        <text x="520" y="311">C-section</text>
+        <text x="680" y="311">vaginal delivery</text>
+      </g>
+    </svg>
+    <div class="caption">What to notice: an "overly simple" tree, as the pre-reading itself calls it — real obstetric decisions involve many more factors and are not made by a four-box flowchart. It is a teaching object, and the interpretability point is exactly why medicine is a favourite domain for trees: a clinician can point at the node that fired.</div>
+  </div>
+
+  <div class="viz">
+    <div class="viz-title">Figure 8 · Species classification — Iris, from four petal/sepal measurements (reconstruction)</div>
+    <svg viewBox="0 0 700 310" role="img" aria-label="Reconstructed iris species decision tree using petal length and petal width thresholds.">
+      <g stroke="var(--line-2)" stroke-width="1.5" fill="none">
+        <path d="M350 62 L150 106"/><path d="M350 62 L440 106"/>
+        <path d="M440 162 L340 206"/><path d="M440 162 L560 206"/>
+        <path d="M340 246 L260 286"/><path d="M340 246 L420 286"/>
+      </g>
+      <g font-size="10.5" fill="var(--ink-mute)" text-anchor="middle">
+        <text x="232" y="80">Yes</text><text x="412" y="80">No</text>
+        <text x="380" y="180">Yes</text><text x="522" y="180">No</text>
+        <text x="288" y="270">Yes</text><text x="398" y="270">No</text>
+      </g>
+      <g fill="var(--panel)" stroke="var(--accent-2)" stroke-width="1.5">
+        <rect x="266" y="20" width="168" height="42" rx="7"/>
+        <rect x="358" y="120" width="164" height="42" rx="7"/>
+        <rect x="262" y="204" width="156" height="42" rx="7"/>
+      </g>
+      <g font-size="12.5" fill="var(--ink)" text-anchor="middle">
+        <text x="350" y="46">petal length &lt; 2.5 cm?</text>
+        <text x="440" y="146">petal width &lt; 1.75 cm?</text>
+        <text x="340" y="230">petal length &lt; 5.0 cm?</text>
+      </g>
+      <g stroke-width="1.5">
+        <rect x="84" y="106" width="132" height="36" rx="7" fill="color-mix(in srgb, var(--accent) 12%, var(--panel))" stroke="var(--accent)"/>
+        <rect x="494" y="206" width="132" height="36" rx="7" fill="color-mix(in srgb, var(--accent-3) 12%, var(--panel))" stroke="var(--accent-3)"/>
+        <rect x="194" y="286" width="132" height="34" rx="7" fill="color-mix(in srgb, var(--gold) 16%, var(--panel))" stroke="var(--gold)"/>
+        <rect x="354" y="286" width="132" height="34" rx="7" fill="color-mix(in srgb, var(--accent-3) 12%, var(--panel))" stroke="var(--accent-3)"/>
+      </g>
+      <g font-size="12" fill="var(--ink)" text-anchor="middle">
+        <text x="150" y="129">setosa</text>
+        <text x="560" y="229">virginica</text>
+        <text x="260" y="308">versicolor</text>
+        <text x="420" y="308">virginica</text>
+      </g>
+      <text x="350" y="296" font-size="11" fill="var(--ink-mute)" text-anchor="start" x="20">$\Y$ here has THREE values, not two &#8212; nothing in the algorithm cared.</text>
+    </svg>
+    <div class="caption">What to notice: Iris has three classes. Neither the majority-vote formula nor the recursion assumed $|\Y| = 2$ — $\argmax_{k \in \Y}$ ranges over whatever $\Y$ is. Multi-class comes for free with decision trees, which is <em>not</em> true of, say, plain logistic regression.</div>
+  </div>
+
+  <h2 id="real-valued">Extension: beyond binary attributes, and decision boundaries</h2>
+
+  <p>The notes list several extensions. Start with the one that changes the picture most.</p>
+
+  <h3>Attributes with more than $\{0,1\}$ values</h3>
+
+  <p>Two cases, and they are handled differently.</p>
+
+  <ul>
+    <li><strong>Categorical with $m$ values</strong> (e.g. colour $\in$ {red, green, blue}). Either split the node into $m$ branches at once, or binarise: test "colour = red?" and let the No branch test the rest. Multi-way splits consume the attribute entirely in one node; binary tests let you come back to it.</li>
+    <li><strong>Real-valued</strong> (e.g. petal length $\in \R$). You cannot enumerate the values, so the node tests a <strong>threshold</strong>: "Is $x_j \ge t$?" Now <code>BestAttribute</code> must choose both $j$ <em>and</em> $t$.</li>
+  </ul>
+
+  <p>Here is the notes' example with $\X = \R^2$, $\Y = \{0,1\}$, splitting first at $x_2 = 4.5$ and then at $x_1 = 3.5$:</p>
+
+  <div class="viz">
+    <div class="viz-title">Figure 9 · A real-valued tree and the regions it carves in $\R^2$</div>
+    <svg viewBox="0 0 800 340" role="img" aria-label="Left: feature space with a horizontal boundary at x2 equals 4.5 and a vertical boundary at x1 equals 3.5 below it, shading the label regions. Right: the corresponding decision tree.">
+      <!-- ===== left: feature space ===== -->
+      <g>
+        <rect x="70" y="30" width="280" height="250" fill="color-mix(in srgb, var(--accent-3) 9%, transparent)"/>
+        <rect x="70" y="30" width="280" height="90" fill="color-mix(in srgb, var(--accent-2) 16%, transparent)"/>
+        <rect x="70" y="120" width="140" height="160" fill="color-mix(in srgb, var(--rose) 13%, transparent)"/>
+        <rect x="210" y="120" width="140" height="160" fill="color-mix(in srgb, var(--accent-2) 16%, transparent)"/>
+
+        <line x1="70" y1="120" x2="350" y2="120" stroke="var(--accent)" stroke-width="2.5"/>
+        <line x1="210" y1="120" x2="210" y2="280" stroke="var(--accent)" stroke-width="2.5"/>
+
+        <line x1="70" y1="280" x2="360" y2="280" stroke="var(--ink)" stroke-width="1.6"/>
+        <line x1="70" y1="20" x2="70" y2="280" stroke="var(--ink)" stroke-width="1.6"/>
+        <text x="364" y="284" font-size="13" fill="var(--ink)">x&#8321;</text>
+        <text x="60" y="20" font-size="13" fill="var(--ink)" text-anchor="end">x&#8322;</text>
+
+        <line x1="66" y1="120" x2="74" y2="120" stroke="var(--ink)" stroke-width="1.6"/>
+        <text x="60" y="124" font-size="12" fill="var(--ink-mute)" text-anchor="end">4.5</text>
+        <line x1="210" y1="276" x2="210" y2="284" stroke="var(--ink)" stroke-width="1.6"/>
+        <text x="210" y="298" font-size="12" fill="var(--ink-mute)" text-anchor="middle">3.5</text>
+        <text x="70" y="298" font-size="12" fill="var(--ink-mute)" text-anchor="middle">0</text>
+
+        <g fill="var(--accent-2)">
+          <circle cx="120" cy="60" r="4.5"/><circle cx="200" cy="85" r="4.5"/><circle cx="290" cy="55" r="4.5"/>
+          <circle cx="250" cy="95" r="4.5"/><circle cx="150" cy="95" r="4.5"/>
+          <circle cx="255" cy="175" r="4.5"/><circle cx="310" cy="225" r="4.5"/><circle cx="285" cy="145" r="4.5"/>
+          <circle cx="240" cy="250" r="4.5"/>
+        </g>
+        <g fill="none" stroke="var(--rose)" stroke-width="2">
+          <path d="M105 160 l8 8 M113 160 l-8 8"/><path d="M145 200 l8 8 M153 200 l-8 8"/>
+          <path d="M100 240 l8 8 M108 240 l-8 8"/><path d="M170 255 l8 8 M178 255 l-8 8"/>
+          <path d="M130 185 l8 8 M138 185 l-8 8"/>
+        </g>
+        <text x="330" y="52" font-size="11.5" fill="var(--accent-2)" text-anchor="end">label 1</text>
+        <text x="200" y="272" font-size="11.5" fill="var(--rose)" text-anchor="end">label 0</text>
+        <text x="342" y="272" font-size="11.5" fill="var(--accent-2)" text-anchor="end">label 1</text>
+        <text x="210" y="318" font-size="11.5" fill="var(--ink-mute)" text-anchor="middle">Thick orange lines = the decision boundary</text>
+      </g>
+
+      <!-- ===== right: the tree ===== -->
+      <g>
+        <g stroke="var(--line-2)" stroke-width="1.5" fill="none">
+          <path d="M600 62 L500 106"/><path d="M600 62 L690 106"/>
+          <path d="M690 162 L600 206"/><path d="M690 162 L760 206"/>
+        </g>
+        <g font-size="10.5" fill="var(--ink-mute)" text-anchor="middle">
+          <text x="536" y="80">Yes</text><text x="662" y="80">No</text>
+          <text x="628" y="180">Yes</text><text x="740" y="180">No</text>
+        </g>
+        <rect x="530" y="20" width="140" height="42" rx="7" fill="var(--panel)" stroke="var(--accent)" stroke-width="1.5"/>
+        <text x="600" y="46" font-size="13" fill="var(--ink)" text-anchor="middle">Is x&#8322; &#8805; 4.5?</text>
+        <rect x="620" y="120" width="140" height="42" rx="7" fill="var(--panel)" stroke="var(--accent)" stroke-width="1.5"/>
+        <text x="690" y="146" font-size="13" fill="var(--ink)" text-anchor="middle">Is x&#8321; &#8804; 3.5?</text>
+        <rect x="440" y="106" width="110" height="36" rx="7" fill="color-mix(in srgb, var(--accent-2) 14%, var(--panel))" stroke="var(--accent-2)" stroke-width="1.5"/>
+        <text x="495" y="129" font-size="12.5" fill="var(--ink)" text-anchor="middle">Label 1</text>
+        <rect x="546" y="206" width="110" height="36" rx="7" fill="color-mix(in srgb, var(--rose) 13%, var(--panel))" stroke="var(--rose)" stroke-width="1.5"/>
+        <text x="601" y="229" font-size="12.5" fill="var(--ink)" text-anchor="middle">Label 0</text>
+        <rect x="672" y="206" width="110" height="36" rx="7" fill="color-mix(in srgb, var(--accent-2) 14%, var(--panel))" stroke="var(--accent-2)" stroke-width="1.5"/>
+        <text x="727" y="229" font-size="12.5" fill="var(--ink)" text-anchor="middle">Label 1</text>
+        <text x="600" y="290" font-size="11.5" fill="var(--ink-mute)" text-anchor="middle">Each internal node = one line in the picture.</text>
+        <text x="600" y="308" font-size="11.5" fill="var(--ink-mute)" text-anchor="middle">Each leaf = one rectangular region.</text>
+      </g>
+    </svg>
+    <div class="caption">What to notice: the root's test $x_2 \ge 4.5$ draws a line across the <em>whole</em> plane. The second test $x_1 \le 3.5$ draws a line only inside the lower half — because that node is only reached when $x_2 &lt; 4.5$. The depth of a node is exactly how many constraints its region satisfies.</div>
+  </div>
+
+  <div class="box defn"><span class="label">Definition</span>
+    <p>The <strong>decision boundary</strong> is the set of lines (in general, surfaces) that separate the region where the model outputs $0$ from the region where it outputs $1$.</p>
+    <p style="margin-bottom:0">In Figure 9 it is the horizontal segment at $x_2 = 4.5$ over $x_1 \le 3.5$, plus the vertical segment at $x_1 = 3.5$ below $x_2 = 4.5$. Notice it is <em>not</em> the whole of either line: where label-1 sits on both sides of a line, that stretch of line is not a boundary at all.</p>
+  </div>
+
+  <h3>Why tree boundaries are always axis-aligned staircases</h3>
+
+  <div class="box proof"><span class="label">Proof</span>
+    <p>Every internal node tests a <strong>single</strong> coordinate against a constant: $x_j \ge t$. The set $\{x : x_j \ge t\}$ is a half-space whose bounding hyperplane is perpendicular to axis $j$ — i.e. axis-aligned.</p>
+    <p>A leaf is reached exactly when <em>all</em> the tests on its root-to-leaf path hold, so the region a leaf owns is an <strong>intersection of axis-aligned half-spaces</strong>, which is an axis-aligned box (possibly unbounded).</p>
+    <p>The model's $0$-region is a union of such boxes, and so is its $1$-region. A boundary between two unions of axis-aligned boxes can only consist of axis-aligned pieces. $\blacksquare$</p>
+  </div>
+
+  <p><strong>Consequence for a diagonal boundary.</strong> Suppose the truth is $y = \1(x_1 + x_2 \ge 5)$ — a clean 45&deg; line. A tree can never draw that line. It can only approximate it with a staircase: many alternating horizontal and vertical splits, each shaving off one small rectangle. To get within $\varepsilon$ you need roughly $O(1/\varepsilon)$ splits, and every extra split subdivides the data further, so the leaves get sparse and the fit gets noisy.</p>
+
+  <div class="box intuition"><span class="label">Intuition</span>
+    <p>A decision tree can only cut with a guillotine held parallel to the table edges. It can approximate a diagonal cut, but only by making a very large number of tiny straight cuts — and each cut costs it data.</p>
+    <p style="margin-bottom:0">The fix is not a better tree algorithm, it is a better <em>feature</em>: add the column $z = x_1 + x_2$ and one split on $z$ does the job. That is precisely the subject of <a href="feature-engineering.html">feature engineering</a>.</p>
+  </div>
+
+  <h3>How threshold candidates are chosen <span class="pill">beyond syllabus</span></h3>
+
+  <p>Every student asks this, so: for a real-valued attribute $x_j$, you do <em>not</em> search all of $\R$. Sort the $N$ training values of $x_j$, and consider only the <strong>midpoints between consecutive distinct sorted values</strong> as candidate thresholds.</p>
+
+  <p>The reason is that the partition of the training data only changes when $t$ crosses a data value. Between two consecutive values, every $t$ induces exactly the same split and therefore exactly the same training error. There are at most $N-1$ distinct partitions, so at most $N-1$ candidates. Putting $t$ at the midpoint rather than on a data point is a small extra kindness: it maximises the margin to the nearest training points, which usually generalises a touch better.</p>
+
+  <div class="box example"><span class="label">Example</span>
+    <p>Petal lengths $1.4,\ 1.5,\ 4.1,\ 4.5,\ 4.8,\ 5.1,\ 6.0$. Candidate thresholds: $1.45,\ 2.8,\ 4.3,\ 4.65,\ 4.95,\ 5.55$. Six candidates for this attribute, not infinitely many. The tree in Figure 8 used $2.5$, which is inside the wide gap $(1.5, 4.1)$ and induces the same split as the candidate $2.8$.</p>
+  </div>
+
+  <h2 id="stopping">Extensions: attribute reuse and stopping criteria</h2>
+
+  <h3>You need not remove the chosen attribute</h3>
+
+  <p>Line 6&ndash;7 of the pseudocode pass $A \setminus \{b\}$ down. The notes point out this is optional: <em>need not remove the chosen attribute when calling the function again in the recursion.</em></p>
+
+  <p>Why it is harmless to keep $b$: for <strong>binary</strong> attributes, re-splitting on $b$ in a child is merely wasteful, never wrong. Every point in the left child already has $x_b = 1$, so a second test on $b$ sends all of them one way and leaves the other child empty. It gains nothing, but it breaks nothing.</p>
+
+  <div class="box warn"><span class="label">Common mistake</span>
+    <p>For <strong>real-valued</strong> attributes you <strong>must not</strong> remove the attribute. Look at Figure 9 and imagine the truth were a horizontal band $2 \le x_2 \le 4.5$. You need <em>two</em> thresholds on $x_2$ — one at $4.5$, another at $2$ further down the tree. Delete $x_2$ from $A$ after the first split and that band becomes unlearnable.</p>
+    <p style="margin-bottom:0">Real implementations (CART, scikit-learn) therefore never remove attributes. The consequence is that the depth bound "at most $d$" evaporates, and you need a real stopping criterion instead.</p>
+  </div>
+
+  <h3>Different stopping criteria</h3>
+
+  <p>Options, from the notes and from practice:</p>
+
+  <table>
+    <thead><tr><th>Criterion</th><th>Stop when…</th><th>Risk</th></tr></thead>
+    <tbody>
+      <tr><td><strong>$A = \emptyset$</strong></td><td>every attribute has been used on this path</td><td>none — but only reachable if you do remove attributes</td></tr>
+      <tr><td><strong>Pure node</strong></td><td>all labels in $S$ are the same</td><td>none; the node is already perfect on training data</td></tr>
+      <tr><td><strong>Gain threshold</strong><br><span class="tiny muted">"the split doesn't reduce training error by much"</span></td><td>the best available split improves the criterion by less than $\tau$</td><td><strong>blind to XOR</strong> and other interaction effects — stops too early</td></tr>
+      <tr><td><strong>Depth limit</strong></td><td>depth reaches $D_{\max}$</td><td>crude but effective and very common</td></tr>
+      <tr><td><strong>Minimum leaf size</strong></td><td>a child would hold fewer than $m$ points</td><td>the most reliable single knob in practice</td></tr>
+    </tbody>
+  </table>
+
+  <div class="box key"><span class="label">Key idea</span>
+    <p>Stopping criteria exist because of <strong>overfitting</strong>. Grown to purity, a tree memorises the training set: it will happily build a leaf holding a single noisy example and predict that example's label for the whole region around it. Training error $\to 0$; test error climbs.</p>
+    <p style="margin-bottom:0">Every criterion above is a way of saying "stop trusting the data before the leaves get too small to trust." This is the same bias&ndash;variance tension you meet again with regularisation in <a href="feature-engineering.html">feature engineering and overfitting</a>.</p>
+  </div>
+
+  <div class="box intuition"><span class="label">Intuition</span>
+    <p>Depth limit and minimum leaf size are two ways to enforce one rule: <em>never make a claim about a region of feature space based on two data points.</em> A leaf holding 40 examples that are 90% positive is a claim you can defend. A leaf holding 1 example is an anecdote.</p>
+  </div>
+
+  <h2 id="best-attribute">Extension: the menu of BestAttribute criteria</h2>
+
+  <p>The notes give three options. Here they are, with the formula for each.</p>
+
+  <h4>1. Minimise training error</h4>
+  <p>Done above, in full. Split $S$ on each candidate attribute, majority-vote both children, add the mistakes, take the minimum. Simple, intuitive — and, as the next section shows, badly behaved.</p>
+
+  <h4>2. Minimise Gini impurity <span class="pill">beyond syllabus</span></h4>
+  <p>The notes say "won't discuss here", so one line: the Gini impurity of a node with class proportions $p_k$ is</p>
+  $$G \;=\; 1 - \sum_{k \in \Y} p_k^2,$$
+  <p>and you choose the split minimising the weighted average of $G$ over the children — exactly the same weighting scheme as conditional entropy. It is the probability that two points drawn at random from the node have different labels. It is the default in CART and scikit-learn, behaves almost identically to entropy, and is cheaper because it needs no logarithm.</p>
+
+  <h4>3. Maximise mutual information</h4>
+  <p>Instead of asking "how many mistakes would a stump make?", ask <strong>"how much of the uncertainty in the labels does this attribute remove?"</strong> Quantifying that requires entropy, which is the whole of <a href="information-theory.html">Chapter 7</a>. The criterion, stated now so you know where you are going:</p>
+  $$b \;=\; \argmax_{a \in A} \; I(Y; a) \;=\; \argmax_{a \in A} \big[\,H(Y) - H(Y \mid a)\,\big]$$
+  <p>This is also called the <strong>information gain</strong> method.</p>
+
+  <h2 id="error-is-broken">Why error rate is a broken splitting criterion</h2>
+
+  <p>The pre-reading drops a warning and moves on: <em>"Later we'll learn that error rate as a splitting criterion is problematic and will replace it with other splitting criteria such as mutual information."</em> That sentence is the hinge between this chapter and the next, so it deserves a concrete demonstration rather than a promise.</p>
+
+  <div class="box key"><span class="label">Key idea</span>
+    <p>The defect: error rate only counts <strong>which class wins</strong> in each child. It is completely blind to <em>by how much</em>. A child that goes from 50/50 to 75/25 has become dramatically more certain, but the majority label did not change, so the error count did not change either. <strong>Error rate cannot see progress that does not immediately flip a prediction.</strong></p>
+  </div>
+
+  <h3>A dataset where every split has the same training error</h3>
+
+  <div class="box example"><span class="label">Example</span>
+    <p>$N = 8$, two binary attributes $a$ and $b$, labels binary.</p>
+    <table class="tight center">
+      <thead><tr><th>$i$</th><th>$y$</th><th>$a$</th><th>$b$</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>1</td><td>1</td><td>1</td></tr>
+        <tr><td>2</td><td>1</td><td>1</td><td>1</td></tr>
+        <tr><td>3</td><td>1</td><td>0</td><td>1</td></tr>
+        <tr><td>4</td><td>1</td><td>0</td><td>1</td></tr>
+        <tr><td>5</td><td>1</td><td>1</td><td>0</td></tr>
+        <tr><td>6</td><td>1</td><td>0</td><td>0</td></tr>
+        <tr><td>7</td><td>0</td><td>1</td><td>0</td></tr>
+        <tr><td>8</td><td>0</td><td>0</td><td>0</td></tr>
+      </tbody>
+    </table>
+    <p style="margin-bottom:0">Labels overall: <strong>6 ones, 2 zeros</strong>.</p>
+  </div>
+
+  <p><strong>No split at all.</strong> Majority vote $= 1$, wrong on rows 7 and 8: <strong>2/8</strong>.</p>
+
+  <p><strong>Split on $a$.</strong></p>
+  <ul>
+    <li>$a=1$: rows 1, 2, 5, 7 &rarr; labels $1,1,1,0$ &rarr; 3 ones, 1 zero &rarr; vote 1 &rarr; <strong>1 mistake</strong>.</li>
+    <li>$a=0$: rows 3, 4, 6, 8 &rarr; labels $1,1,1,0$ &rarr; 3 ones, 1 zero &rarr; vote 1 &rarr; <strong>1 mistake</strong>.</li>
+    <li>Total: <strong>2/8</strong>.</li>
+  </ul>
+
+  <p><strong>Split on $b$.</strong></p>
+  <ul>
+    <li>$b=1$: rows 1, 2, 3, 4 &rarr; labels $1,1,1,1$ &rarr; <strong>pure</strong> &rarr; vote 1 &rarr; <strong>0 mistakes</strong>.</li>
+    <li>$b=0$: rows 5, 6, 7, 8 &rarr; labels $1,1,0,0$ &rarr; 2&ndash;2 tie &rarr; vote 1 (tie-break) &rarr; <strong>2 mistakes</strong>.</li>
+    <li>Total: <strong>2/8</strong>.</li>
+  </ul>
+
+  <div class="box warn"><span class="label">Common mistake</span>
+    <p>All three numbers are <strong>2/8</strong>. Under the error-rate criterion, splitting on $a$, splitting on $b$, and <em>not splitting at all</em> are indistinguishable. The criterion has no opinion.</p>
+    <p style="margin-bottom:0">But the splits are obviously not equally good. Split $b$ <strong>finishes half the dataset permanently</strong> — the $b=1$ child is pure and will never need another node. Split $a$ leaves both children in exactly the same 3-to-1 state the parent was in; it achieved literally nothing.</p>
+  </div>
+
+  <h3>Mutual information does have an opinion</h3>
+
+  <p>The next chapter derives all of this; here is the punchline, so you can see the bridge. With $H$ the entropy in bits:</p>
+
+  <table class="center">
+    <thead><tr><th>Split</th><th>Child 1 (size, labels)</th><th>Child 0 (size, labels)</th><th>Training error</th><th>$H(Y \mid \cdot)$</th><th>$I(Y;\cdot)$</th></tr></thead>
+    <tbody>
+      <tr><td>none</td><td colspan="2">$H(Y) = H(\tfrac{6}{8}) = 0.8113$</td><td>2/8</td><td>&#8212;</td><td>&#8212;</td></tr>
+      <tr><td>$a$</td><td>4 pts, 3&ndash;1 &rarr; $H = 0.8113$</td><td>4 pts, 3&ndash;1 &rarr; $H = 0.8113$</td><td>2/8</td><td>$0.8113$</td><td><strong>$0.0000$</strong></td></tr>
+      <tr><td>$b$</td><td>4 pts, 4&ndash;0 &rarr; $H = 0$</td><td>4 pts, 2&ndash;2 &rarr; $H = 1$</td><td>2/8</td><td>$0.5000$</td><td><strong>$0.3113$</strong></td></tr>
+    </tbody>
+  </table>
+
+  <p>The arithmetic, since you should be able to do it by hand:</p>
+
+  $$H(Y) = -\tfrac{6}{8}\log_2\tfrac{6}{8} - \tfrac{2}{8}\log_2\tfrac{2}{8} = 0.75(0.41504) + 0.25(2) = 0.31128 + 0.5 = 0.81128$$
+  $$H(Y \mid a) = \tfrac{4}{8}(0.81128) + \tfrac{4}{8}(0.81128) = 0.81128 \;\Longrightarrow\; I(Y;a) = 0.81128 - 0.81128 = \mathbf{0}$$
+  $$H(Y \mid b) = \tfrac{4}{8}(0) + \tfrac{4}{8}(1) = 0.5 \;\Longrightarrow\; I(Y;b) = 0.81128 - 0.5 = \mathbf{0.31128}$$
+
+  <div class="box key"><span class="label">Key idea</span>
+    <p>Mutual information says, correctly and unambiguously: <strong>$a$ is worthless ($I = 0$, the children are statistically identical to the parent) and $b$ is valuable ($I = 0.311$ bits, it purified half the data).</strong> Error rate could not tell them apart.</p>
+    <p style="margin-bottom:0">That is the reason the course switches criteria. Error rate is a fine way to <em>evaluate a finished tree</em> — it is the thing you actually care about. It is a bad way to <em>choose a split</em>, because choosing a split is about making progress toward a future prediction, and progress is measured in certainty, not in flipped labels.</p>
+  </div>
+
+  <p>Keep going to <a href="information-theory.html">Chapter 7</a>, where $H$ and $I$ get defined from scratch via a game of 20 questions.</p>
+
+  <div class="guided">
+    <div class="g-head"><span class="tag">Guided problem</span>Grow the broken-criterion dataset to completion</div>
+    <div class="g-body">
+      <p>Using the 8-row $(y, a, b)$ dataset above, build the full tree twice: once with a <code>BestAttribute</code> that breaks ties by preferring $a$, and once preferring $b$. Compare final trees. Assume attributes are removed from $A$ after use, and tie-break majority votes to $1$.</p>
+    </div>
+    <details class="step"><summary>Step 1 — The "prefer $a$" tree</summary>
+      <div>
+        <p>Root splits on $a$. Children: $a{=}1$ holds rows 1,2,5,7 (labels $1,1,1,0$); $a{=}0$ holds rows 3,4,6,8 (labels $1,1,1,0$). Neither pure; $A = \{b\}$ remains.</p>
+        <p>$a{=}1$ child, split on $b$: $b{=}1$ &rarr; rows 1,2 (labels $1,1$, pure); $b{=}0$ &rarr; rows 5,7 (labels $1,0$, tie &rarr; 1 mistake). $A$ is now empty, so both become leaves.</p>
+        <p>$a{=}0$ child, split on $b$: $b{=}1$ &rarr; rows 3,4 (pure, label 1); $b{=}0$ &rarr; rows 6,8 (labels $1,0$, tie &rarr; 1 mistake).</p>
+        <p><strong>Result: 3 internal nodes, 4 leaves, depth 2, training error $2/8$.</strong></p>
+      </div></details>
+    <details class="step"><summary>Step 2 — The "prefer $b$" tree</summary>
+      <div>
+        <p>Root splits on $b$. $b{=}1$ &rarr; rows 1,2,3,4, all label 1 &rarr; <strong>pure, immediate leaf</strong>. $b{=}0$ &rarr; rows 5,6,7,8 with labels $1,1,0,0$; $A = \{a\}$.</p>
+        <p>Split that child on $a$: $a{=}1$ &rarr; rows 5,7 (labels $1,0$, tie, 1 mistake); $a{=}0$ &rarr; rows 6,8 (labels $1,0$, tie, 1 mistake). $A$ empty, both leaves.</p>
+        <p><strong>Result: 2 internal nodes, 3 leaves, depth 2, training error $2/8$.</strong></p>
+      </div></details>
+    <details class="step"><summary>Step 3 — Why is the training error the same?</summary>
+      <div>
+        <p>Because with only two attributes there are four possible $(a,b)$ cells, and the data forces it. Look at the cells: $(1,1)$ holds rows 1,2 — both label 1. $(0,1)$ holds rows 3,4 — both label 1. $(1,0)$ holds rows 5,7 — labels $1,0$. $(0,0)$ holds rows 6,8 — labels $1,0$.</p>
+        <p>The two mixed cells each contain one point of each label, so <em>no</em> function of $(a,b)$ can classify all eight rows: the data is not separable by these features. Two mistakes is the floor. Both trees reach the floor.</p>
+      </div></details>
+    <details class="step"><summary>Answer &amp; the takeaway</summary>
+      <div>
+        <p>Both trees hit the irreducible error of $2/8$, but the "prefer $b$" tree does it with <strong>one fewer internal node and one fewer leaf</strong>, because $b$ cleared half the dataset in a single move.</p>
+        <p><strong>The takeaway, and the reason for Chapter 7:</strong> the criterion that <em>could have told you to prefer $b$</em> is mutual information ($0.311$ vs $0.000$), not error rate (a dead tie). When two models have equal training error, the simpler one is preferable — fewer leaves means more data per leaf means a more trustworthy prediction. Error rate is structurally unable to express that preference; entropy is.</p>
+      </div></details>
+  </div>
+
+  <div class="guided">
+    <div class="g-head"><span class="tag">Guided problem</span>A real-valued stump from scratch</div>
+    <div class="g-body">
+      <p>One real-valued attribute $x \in \R$, binary label. Six training points, sorted by $x$:</p>
+      <table class="tight center">
+        <thead><tr><th>$x$</th><td>1.0</td><td>2.0</td><td>3.0</td><td>6.0</td><td>7.0</td><td>9.0</td></tr></thead>
+        <tbody><tr><th>$y$</th><td>0</td><td>0</td><td>1</td><td>0</td><td>1</td><td>1</td></tr></tbody>
+      </table>
+      <p>Find the best threshold split "Is $x \ge t$?" under the training-error criterion. Tie-break majority votes to $1$.</p>
+    </div>
+    <details class="step"><summary>Step 1 — Enumerate the candidate thresholds</summary>
+      <div>
+        <p>Midpoints of consecutive distinct values: $1.5,\ 2.5,\ 4.5,\ 6.5,\ 8.0$. Five candidates. (There is no candidate below 1.0 or above 9.0, because those give an empty child and the same error as no split.)</p>
+      </div></details>
+    <details class="step"><summary>Step 2 — Score every candidate</summary>
+      <div>
+        <p>Labels in order: $0,0,1,0,1,1$. For each $t$, the "$x \ge t$" group is a suffix and the "$x &lt; t$" group is a prefix.</p>
+        <table class="center tiny">
+          <thead><tr><th>$t$</th><th>$x &lt; t$ labels</th><th>vote</th><th>err</th><th>$x \ge t$ labels</th><th>vote</th><th>err</th><th>total</th></tr></thead>
+          <tbody>
+            <tr><td>1.5</td><td>0</td><td>0</td><td>0</td><td>0,1,0,1,1</td><td>1</td><td>2</td><td>2</td></tr>
+            <tr><td>2.5</td><td>0,0</td><td>0</td><td>0</td><td>1,0,1,1</td><td>1</td><td>1</td><td><strong>1</strong></td></tr>
+            <tr><td>4.5</td><td>0,0,1</td><td>0</td><td>1</td><td>0,1,1</td><td>1</td><td>1</td><td>2</td></tr>
+            <tr><td>6.5</td><td>0,0,1,0</td><td>0</td><td>1</td><td>1,1</td><td>1</td><td>0</td><td><strong>1</strong></td></tr>
+            <tr><td>8.0</td><td>0,0,1,0,1</td><td>0</td><td>2</td><td>1</td><td>1</td><td>0</td><td>2</td></tr>
+          </tbody>
+        </table>
+      </div></details>
+    <details class="step"><summary>Step 3 — Break the tie between $t = 2.5$ and $t = 6.5$</summary>
+      <div>
+        <p>Both score $1/6$ under error rate. Error rate has, once again, no further opinion. Look at the children:</p>
+        <p>$t = 2.5$: left child $\{0,0\}$ is pure (2 points); right child is $\{1,0,1,1\}$, 3&ndash;1.<br>
+        $t = 6.5$: left child $\{0,0,1,0\}$ is 3&ndash;1; right child $\{1,1\}$ is pure (2 points).</p>
+        <p>They are mirror images, so entropy ties them too: $H(Y\mid\cdot) = \tfrac{2}{6}(0) + \tfrac{4}{6}(0.8113) = 0.5409$ for both. A genuine, honest tie — which happens, and which is why implementations need a documented deterministic tie-break (e.g. smallest threshold).</p>
+      </div></details>
+    <details class="step"><summary>Answer &amp; the takeaway</summary>
+      <div>
+        <p><strong>Best stump: "Is $x \ge 2.5$?" &rarr; Yes: label 1, No: label 0.</strong> Training error $1/6$ (the point at $x=6.0$ with $y=0$ is misclassified). $t = 6.5$ is equally good and would be chosen by an implementation that prefers larger thresholds.</p>
+        <p><strong>Takeaway.</strong> Real-valued attributes add a second search (over $t$) inside the first (over $j$), but the search is finite — at most $N-1$ thresholds per attribute — so the total work at a node is $O(N d)$ after sorting. Nothing conceptual changes; the node still asks one yes/no question and still partitions the data in two.</p>
+      </div></details>
+  </div>
+
+  <div class="quiz" data-answer="1">
+    <div class="q">A node holds 100 points: 60 label-1 and 40 label-0. A candidate split produces children of (50 pos, 10 neg) and (10 pos, 30 neg). What does the <em>error-rate</em> criterion say about this split, and is it right?</div>
+    <button class="opt">Error drops from 40 to 20 — a big improvement, and the criterion is right</button>
+    <button class="opt">Error drops from 40 to 20 — a real improvement, but error rate would also have rated a split into (60,10)/(0,30) identically at 10 mistakes even though that one is far better</button>
+    <button class="opt">Error is unchanged at 40 — the criterion is blind here</button>
+    <div class="why"><strong>Why:</strong> Parent error = 40 (minority count). Children: first votes 1 with 10 mistakes, second votes 0 with 10 mistakes, total 20. So error rate <em>does</em> register this split. The point of the comparison is different: error rate only ever counts minority points, so many structurally different splits map to the same score, and it will happily call a split that produces a pure child equal to one that does not. Entropy separates them because it charges for <em>how</em> mixed each child is, not just how many points are on the losing side.</div>
+  </div>
+
+  <h2 id="recap">Recap</h2>
+
+  <ul>
+    <li>A decision tree is internal nodes that split on attributes plus leaves that carry labels. Its headline benefit is human interpretability; its cost is accuracy on hard, non-axis-aligned problems.</li>
+    <li>Hand-written trees are rule-based. The ML question is how to <em>construct</em> a tree from $N$ labelled examples with $\X = \{0,1\}^d$, $\Y = \{0,1\}$.</li>
+    <li>Inference is just walking root-to-leaf. Training is the recursive algorithm <code>DT(S, A)</code>: stop if $A = \emptyset$ or $S$ is pure, otherwise pick $b = $ <code>BestAttribute</code>, partition on $x_b$, recurse.</li>
+    <li>Leaves predict by majority vote $\hat y = \argmax_k \sum_i \1(y^{(i)}=k)$, which provably minimises mistakes at a leaf, with a stated tie-break.</li>
+    <li><code>BestAttribute</code> v1 = minimise the training error of the resulting stump. On the poll dataset this picks $x_2$ ($1/8$) over $x_1$ and $x_3$ (both $3/8$), and one further split on $x_1$ reaches zero training error.</li>
+    <li>The algorithm is greedy — a one-step lookahead approximation to ERM. XOR defeats the lookahead, but the recursion still recovers the perfect tree, as long as you did not add a zero-gain early stop.</li>
+    <li>Evaluation uses classification error rate $\frac{1}{N}\sum_i \1(y^{(i)} \ne \hat y^{(i)})$: Model A $1/7$ beats Model B $2/7$ on the Iris data.</li>
+    <li>Extensions: multi-valued and real-valued attributes (threshold tests at sorted midpoints), axis-aligned staircase decision boundaries, keeping attributes in $A$, and the whole menu of stopping criteria, which exist to control overfitting.</li>
+    <li>Error rate is a fine evaluation measure and a bad splitting criterion, because it is blind to purity changes that do not flip a majority. Mutual information is not. Next chapter.</li>
+  </ul>
+
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<script src="assets/site.js"></script>
+<script>
+document.addEventListener("shellready", () => {
+
+  /* ============ Figure 5: interactive decision-tree builder ============ */
+  const svg   = document.getElementById("dtSvg");
+  const stat  = document.getElementById("dtStatus");
+  const tbody = document.querySelector("#dtDataTable tbody");
+  if (!svg) return;
+
+  const ROWS = [
+    { y:0, x:[1,0,0] }, { y:0, x:[1,0,1] }, { y:0, x:[1,0,0] }, { y:1, x:[0,0,1] },
+    { y:1, x:[1,1,0] }, { y:1, x:[1,1,1] }, { y:1, x:[1,1,0] }, { y:1, x:[1,1,1] }
+  ];
+  const SUB = ["₁", "₂", "₃"];
+
+  let root, sel, note;
+
+  const node = rows => ({ rows: rows, attr: null, yes: null, no: null });
+
+  function counts(n) { const c = [0,0]; n.rows.forEach(i => c[ROWS[i].y]++); return c; }
+  function pred(n)   { const c = counts(n); return c[1] >= c[0] ? 1 : 0; }     /* tie -> 1 */
+  function errs(n)   { const c = counts(n); return pred(n) === 1 ? c[0] : c[1]; }
+
+  function leaves(n, out) {
+    out = out || [];
+    if (!n.attr && n.attr !== 0) out.push(n); else { leaves(n.yes, out); leaves(n.no, out); }
+    return out;
+  }
+  const isLeaf = n => n.attr === null;
+  function totalErr() { return leaves(root).reduce((s, l) => s + errs(l), 0); }
+
+  function usedOnPath(target) {
+    const path = [];
+    (function walk(n, acc) {
+      if (n === target) { path.push.apply(path, acc); return true; }
+      if (isLeaf(n)) return false;
+      return walk(n.yes, acc.concat([n.attr])) || walk(n.no, acc.concat([n.attr]));
+    })(root, []);
+    return path;
+  }
+
+  function reset() { root = node([0,1,2,3,4,5,6,7]); sel = root; note = "Click any leaf to select it, then choose an attribute to split on. Click an internal node to prune it back into a leaf."; draw(); }
+
+  function splitOn(a) {
+    if (!sel || !isLeaf(sel)) { note = "Select a leaf first (click one)."; draw(); return; }
+    const yes = sel.rows.filter(i => ROWS[i].x[a] === 1);
+    const no  = sel.rows.filter(i => ROWS[i].x[a] === 0);
+    if (!yes.length || !no.length) {
+      note = "Every example at that leaf has the same x" + SUB[a] + " value, so this split leaves one child empty — it partitions nothing. Pick a different attribute.";
+      draw(); return;
+    }
+    sel.attr = a; sel.yes = node(yes); sel.no = node(no);
+    sel = errs(sel.yes) >= errs(sel.no) ? sel.yes : sel.no;
+    note = "Split on x" + SUB[a] + ": " + yes.length + " examples went Yes, " + no.length + " went No.";
+    draw();
+  }
+
+  function greedyHere() {
+    if (!sel || !isLeaf(sel)) { note = "Select a leaf first."; draw(); return; }
+    let best = -1, bestE = Infinity;
+    for (let a = 0; a < 3; a++) {
+      const yes = sel.rows.filter(i => ROWS[i].x[a] === 1);
+      const no  = sel.rows.filter(i => ROWS[i].x[a] === 0);
+      if (!yes.length || !no.length) continue;
+      const e = errs({ rows: yes }) + errs({ rows: no });
+      if (e < bestE) { bestE = e; best = a; }
+    }
+    if (best < 0) { note = "No attribute produces a non-empty split at this leaf — the algorithm would stop here."; draw(); return; }
+    splitOn(best);
+    note = "Greedy BestAttribute chose x" + SUB[best] + " (stump error " + bestE + "/" + sel.rows.length * 0 + "8 over the whole dataset would be computed at the root; here it is " + bestE + " mistakes inside this node).";
+    draw();
+  }
+
+  function prune(n) { n.attr = null; n.yes = null; n.no = null; sel = n; note = "Pruned that subtree back into a single leaf."; draw(); }
+
+  /* ---------- drawing ---------- */
+  const W = 760, PAD = 72;
+
+  function draw() {
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+    const ctr = { i: 0 };
+    let maxd = 0;
+    (function assign(n, d) {
+      n.d = d; if (d > maxd) maxd = d;
+      if (isLeaf(n)) { n.ix = ctr.i++; }
+      else { assign(n.yes, d + 1); assign(n.no, d + 1); n.ix = (n.yes.ix + n.no.ix) / 2; }
+    })(root, 0);
+
+    const nL = ctr.i;
+    const px = n => PAD + (n.ix + 0.5) * (W - 2 * PAD) / nL;
+    const py = n => 30 + n.d * 100;
+    svg.setAttribute("viewBox", "0 0 " + W + " " + (30 + maxd * 100 + 80));
+
+    /* edges */
+    (function edges(n) {
+      if (isLeaf(n)) return;
+      [[n.yes, "Yes"], [n.no, "No"]].forEach(pair => {
+        const c = pair[0];
+        svg.appendChild(SG.el("path", {
+          d: "M" + px(n) + " " + (py(n) + 48) + " L" + px(c) + " " + py(c),
+          stroke: "var(--line-2)", "stroke-width": "1.5", fill: "none"
+        }));
+        svg.appendChild(SG.el("text", {
+          x: (px(n) + px(c)) / 2 + (pair[1] === "Yes" ? -14 : 14),
+          y: py(n) + 72, "font-size": "11", fill: "var(--ink-mute)", "text-anchor": "middle"
+        }, pair[1]));
+        edges(c);
+      });
+    })(root);
+
+    /* nodes */
+    (function nodes(n) {
+      const c = counts(n), x = px(n), y = py(n);
+      const g = SG.el("g", { style: "cursor:pointer" });
+      const chosen = (n === sel);
+
+      if (isLeaf(n)) {
+        const pure = c[0] === 0 || c[1] === 0;
+        g.appendChild(SG.el("rect", {
+          x: x - 66, y: y, width: 132, height: 58, rx: 8,
+          fill: "color-mix(in srgb, var(--" + (pure ? "accent-2" : "gold") + ") 13%, var(--panel))",
+          stroke: chosen ? "var(--accent)" : (pure ? "var(--accent-2)" : "var(--gold)"),
+          "stroke-width": chosen ? 3 : 1.6
+        }));
+        g.appendChild(SG.el("text", { x: x, y: y + 19, "font-size": "12.5", fill: "var(--ink)", "text-anchor": "middle" }, "predict  ŷ = " + pred(n)));
+        g.appendChild(SG.el("text", { x: x, y: y + 35, "font-size": "11.5", fill: "var(--ink-mute)", "text-anchor": "middle" }, "n=" + n.rows.length + "   0:" + c[0] + "  1:" + c[1]));
+        g.appendChild(SG.el("text", { x: x, y: y + 51, "font-size": "11.5", fill: errs(n) ? "var(--rose)" : "var(--accent-2)", "text-anchor": "middle" }, errs(n) + " mistake" + (errs(n) === 1 ? "" : "s")));
+        g.onclick = () => { sel = n; note = "Selected a leaf holding " + n.rows.length + " example(s). Attributes already used above it: " + (usedOnPath(n).length ? usedOnPath(n).map(a => "x" + SUB[a]).join(", ") : "none") + "."; draw(); };
+      } else {
+        g.appendChild(SG.el("rect", {
+          x: x - 66, y: y, width: 132, height: 48, rx: 8,
+          fill: "var(--panel)", stroke: "var(--accent)", "stroke-width": 1.6
+        }));
+        g.appendChild(SG.el("text", { x: x, y: y + 20, "font-size": "13", fill: "var(--ink)", "text-anchor": "middle" }, "Is x" + SUB[n.attr] + " = 1?"));
+        g.appendChild(SG.el("text", { x: x, y: y + 37, "font-size": "11.5", fill: "var(--ink-mute)", "text-anchor": "middle" }, "n=" + n.rows.length + "   0:" + c[0] + "  1:" + c[1]));
+        g.onclick = () => prune(n);
+      }
+      svg.appendChild(g);
+      if (!isLeaf(n)) { nodes(n.yes); nodes(n.no); }
+    })(root);
+
+    /* data table: which leaf each row lands in */
+    const ls = leaves(root);
+    const where = {};
+    ls.forEach((l, k) => l.rows.forEach(i => { where[i] = "L" + (k + 1) + " (ŷ=" + pred(l) + ")"; }));
+    tbody.innerHTML = ROWS.map((r, i) => {
+      const wrong = ROWS[i].y !== pred(ls.find(l => l.rows.indexOf(i) >= 0));
+      return "<tr><td>" + (i + 1) + "</td><td>" + r.y + "</td><td>" + r.x[0] + "</td><td>" + r.x[1] + "</td><td>" + r.x[2] +
+             "</td><td style=\"color:var(--" + (wrong ? "rose" : "ink-mute") + ")\">" + where[i] + (wrong ? "  ✗" : "") + "</td></tr>";
+    }).join("");
+
+    const e = totalErr();
+    stat.innerHTML = "<strong>Training error: " + e + "/8 = " + (e / 8).toFixed(3) + "</strong> &nbsp;&#183;&nbsp; " +
+                     ls.length + " leaf" + (ls.length === 1 ? "" : "s") + ", depth " + maxd +
+                     "<br><span class=\"muted\">" + note + "</span>";
+  }
+
+  document.getElementById("dtX1").onclick     = () => splitOn(0);
+  document.getElementById("dtX2").onclick     = () => splitOn(1);
+  document.getElementById("dtX3").onclick     = () => splitOn(2);
+  document.getElementById("dtGreedy").onclick = greedyHere;
+  document.getElementById("dtReset").onclick  = reset;
+
+  reset();
+});
+</script>
+</body>
+</html>
