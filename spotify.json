@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-21T08:25:44.771Z",
+  "fetchedAt": "2026-09-21T15:14:09.729Z",
   "nowPlaying": {
-    "isPlaying": false,
-    "title": "Way Up",
-    "artist": "Jaden",
-    "album": "Spider-Man: Into the Spider-Verse (Soundtrack From & Inspired by the Motion Picture)",
-    "art": "https://i.scdn.co/image/ab67616d00001e02e2e352d89826aef6dbd5ff8f",
-    "url": "https://open.spotify.com/track/7cFFhb9Wz2ZXLSpEk2VDKd",
-    "progressMs": null,
-    "durationMs": 153773,
-    "playedAt": "2026-09-21T06:18:52.282Z"
+    "isPlaying": true,
+    "title": "Love Me Not",
+    "artist": "Ravyn Lenae",
+    "album": "Love Me Not / Love Is Blind",
+    "art": "https://i.scdn.co/image/ab67616d00001e0233b05d358247bbe9971370f2",
+    "url": "https://open.spotify.com/track/1UNEuG9DYOWiikf00ayr52",
+    "progressMs": 109805,
+    "durationMs": 213466,
+    "playedAt": "2026-09-21T15:14:09.729Z"
   },
   "topArtists": [
     {
