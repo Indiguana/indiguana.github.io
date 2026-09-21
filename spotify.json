@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-21T15:14:09.729Z",
+  "fetchedAt": "2026-09-21T20:04:14.331Z",
   "nowPlaying": {
-    "isPlaying": true,
-    "title": "Love Me Not",
-    "artist": "Ravyn Lenae",
-    "album": "Love Me Not / Love Is Blind",
-    "art": "https://i.scdn.co/image/ab67616d00001e0233b05d358247bbe9971370f2",
-    "url": "https://open.spotify.com/track/1UNEuG9DYOWiikf00ayr52",
-    "progressMs": 109805,
-    "durationMs": 213466,
-    "playedAt": "2026-09-21T15:14:09.729Z"
+    "isPlaying": false,
+    "title": "The Way I Are",
+    "artist": "Timbaland, Keri Hilson, D.O.E.",
+    "album": "Shock Value",
+    "art": "https://i.scdn.co/image/ab67616d00001e024ed674ab91bdc566534f9285",
+    "url": "https://open.spotify.com/track/2bLqfJjuC5syrsgDsZfGmn",
+    "progressMs": null,
+    "durationMs": 179120,
+    "playedAt": "2026-09-21T19:39:28.929Z"
   },
   "topArtists": [
     {
@@ -31,16 +31,16 @@
       "url": "https://open.spotify.com/artist/6eUKZXaKkcviH0Ku9w2n3V"
     },
     {
-      "name": "One Direction",
-      "sub": "",
-      "art": "https://i.scdn.co/image/6c89c662ad0ab75bc2af9a3ae2b16f811daced50",
-      "url": "https://open.spotify.com/artist/4AK6F7OLvEQ5QYCBNiQWHq"
-    },
-    {
       "name": "Michael Jackson",
       "sub": "",
       "art": "https://i.scdn.co/image/ab6761610000f178997cc9a4aec335d46c9481fd",
       "url": "https://open.spotify.com/artist/3fMbdgg4jU18AjLCKBhRSm"
+    },
+    {
+      "name": "One Direction",
+      "sub": "",
+      "art": "https://i.scdn.co/image/6c89c662ad0ab75bc2af9a3ae2b16f811daced50",
+      "url": "https://open.spotify.com/artist/4AK6F7OLvEQ5QYCBNiQWHq"
     }
   ],
   "topTracks": [
@@ -63,16 +63,16 @@
       "url": "https://open.spotify.com/track/7qVMGBe36nf1IpbsyQf1MR"
     },
     {
-      "name": "Sprinter",
-      "sub": "Dave, Central Cee",
-      "art": "https://i.scdn.co/image/ab67616d00004851dd9f1f94f2f9a10310a3d525",
-      "url": "https://open.spotify.com/track/6NYbDTmstd7JSUWl2hVBqR"
-    },
-    {
       "name": "Budapest",
       "sub": "George Ezra",
       "art": "https://i.scdn.co/image/ab67616d000048513a60095e50104070cc89ed9f",
       "url": "https://open.spotify.com/track/2ixsaeFioXJmMgkkbd4uj1"
+    },
+    {
+      "name": "Sprinter",
+      "sub": "Dave, Central Cee",
+      "art": "https://i.scdn.co/image/ab67616d00004851dd9f1f94f2f9a10310a3d525",
+      "url": "https://open.spotify.com/track/6NYbDTmstd7JSUWl2hVBqR"
     }
   ]
 }
