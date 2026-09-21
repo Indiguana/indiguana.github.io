@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-21T02:38:37.820Z",
+  "fetchedAt": "2026-09-21T08:25:44.771Z",
   "nowPlaying": {
-    "isPlaying": true,
-    "title": "Billie Jean",
-    "artist": "Michael Jackson",
-    "album": "Thriller",
-    "art": "https://i.scdn.co/image/ab67616d00001e0232a7d87248d1b75463483df5",
-    "url": "https://open.spotify.com/track/7J1uxwnxfQLu4APicE5Rnj",
-    "progressMs": 48713,
-    "durationMs": 293802,
-    "playedAt": "2026-09-21T02:38:37.820Z"
+    "isPlaying": false,
+    "title": "Way Up",
+    "artist": "Jaden",
+    "album": "Spider-Man: Into the Spider-Verse (Soundtrack From & Inspired by the Motion Picture)",
+    "art": "https://i.scdn.co/image/ab67616d00001e02e2e352d89826aef6dbd5ff8f",
+    "url": "https://open.spotify.com/track/7cFFhb9Wz2ZXLSpEk2VDKd",
+    "progressMs": null,
+    "durationMs": 153773,
+    "playedAt": "2026-09-21T06:18:52.282Z"
   },
   "topArtists": [
     {
