@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-20T23:45:03.180Z",
+  "fetchedAt": "2026-09-21T02:38:37.820Z",
   "nowPlaying": {
-    "isPlaying": false,
-    "title": "Ten (feat. Skepta)",
-    "artist": "Central Cee, Skepta",
-    "album": "CAN'T RUSH GREATNESS",
-    "art": "https://i.scdn.co/image/ab67616d00001e0258513cbc1bba4cd4c5f472ce",
-    "url": "https://open.spotify.com/track/2Zej1ZTJJNDcRj8e8iWUUo",
-    "progressMs": null,
-    "durationMs": 122720,
-    "playedAt": "2026-09-20T23:11:40.966Z"
+    "isPlaying": true,
+    "title": "Billie Jean",
+    "artist": "Michael Jackson",
+    "album": "Thriller",
+    "art": "https://i.scdn.co/image/ab67616d00001e0232a7d87248d1b75463483df5",
+    "url": "https://open.spotify.com/track/7J1uxwnxfQLu4APicE5Rnj",
+    "progressMs": 48713,
+    "durationMs": 293802,
+    "playedAt": "2026-09-21T02:38:37.820Z"
   },
   "topArtists": [
     {
