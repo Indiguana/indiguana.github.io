@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-22T01:42:42.569Z",
+  "fetchedAt": "2026-09-22T07:07:09.375Z",
   "nowPlaying": {
-    "isPlaying": true,
-    "title": "Torn",
-    "artist": "Natalie Imbruglia",
-    "album": "Left Of The Middle",
-    "art": "https://i.scdn.co/image/ab67616d00001e0284bb2b1e87d5ba0bac8871a2",
-    "url": "https://open.spotify.com/track/1Jaah2tmN9Hv81A87KZ1MU",
-    "progressMs": 109325,
-    "durationMs": 244666,
-    "playedAt": "2026-09-22T01:42:42.569Z"
+    "isPlaying": false,
+    "title": "MODERN JAM (feat. Teezo Touchdown)",
+    "artist": "Travis Scott, Teezo Touchdown",
+    "album": "UTOPIA",
+    "art": "https://i.scdn.co/image/ab67616d00001e02ff0491ff31fb3c2619f93f47",
+    "url": "https://open.spotify.com/track/1e4L5zJQC0aMABTDn7ZrBL",
+    "progressMs": null,
+    "durationMs": 255412,
+    "playedAt": "2026-09-22T06:08:18.112Z"
   },
   "topArtists": [
     {
@@ -51,16 +51,16 @@
       "url": "https://open.spotify.com/track/5tWPG0AU9LVjONRofHcLD0"
     },
     {
-      "name": "That's The Way It Is",
-      "sub": "Daniel Lanois",
-      "art": "https://i.scdn.co/image/ab67616d00004851f337a21d945f44e802a1eb1d",
-      "url": "https://open.spotify.com/track/5ui44u6tEnipuke1eKYpMI"
-    },
-    {
       "name": "Funky Friday",
       "sub": "Dave, Fredo",
       "art": "https://i.scdn.co/image/ab67616d000048515a0c97dad7ffeba533299e46",
       "url": "https://open.spotify.com/track/7qVMGBe36nf1IpbsyQf1MR"
+    },
+    {
+      "name": "That's The Way It Is",
+      "sub": "Daniel Lanois",
+      "art": "https://i.scdn.co/image/ab67616d00004851f337a21d945f44e802a1eb1d",
+      "url": "https://open.spotify.com/track/5ui44u6tEnipuke1eKYpMI"
     },
     {
       "name": "Sprinter",
