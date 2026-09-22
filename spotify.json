@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-22T07:07:09.375Z",
+  "fetchedAt": "2026-09-22T17:27:51.833Z",
   "nowPlaying": {
-    "isPlaying": false,
-    "title": "MODERN JAM (feat. Teezo Touchdown)",
-    "artist": "Travis Scott, Teezo Touchdown",
-    "album": "UTOPIA",
-    "art": "https://i.scdn.co/image/ab67616d00001e02ff0491ff31fb3c2619f93f47",
-    "url": "https://open.spotify.com/track/1e4L5zJQC0aMABTDn7ZrBL",
-    "progressMs": null,
-    "durationMs": 255412,
-    "playedAt": "2026-09-22T06:08:18.112Z"
+    "isPlaying": true,
+    "title": "Gone, Gone, Gone",
+    "artist": "Phillip Phillips",
+    "album": "The World From The Side Of The Moon",
+    "art": "https://i.scdn.co/image/ab67616d00001e025c75f5e02580f4c0c3e80e8e",
+    "url": "https://open.spotify.com/track/56sxN1yKg1dgOZXBcAHkJG",
+    "progressMs": 32435,
+    "durationMs": 209693,
+    "playedAt": "2026-09-22T17:27:51.833Z"
   },
   "topArtists": [
     {
