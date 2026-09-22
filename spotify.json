@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-22T17:27:51.833Z",
+  "fetchedAt": "2026-09-22T20:22:29.471Z",
   "nowPlaying": {
-    "isPlaying": true,
-    "title": "Gone, Gone, Gone",
-    "artist": "Phillip Phillips",
-    "album": "The World From The Side Of The Moon",
-    "art": "https://i.scdn.co/image/ab67616d00001e025c75f5e02580f4c0c3e80e8e",
-    "url": "https://open.spotify.com/track/56sxN1yKg1dgOZXBcAHkJG",
-    "progressMs": 32435,
-    "durationMs": 209693,
-    "playedAt": "2026-09-22T17:27:51.833Z"
+    "isPlaying": false,
+    "title": "Sweet Child O' Mine",
+    "artist": "Guns N' Roses",
+    "album": "Appetite For Destruction",
+    "art": "https://i.scdn.co/image/ab67616d00001e0221ebf49b3292c3f0f575f0f5",
+    "url": "https://open.spotify.com/track/7snQQk1zcKl8gZ92AnueZW",
+    "progressMs": null,
+    "durationMs": 356066,
+    "playedAt": "2026-09-22T17:20:38.733Z"
   },
   "topArtists": [
     {
@@ -57,12 +57,6 @@
       "url": "https://open.spotify.com/track/7qVMGBe36nf1IpbsyQf1MR"
     },
     {
-      "name": "That's The Way It Is",
-      "sub": "Daniel Lanois",
-      "art": "https://i.scdn.co/image/ab67616d00004851f337a21d945f44e802a1eb1d",
-      "url": "https://open.spotify.com/track/5ui44u6tEnipuke1eKYpMI"
-    },
-    {
       "name": "Sprinter",
       "sub": "Dave, Central Cee",
       "art": "https://i.scdn.co/image/ab67616d00004851dd9f1f94f2f9a10310a3d525",
@@ -73,6 +67,12 @@
       "sub": "George Ezra",
       "art": "https://i.scdn.co/image/ab67616d000048513a60095e50104070cc89ed9f",
       "url": "https://open.spotify.com/track/2ixsaeFioXJmMgkkbd4uj1"
+    },
+    {
+      "name": "That's The Way It Is",
+      "sub": "Daniel Lanois",
+      "art": "https://i.scdn.co/image/ab67616d00004851f337a21d945f44e802a1eb1d",
+      "url": "https://open.spotify.com/track/5ui44u6tEnipuke1eKYpMI"
     }
   ]
 }
