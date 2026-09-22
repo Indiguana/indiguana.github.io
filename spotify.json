@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-22T20:22:29.471Z",
+  "fetchedAt": "2026-09-22T23:06:03.749Z",
   "nowPlaying": {
-    "isPlaying": false,
-    "title": "Sweet Child O' Mine",
-    "artist": "Guns N' Roses",
-    "album": "Appetite For Destruction",
-    "art": "https://i.scdn.co/image/ab67616d00001e0221ebf49b3292c3f0f575f0f5",
-    "url": "https://open.spotify.com/track/7snQQk1zcKl8gZ92AnueZW",
-    "progressMs": null,
-    "durationMs": 356066,
-    "playedAt": "2026-09-22T17:20:38.733Z"
+    "isPlaying": true,
+    "title": "Thiago Silva",
+    "artist": "Dave, AJ Tracey",
+    "album": "Thiago Silva",
+    "art": "https://i.scdn.co/image/ab67616d00001e02d62b2ae12715851c28bebaa4",
+    "url": "https://open.spotify.com/track/3DKCTIiJ97bS9TGiqcABjo",
+    "progressMs": 26213,
+    "durationMs": 201967,
+    "playedAt": "2026-09-22T23:06:03.749Z"
   },
   "topArtists": [
     {
