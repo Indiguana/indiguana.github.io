@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-21T23:26:39.941Z",
+  "fetchedAt": "2026-09-22T01:42:42.569Z",
   "nowPlaying": {
     "isPlaying": true,
-    "title": "Verdansk",
-    "artist": "Dave",
-    "album": "We're All Alone In This Together",
-    "art": "https://i.scdn.co/image/ab67616d00001e02da5b9c1eb275d48e14d25f3e",
-    "url": "https://open.spotify.com/track/7IPKXYU2rTMnrLW5IZ7ZI5",
-    "progressMs": 122671,
-    "durationMs": 182285,
-    "playedAt": "2026-09-21T23:26:39.941Z"
+    "title": "Torn",
+    "artist": "Natalie Imbruglia",
+    "album": "Left Of The Middle",
+    "art": "https://i.scdn.co/image/ab67616d00001e0284bb2b1e87d5ba0bac8871a2",
+    "url": "https://open.spotify.com/track/1Jaah2tmN9Hv81A87KZ1MU",
+    "progressMs": 109325,
+    "durationMs": 244666,
+    "playedAt": "2026-09-22T01:42:42.569Z"
   },
   "topArtists": [
     {
