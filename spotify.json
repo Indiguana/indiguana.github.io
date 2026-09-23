@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-23T01:36:07.064Z",
+  "fetchedAt": "2026-09-23T07:04:39.581Z",
   "nowPlaying": {
-    "isPlaying": true,
-    "title": "THANK GOD",
-    "artist": "Travis Scott",
-    "album": "UTOPIA",
-    "art": "https://i.scdn.co/image/ab67616d00001e0204481c826dd292e5e4983b3f",
-    "url": "https://open.spotify.com/track/1PH2MDbcBAU094DlgTIND1",
-    "progressMs": 105275,
-    "durationMs": 184888,
-    "playedAt": "2026-09-23T01:36:07.064Z"
+    "isPlaying": false,
+    "title": "Torn",
+    "artist": "Natalie Imbruglia",
+    "album": "Left Of The Middle",
+    "art": "https://i.scdn.co/image/ab67616d00001e0284bb2b1e87d5ba0bac8871a2",
+    "url": "https://open.spotify.com/track/1Jaah2tmN9Hv81A87KZ1MU",
+    "progressMs": null,
+    "durationMs": 244666,
+    "playedAt": "2026-09-23T06:07:56.043Z"
   },
   "topArtists": [
     {
@@ -57,16 +57,16 @@
       "url": "https://open.spotify.com/track/7qVMGBe36nf1IpbsyQf1MR"
     },
     {
-      "name": "Sprinter",
-      "sub": "Dave, Central Cee",
-      "art": "https://i.scdn.co/image/ab67616d00004851dd9f1f94f2f9a10310a3d525",
-      "url": "https://open.spotify.com/track/6NYbDTmstd7JSUWl2hVBqR"
-    },
-    {
       "name": "Budapest",
       "sub": "George Ezra",
       "art": "https://i.scdn.co/image/ab67616d000048513a60095e50104070cc89ed9f",
       "url": "https://open.spotify.com/track/2ixsaeFioXJmMgkkbd4uj1"
+    },
+    {
+      "name": "Sprinter",
+      "sub": "Dave, Central Cee",
+      "art": "https://i.scdn.co/image/ab67616d00004851dd9f1f94f2f9a10310a3d525",
+      "url": "https://open.spotify.com/track/6NYbDTmstd7JSUWl2hVBqR"
     },
     {
       "name": "Rain",
