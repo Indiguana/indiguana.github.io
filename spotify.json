@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-23T20:54:52.292Z",
+  "fetchedAt": "2026-09-23T23:22:31.013Z",
   "nowPlaying": {
-    "isPlaying": true,
-    "title": "FE!N (feat. Playboi Carti)",
-    "artist": "Travis Scott, Playboi Carti",
-    "album": "UTOPIA",
-    "art": "https://i.scdn.co/image/ab67616d00001e0204481c826dd292e5e4983b3f",
-    "url": "https://open.spotify.com/track/42VsgItocQwOQC3XWZ8JNA",
-    "progressMs": 121701,
-    "durationMs": 191700,
-    "playedAt": "2026-09-23T20:54:52.292Z"
+    "isPlaying": false,
+    "title": "They Don't Care About Us",
+    "artist": "Michael Jackson",
+    "album": "HIStory - PAST, PRESENT AND FUTURE - BOOK I",
+    "art": "https://i.scdn.co/image/ab67616d00001e02b4a878f008a0eda552446701",
+    "url": "https://open.spotify.com/track/3wuCCNCnBhJlwkIJTBZFiv",
+    "progressMs": null,
+    "durationMs": 284310,
+    "playedAt": "2026-09-23T22:34:29.947Z"
   },
   "topArtists": [
     {
@@ -31,16 +31,16 @@
       "url": "https://open.spotify.com/artist/6eUKZXaKkcviH0Ku9w2n3V"
     },
     {
-      "name": "Michael Jackson",
-      "sub": "",
-      "art": "https://i.scdn.co/image/ab6761610000f178997cc9a4aec335d46c9481fd",
-      "url": "https://open.spotify.com/artist/3fMbdgg4jU18AjLCKBhRSm"
-    },
-    {
       "name": "One Direction",
       "sub": "",
       "art": "https://i.scdn.co/image/6c89c662ad0ab75bc2af9a3ae2b16f811daced50",
       "url": "https://open.spotify.com/artist/4AK6F7OLvEQ5QYCBNiQWHq"
+    },
+    {
+      "name": "Michael Jackson",
+      "sub": "",
+      "art": "https://i.scdn.co/image/ab6761610000f178997cc9a4aec335d46c9481fd",
+      "url": "https://open.spotify.com/artist/3fMbdgg4jU18AjLCKBhRSm"
     }
   ],
   "topTracks": [
