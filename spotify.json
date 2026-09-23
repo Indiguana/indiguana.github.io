@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-22T23:06:03.749Z",
+  "fetchedAt": "2026-09-23T01:36:07.064Z",
   "nowPlaying": {
     "isPlaying": true,
-    "title": "Thiago Silva",
-    "artist": "Dave, AJ Tracey",
-    "album": "Thiago Silva",
-    "art": "https://i.scdn.co/image/ab67616d00001e02d62b2ae12715851c28bebaa4",
-    "url": "https://open.spotify.com/track/3DKCTIiJ97bS9TGiqcABjo",
-    "progressMs": 26213,
-    "durationMs": 201967,
-    "playedAt": "2026-09-22T23:06:03.749Z"
+    "title": "THANK GOD",
+    "artist": "Travis Scott",
+    "album": "UTOPIA",
+    "art": "https://i.scdn.co/image/ab67616d00001e0204481c826dd292e5e4983b3f",
+    "url": "https://open.spotify.com/track/1PH2MDbcBAU094DlgTIND1",
+    "progressMs": 105275,
+    "durationMs": 184888,
+    "playedAt": "2026-09-23T01:36:07.064Z"
   },
   "topArtists": [
     {
@@ -69,10 +69,10 @@
       "url": "https://open.spotify.com/track/2ixsaeFioXJmMgkkbd4uj1"
     },
     {
-      "name": "That's The Way It Is",
-      "sub": "Daniel Lanois",
-      "art": "https://i.scdn.co/image/ab67616d00004851f337a21d945f44e802a1eb1d",
-      "url": "https://open.spotify.com/track/5ui44u6tEnipuke1eKYpMI"
+      "name": "Rain",
+      "sub": "Aitch, AJ Tracey, Tay Keith",
+      "art": "https://i.scdn.co/image/ab67616d00004851757178c3b5fa2a7c29c358fc",
+      "url": "https://open.spotify.com/track/7h2ozcUpSL7ulXjRPPQcDy"
     }
   ]
 }
