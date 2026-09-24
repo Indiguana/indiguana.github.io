@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-24T20:59:17.919Z",
+  "fetchedAt": "2026-09-24T23:48:04.839Z",
   "nowPlaying": {
-    "isPlaying": true,
-    "title": "Loser",
-    "artist": "Charlie Puth",
-    "album": "CHARLIE",
-    "art": "https://i.scdn.co/image/ab67616d00001e02043168fd87de1ce066b4afa3",
-    "url": "https://open.spotify.com/track/1BCXUbnU0486n4eeTyyVIj",
-    "progressMs": 118757,
-    "durationMs": 204376,
-    "playedAt": "2026-09-24T20:59:17.919Z"
+    "isPlaying": false,
+    "title": "Far From Any Road",
+    "artist": "The Handsome Family",
+    "album": "Singing Bones",
+    "art": "https://i.scdn.co/image/ab67616d00001e0243bf72818b91c6803029dbbe",
+    "url": "https://open.spotify.com/track/3LDkLpuxQlEuEiZmkxpr8S",
+    "progressMs": null,
+    "durationMs": 166493,
+    "playedAt": "2026-09-24T23:37:54.348Z"
   },
   "topArtists": [
     {
