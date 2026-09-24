@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-24T17:40:13.123Z",
+  "fetchedAt": "2026-09-24T20:59:17.919Z",
   "nowPlaying": {
-    "isPlaying": false,
-    "title": "Castle on the Hill",
-    "artist": "Ed Sheeran",
-    "album": "÷ (Deluxe)",
-    "art": "https://i.scdn.co/image/ab67616d00001e02ba5db46f4b838ef6027e6f96",
-    "url": "https://open.spotify.com/track/6PCUP3dWmTjcTtXY02oFdT",
-    "progressMs": null,
-    "durationMs": 261153,
-    "playedAt": "2026-09-24T17:35:53.317Z"
+    "isPlaying": true,
+    "title": "Loser",
+    "artist": "Charlie Puth",
+    "album": "CHARLIE",
+    "art": "https://i.scdn.co/image/ab67616d00001e02043168fd87de1ce066b4afa3",
+    "url": "https://open.spotify.com/track/1BCXUbnU0486n4eeTyyVIj",
+    "progressMs": 118757,
+    "durationMs": 204376,
+    "playedAt": "2026-09-24T20:59:17.919Z"
   },
   "topArtists": [
     {
@@ -69,10 +69,10 @@
       "url": "https://open.spotify.com/track/7qVMGBe36nf1IpbsyQf1MR"
     },
     {
-      "name": "ICEMAN FREESTYLE",
-      "sub": "Central Cee",
-      "art": "https://i.scdn.co/image/ab67616d0000485110f5b59ee71a232bc0681445",
-      "url": "https://open.spotify.com/track/1vrHvLIgh1wjMFpjTr5bMu"
+      "name": "Rain",
+      "sub": "Aitch, AJ Tracey, Tay Keith",
+      "art": "https://i.scdn.co/image/ab67616d00004851757178c3b5fa2a7c29c358fc",
+      "url": "https://open.spotify.com/track/7h2ozcUpSL7ulXjRPPQcDy"
     }
   ]
 }
