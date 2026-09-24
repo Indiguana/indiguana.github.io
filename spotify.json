@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-24T07:00:01.047Z",
+  "fetchedAt": "2026-09-24T17:40:13.123Z",
   "nowPlaying": {
     "isPlaying": false,
-    "title": "In My Feelings",
-    "artist": "Drake",
-    "album": "Scorpion",
-    "art": "https://i.scdn.co/image/ab67616d00001e02c185e37be2a06b5c6f2dc704",
-    "url": "https://open.spotify.com/track/0h1W19pS59KtEd7aDzF58i",
+    "title": "Castle on the Hill",
+    "artist": "Ed Sheeran",
+    "album": "÷ (Deluxe)",
+    "art": "https://i.scdn.co/image/ab67616d00001e02ba5db46f4b838ef6027e6f96",
+    "url": "https://open.spotify.com/track/6PCUP3dWmTjcTtXY02oFdT",
     "progressMs": null,
-    "durationMs": 217925,
-    "playedAt": "2026-09-24T05:44:07.426Z"
+    "durationMs": 261153,
+    "playedAt": "2026-09-24T17:35:53.317Z"
   },
   "topArtists": [
     {
@@ -31,16 +31,16 @@
       "url": "https://open.spotify.com/artist/6eUKZXaKkcviH0Ku9w2n3V"
     },
     {
-      "name": "One Direction",
-      "sub": "",
-      "art": "https://i.scdn.co/image/6c89c662ad0ab75bc2af9a3ae2b16f811daced50",
-      "url": "https://open.spotify.com/artist/4AK6F7OLvEQ5QYCBNiQWHq"
-    },
-    {
       "name": "Michael Jackson",
       "sub": "",
       "art": "https://i.scdn.co/image/ab6761610000f178997cc9a4aec335d46c9481fd",
       "url": "https://open.spotify.com/artist/3fMbdgg4jU18AjLCKBhRSm"
+    },
+    {
+      "name": "One Direction",
+      "sub": "",
+      "art": "https://i.scdn.co/image/6c89c662ad0ab75bc2af9a3ae2b16f811daced50",
+      "url": "https://open.spotify.com/artist/4AK6F7OLvEQ5QYCBNiQWHq"
     }
   ],
   "topTracks": [
@@ -51,10 +51,10 @@
       "url": "https://open.spotify.com/track/5tWPG0AU9LVjONRofHcLD0"
     },
     {
-      "name": "Funky Friday",
-      "sub": "Dave, Fredo",
-      "art": "https://i.scdn.co/image/ab67616d000048515a0c97dad7ffeba533299e46",
-      "url": "https://open.spotify.com/track/7qVMGBe36nf1IpbsyQf1MR"
+      "name": "Sprinter",
+      "sub": "Dave, Central Cee",
+      "art": "https://i.scdn.co/image/ab67616d00004851dd9f1f94f2f9a10310a3d525",
+      "url": "https://open.spotify.com/track/6NYbDTmstd7JSUWl2hVBqR"
     },
     {
       "name": "Budapest",
@@ -63,10 +63,10 @@
       "url": "https://open.spotify.com/track/2ixsaeFioXJmMgkkbd4uj1"
     },
     {
-      "name": "Sprinter",
-      "sub": "Dave, Central Cee",
-      "art": "https://i.scdn.co/image/ab67616d00004851dd9f1f94f2f9a10310a3d525",
-      "url": "https://open.spotify.com/track/6NYbDTmstd7JSUWl2hVBqR"
+      "name": "Funky Friday",
+      "sub": "Dave, Fredo",
+      "art": "https://i.scdn.co/image/ab67616d000048515a0c97dad7ffeba533299e46",
+      "url": "https://open.spotify.com/track/7qVMGBe36nf1IpbsyQf1MR"
     },
     {
       "name": "ICEMAN FREESTYLE",
