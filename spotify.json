@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-25T02:47:15.863Z",
+  "fetchedAt": "2026-09-25T08:24:13.828Z",
   "nowPlaying": {
-    "isPlaying": true,
-    "title": "Light Switch",
-    "artist": "Charlie Puth",
-    "album": "CHARLIE",
-    "art": "https://i.scdn.co/image/ab67616d00001e02043168fd87de1ce066b4afa3",
-    "url": "https://open.spotify.com/track/1jEBSDN5vYViJQr78W7jr2",
-    "progressMs": 154089,
-    "durationMs": 187703,
-    "playedAt": "2026-09-25T02:47:15.863Z"
+    "isPlaying": false,
+    "title": "Funky Friday",
+    "artist": "Dave, Fredo",
+    "album": "Funky Friday",
+    "art": "https://i.scdn.co/image/ab67616d00001e025a0c97dad7ffeba533299e46",
+    "url": "https://open.spotify.com/track/7qVMGBe36nf1IpbsyQf1MR",
+    "progressMs": null,
+    "durationMs": 182741,
+    "playedAt": "2026-09-25T05:48:51.378Z"
   },
   "topArtists": [
     {
