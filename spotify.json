@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-25T18:46:18.521Z",
+  "fetchedAt": "2026-09-25T21:55:02.924Z",
   "nowPlaying": {
     "isPlaying": true,
-    "title": "Champions (WC 26)",
-    "artist": "IShowSpeed",
-    "album": "Champions (WC 26)",
-    "art": "https://i.scdn.co/image/ab67616d00001e0207cb5230fa20597f05b7ba98",
-    "url": "https://open.spotify.com/track/6V6QUm9LvLoAGTQ2uJemdc",
-    "progressMs": 151367,
-    "durationMs": 255741,
-    "playedAt": "2026-09-25T18:46:18.521Z"
+    "title": "Houdini",
+    "artist": "Dua Lipa",
+    "album": "Houdini",
+    "art": "https://i.scdn.co/image/ab67616d00001e02001d5706fddc72561f6488af",
+    "url": "https://open.spotify.com/track/4OMJGnvZfDvsePyCwRGO7X",
+    "progressMs": 78468,
+    "durationMs": 185917,
+    "playedAt": "2026-09-25T21:55:02.924Z"
   },
   "topArtists": [
     {
