@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-26T00:17:56.923Z",
+  "fetchedAt": "2026-09-26T05:14:36.587Z",
   "nowPlaying": {
-    "isPlaying": true,
-    "title": "Time of Our Lives",
-    "artist": "Pitbull, Ne-Yo",
-    "album": "Globalization",
-    "art": "https://i.scdn.co/image/ab67616d00001e02e6efeff81a318670a292090f",
-    "url": "https://open.spotify.com/track/2bJvI42r8EF3wxjOuDav4r",
-    "progressMs": 29184,
-    "durationMs": 229358,
-    "playedAt": "2026-09-26T00:17:56.923Z"
+    "isPlaying": false,
+    "title": "End of Beginning",
+    "artist": "Djo",
+    "album": "DECIDE",
+    "art": "https://i.scdn.co/image/ab67616d00001e02fddfffec51b4580acae727c1",
+    "url": "https://open.spotify.com/track/3qhlB30KknSejmIvZZLjOD",
+    "progressMs": null,
+    "durationMs": 159245,
+    "playedAt": "2026-09-26T03:09:03.005Z"
   },
   "topArtists": [
     {
