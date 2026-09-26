@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-25T21:55:02.924Z",
+  "fetchedAt": "2026-09-26T00:17:56.923Z",
   "nowPlaying": {
     "isPlaying": true,
-    "title": "Houdini",
-    "artist": "Dua Lipa",
-    "album": "Houdini",
-    "art": "https://i.scdn.co/image/ab67616d00001e02001d5706fddc72561f6488af",
-    "url": "https://open.spotify.com/track/4OMJGnvZfDvsePyCwRGO7X",
-    "progressMs": 78468,
-    "durationMs": 185917,
-    "playedAt": "2026-09-25T21:55:02.924Z"
+    "title": "Time of Our Lives",
+    "artist": "Pitbull, Ne-Yo",
+    "album": "Globalization",
+    "art": "https://i.scdn.co/image/ab67616d00001e02e6efeff81a318670a292090f",
+    "url": "https://open.spotify.com/track/2bJvI42r8EF3wxjOuDav4r",
+    "progressMs": 29184,
+    "durationMs": 229358,
+    "playedAt": "2026-09-26T00:17:56.923Z"
   },
   "topArtists": [
     {
