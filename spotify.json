@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-26T21:20:47.776Z",
+  "fetchedAt": "2026-09-26T23:43:03.937Z",
   "nowPlaying": {
-    "isPlaying": false,
-    "title": "Gone, Gone, Gone",
-    "artist": "Phillip Phillips",
-    "album": "The World From The Side Of The Moon",
-    "art": "https://i.scdn.co/image/ab67616d00001e025c75f5e02580f4c0c3e80e8e",
-    "url": "https://open.spotify.com/track/56sxN1yKg1dgOZXBcAHkJG",
-    "progressMs": null,
-    "durationMs": 209693,
-    "playedAt": "2026-09-26T21:16:11.355Z"
+    "isPlaying": true,
+    "title": "Hayya Hayya (Better Together) - Music from the FIFA World Cup Qatar 2022 Official Soundtrack",
+    "artist": "Trinidad Cardona, Davido, Aisha, FIFA Sound",
+    "album": "Hayya Hayya (Better Together) [Music from FIFA World Cup Qatar 2022 Soundtrack]",
+    "art": "https://i.scdn.co/image/ab67616d00001e0251f2cf37e1ce1fe25ec927df",
+    "url": "https://open.spotify.com/track/7vAJiDFrFtMYVOrZbOw7jj",
+    "progressMs": 100586,
+    "durationMs": 206069,
+    "playedAt": "2026-09-26T23:43:03.937Z"
   },
   "topArtists": [
     {
@@ -51,16 +51,16 @@
       "url": "https://open.spotify.com/track/5tWPG0AU9LVjONRofHcLD0"
     },
     {
-      "name": "Funky Friday",
-      "sub": "Dave, Fredo",
-      "art": "https://i.scdn.co/image/ab67616d000048515a0c97dad7ffeba533299e46",
-      "url": "https://open.spotify.com/track/7qVMGBe36nf1IpbsyQf1MR"
-    },
-    {
       "name": "Sprinter",
       "sub": "Dave, Central Cee",
       "art": "https://i.scdn.co/image/ab67616d00004851dd9f1f94f2f9a10310a3d525",
       "url": "https://open.spotify.com/track/6NYbDTmstd7JSUWl2hVBqR"
+    },
+    {
+      "name": "Funky Friday",
+      "sub": "Dave, Fredo",
+      "art": "https://i.scdn.co/image/ab67616d000048515a0c97dad7ffeba533299e46",
+      "url": "https://open.spotify.com/track/7qVMGBe36nf1IpbsyQf1MR"
     },
     {
       "name": "Budapest",
