@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-27T08:48:34.470Z",
+  "fetchedAt": "2026-09-27T18:35:36.519Z",
   "nowPlaying": {
-    "isPlaying": false,
-    "title": "Don't Start Now",
-    "artist": "Dua Lipa",
-    "album": "Don't Start Now",
-    "art": "https://i.scdn.co/image/ab67616d00001e02252ba339f802d9cf88122757",
-    "url": "https://open.spotify.com/track/6WrI0LAC5M1Rw2MnX2ZvEg",
-    "progressMs": null,
-    "durationMs": 183290,
-    "playedAt": "2026-09-27T06:20:28.311Z"
+    "isPlaying": true,
+    "title": "That's The Way It Is",
+    "artist": "Daniel Lanois",
+    "album": "The Music of Red Dead Redemption 2 (Original Soundtrack)",
+    "art": "https://i.scdn.co/image/ab67616d00001e02f337a21d945f44e802a1eb1d",
+    "url": "https://open.spotify.com/track/5ui44u6tEnipuke1eKYpMI",
+    "progressMs": 224356,
+    "durationMs": 248066,
+    "playedAt": "2026-09-27T18:35:36.519Z"
   },
   "topArtists": [
     {
