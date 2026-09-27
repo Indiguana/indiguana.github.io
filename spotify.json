@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-27T02:51:59.681Z",
+  "fetchedAt": "2026-09-27T08:48:34.470Z",
   "nowPlaying": {
-    "isPlaying": true,
-    "title": "18",
-    "artist": "One Direction",
-    "album": "FOUR (Deluxe)",
-    "art": "https://i.scdn.co/image/ab67616d00001e0234a29f220057810cce98e1b4",
-    "url": "https://open.spotify.com/track/3JjnGLK8IxkNLvo8Lb3KOM",
-    "progressMs": 191757,
-    "durationMs": 248357,
-    "playedAt": "2026-09-27T02:51:59.681Z"
+    "isPlaying": false,
+    "title": "Don't Start Now",
+    "artist": "Dua Lipa",
+    "album": "Don't Start Now",
+    "art": "https://i.scdn.co/image/ab67616d00001e02252ba339f802d9cf88122757",
+    "url": "https://open.spotify.com/track/6WrI0LAC5M1Rw2MnX2ZvEg",
+    "progressMs": null,
+    "durationMs": 183290,
+    "playedAt": "2026-09-27T06:20:28.311Z"
   },
   "topArtists": [
     {
