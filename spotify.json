@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-27T21:46:28.589Z",
+  "fetchedAt": "2026-09-28T00:11:22.248Z",
   "nowPlaying": {
-    "isPlaying": true,
-    "title": "Titanium (feat. Sia)",
-    "artist": "David Guetta, Sia",
-    "album": "Nothing but the Beat 2.0",
-    "art": "https://i.scdn.co/image/ab67616d00001e0287e2f8346625bb6fd20d52be",
-    "url": "https://open.spotify.com/track/0lHAMNU8RGiIObScrsRgmP",
-    "progressMs": 1873,
-    "durationMs": 245040,
-    "playedAt": "2026-09-27T21:46:28.589Z"
+    "isPlaying": false,
+    "title": "La La La (Brasil 2014) (feat. Carlinhos Brown) - Tradução/Letra)",
+    "artist": "Shakira, Carlinhos Brown",
+    "album": "Shakira. (Expanded Edition) [Spanish Version]",
+    "art": "https://i.scdn.co/image/ab67616d00001e020da1a7e7f3e9ef163e1c1dbf",
+    "url": "https://open.spotify.com/track/6i2kn3iS5WKzsaYBdeHLIQ",
+    "progressMs": null,
+    "durationMs": 197626,
+    "playedAt": "2026-09-28T00:07:58.653Z"
   },
   "topArtists": [
     {
