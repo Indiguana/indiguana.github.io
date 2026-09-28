@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-28T05:39:12.568Z",
+  "fetchedAt": "2026-09-28T19:55:39.354Z",
   "nowPlaying": {
-    "isPlaying": false,
-    "title": "Doja",
-    "artist": "Central Cee",
-    "album": "Doja",
-    "art": "https://i.scdn.co/image/ab67616d00001e0291de4cb28d9066225b55e603",
-    "url": "https://open.spotify.com/track/3LtpKP5abr2qqjunvjlX5i",
-    "progressMs": null,
-    "durationMs": 97392,
-    "playedAt": "2026-09-28T04:51:52.947Z"
+    "isPlaying": true,
+    "title": "Sprinter",
+    "artist": "Dave, Central Cee",
+    "album": "Sprinter",
+    "art": "https://i.scdn.co/image/ab67616d00001e02dd9f1f94f2f9a10310a3d525",
+    "url": "https://open.spotify.com/track/6NYbDTmstd7JSUWl2hVBqR",
+    "progressMs": 93486,
+    "durationMs": 229133,
+    "playedAt": "2026-09-28T19:55:39.354Z"
   },
   "topArtists": [
     {
