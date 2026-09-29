@@ -1,32 +1,32 @@
 {
-  "fetchedAt": "2026-09-29T12:06:23.827Z",
+  "fetchedAt": "2026-09-29T18:10:31.905Z",
   "nowPlaying": {
     "isPlaying": false,
-    "title": "One Call Away",
-    "artist": "Charlie Puth",
-    "album": "Nine Track Mind",
-    "art": "https://i.scdn.co/image/ab67616d00001e024fe297c018e495a97662e5ac",
-    "url": "https://open.spotify.com/track/7soJgKhQTO8hLP2JPRkL5O",
+    "title": "Break My Heart",
+    "artist": "Dua Lipa",
+    "album": "Future Nostalgia",
+    "art": "https://i.scdn.co/image/ab67616d00001e02c88bae7846e62a8ba59ee0bd",
+    "url": "https://open.spotify.com/track/017PF4Q3l4DBUiWoXk4OWT",
     "progressMs": null,
-    "durationMs": 194453,
-    "playedAt": "2026-09-29T05:33:40.079Z"
+    "durationMs": 221820,
+    "playedAt": "2026-09-29T13:48:06.293Z"
   },
   "topArtists": [
     {
       "name": "Dave",
-      "sub": "Grime",
+      "sub": "",
       "art": "https://i.scdn.co/image/ab6761610000f1782f23c7e361cef62490f44057",
       "url": "https://open.spotify.com/artist/6Ip8FS7vWT1uKkJSweANQK"
     },
     {
       "name": "Central Cee",
-      "sub": "Uk Drill",
+      "sub": "",
       "art": "https://i.scdn.co/image/ab6761610000f1786ce131983245fc2e6940f6c2",
       "url": "https://open.spotify.com/artist/5H4yInM5zmHqpKIoMNAx4r"
     },
     {
       "name": "Ed Sheeran",
-      "sub": "Soft Pop",
+      "sub": "",
       "art": "https://i.scdn.co/image/ab6761610000f178d55c95ad400aed87da52daec",
       "url": "https://open.spotify.com/artist/6eUKZXaKkcviH0Ku9w2n3V"
     },
