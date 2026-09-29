@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-09-29T05:56:54.969Z",
+  "fetchedAt": "2026-09-29T12:06:23.827Z",
   "nowPlaying": {
     "isPlaying": false,
     "title": "One Call Away",
@@ -14,19 +14,19 @@
   "topArtists": [
     {
       "name": "Dave",
-      "sub": "",
+      "sub": "Grime",
       "art": "https://i.scdn.co/image/ab6761610000f1782f23c7e361cef62490f44057",
       "url": "https://open.spotify.com/artist/6Ip8FS7vWT1uKkJSweANQK"
     },
     {
       "name": "Central Cee",
-      "sub": "",
+      "sub": "Uk Drill",
       "art": "https://i.scdn.co/image/ab6761610000f1786ce131983245fc2e6940f6c2",
       "url": "https://open.spotify.com/artist/5H4yInM5zmHqpKIoMNAx4r"
     },
     {
       "name": "Ed Sheeran",
-      "sub": "",
+      "sub": "Soft Pop",
       "art": "https://i.scdn.co/image/ab6761610000f178d55c95ad400aed87da52daec",
       "url": "https://open.spotify.com/artist/6eUKZXaKkcviH0Ku9w2n3V"
     },
