@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-29T18:10:31.905Z",
+  "fetchedAt": "2026-09-29T22:27:57.778Z",
   "nowPlaying": {
     "isPlaying": false,
-    "title": "Break My Heart",
-    "artist": "Dua Lipa",
-    "album": "Future Nostalgia",
-    "art": "https://i.scdn.co/image/ab67616d00001e02c88bae7846e62a8ba59ee0bd",
-    "url": "https://open.spotify.com/track/017PF4Q3l4DBUiWoXk4OWT",
+    "title": "Pompeii",
+    "artist": "Bastille",
+    "album": "Bad Blood",
+    "art": "https://i.scdn.co/image/ab67616d00001e02258225089decfb3d5c3718d3",
+    "url": "https://open.spotify.com/track/3gbBpTdY8lnQwqxNCcf795",
     "progressMs": null,
-    "durationMs": 221820,
-    "playedAt": "2026-09-29T13:48:06.293Z"
+    "durationMs": 214147,
+    "playedAt": "2026-09-29T21:12:22.574Z"
   },
   "topArtists": [
     {
