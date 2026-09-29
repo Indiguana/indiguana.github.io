@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-28T19:55:39.354Z",
+  "fetchedAt": "2026-09-29T00:07:26.149Z",
   "nowPlaying": {
-    "isPlaying": true,
-    "title": "Sprinter",
-    "artist": "Dave, Central Cee",
-    "album": "Sprinter",
-    "art": "https://i.scdn.co/image/ab67616d00001e02dd9f1f94f2f9a10310a3d525",
-    "url": "https://open.spotify.com/track/6NYbDTmstd7JSUWl2hVBqR",
-    "progressMs": 93486,
-    "durationMs": 229133,
-    "playedAt": "2026-09-28T19:55:39.354Z"
+    "isPlaying": false,
+    "title": "Live While We're Young",
+    "artist": "One Direction",
+    "album": "Take Me Home (Expanded Edition)",
+    "art": "https://i.scdn.co/image/ab67616d00001e024e31e0d38b89b8fb239d4fbf",
+    "url": "https://open.spotify.com/track/6Vh03bkEfXqekWp7Y1UBRb",
+    "progressMs": null,
+    "durationMs": 200213,
+    "playedAt": "2026-09-28T23:11:42.550Z"
   },
   "topArtists": [
     {
@@ -51,16 +51,16 @@
       "url": "https://open.spotify.com/track/5tWPG0AU9LVjONRofHcLD0"
     },
     {
-      "name": "Funky Friday",
-      "sub": "Dave, Fredo",
-      "art": "https://i.scdn.co/image/ab67616d000048515a0c97dad7ffeba533299e46",
-      "url": "https://open.spotify.com/track/7qVMGBe36nf1IpbsyQf1MR"
-    },
-    {
       "name": "Sprinter",
       "sub": "Dave, Central Cee",
       "art": "https://i.scdn.co/image/ab67616d00004851dd9f1f94f2f9a10310a3d525",
       "url": "https://open.spotify.com/track/6NYbDTmstd7JSUWl2hVBqR"
+    },
+    {
+      "name": "Funky Friday",
+      "sub": "Dave, Fredo",
+      "art": "https://i.scdn.co/image/ab67616d000048515a0c97dad7ffeba533299e46",
+      "url": "https://open.spotify.com/track/7qVMGBe36nf1IpbsyQf1MR"
     },
     {
       "name": "Budapest",
@@ -69,10 +69,10 @@
       "url": "https://open.spotify.com/track/2ixsaeFioXJmMgkkbd4uj1"
     },
     {
-      "name": "Thiago Silva",
-      "sub": "Dave, AJ Tracey",
-      "art": "https://i.scdn.co/image/ab67616d00004851d62b2ae12715851c28bebaa4",
-      "url": "https://open.spotify.com/track/3DKCTIiJ97bS9TGiqcABjo"
+      "name": "ICEMAN FREESTYLE",
+      "sub": "Central Cee",
+      "art": "https://i.scdn.co/image/ab67616d0000485110f5b59ee71a232bc0681445",
+      "url": "https://open.spotify.com/track/1vrHvLIgh1wjMFpjTr5bMu"
     }
   ]
 }
