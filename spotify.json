@@ -1,16 +1,6 @@
 {
   "fetchedAt": "2026-09-29T22:27:57.778Z",
-  "nowPlaying": {
-    "isPlaying": false,
-    "title": "Pompeii",
-    "artist": "Bastille",
-    "album": "Bad Blood",
-    "art": "https://i.scdn.co/image/ab67616d00001e02258225089decfb3d5c3718d3",
-    "url": "https://open.spotify.com/track/3gbBpTdY8lnQwqxNCcf795",
-    "progressMs": null,
-    "durationMs": 214147,
-    "playedAt": "2026-09-29T21:12:22.574Z"
-  },
+  "nowPlaying": null,
   "topArtists": [
     {
       "name": "Dave",
