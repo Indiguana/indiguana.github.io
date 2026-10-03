@@ -37,3 +37,7 @@ website/public/spotify.json
 
 # LLMs-from-scratch working copy: 2.2 GB and contains its own nested .git
 llmtrain/
+
+# 07-280 study guide: now its own repo (github.com/Indiguana/07280-guide),
+# checked out inside this folder. Tracked there, not here.
+07280-guide/

@@ -6,7 +6,7 @@ root.** Work inside the relevant project directory.
 | Directory | Project |
 | :-- | :-- |
 | `website/` | Astro personal site + Cloudflare Worker. Deploys to GitHub Pages. |
-| `07280-guide/` | Static study-guide site. No build step. |
+| `07280-guide/` | Separate repo checked out here — see below. Not tracked by gamechanger. |
 | `llmtrain/` | Gitignored working copy of an upstream repo. Leave it alone. |
 
 Before editing, confirm which project you are in. A change under `website/` is
@@ -41,5 +41,10 @@ Consult these guides before working on related tasks:
 
 ## 07280-guide/
 
-Plain static HTML. Serve it with `python3 -m http.server 4280`. Shared shell,
-nav and KaTeX wiring live in `assets/site.js`; page styles in `assets/style.css`.
+**Its own git repository**, cloned inside this folder and gitignored here. Commits
+and pushes from that directory go to `github.com/Indiguana/07280-guide`, which
+publishes to <https://indiguana.github.io/07280-guide/> via GitHub Pages on every
+push to `main`. Do not try to commit it from the gamechanger root.
+
+Plain static HTML, no build. Serve with `python3 -m http.server 4280`. See its own
+`CLAUDE.md` for conventions.

@@ -7,7 +7,7 @@ the root that any one project depends on.
 | Directory | What it is | Stack |
 | :-- | :-- | :-- |
 | [`website/`](website/) | My personal site, deployed to GitHub Pages at [indiguana.github.io](https://indiguana.github.io) | Astro, plus an optional Cloudflare Worker |
-| [`07280-guide/`](07280-guide/) | A study guide rebuilding CMU 07-280 (Intro to AI & ML) from the course notes | Static HTML, KaTeX |
+| `07280-guide/` | A study guide rebuilding CMU 07-280 (Intro to AI & ML). **Its own repo** ([Indiguana/07280-guide](https://github.com/Indiguana/07280-guide), live at [indiguana.github.io/07280-guide](https://indiguana.github.io/07280-guide/)), checked out here and gitignored. | Static HTML, KaTeX |
 | `llmtrain/` | Working copy of *LLMs from Scratch*. Gitignored — it is 2.2 GB and carries its own `.git`. | Python |
 
 ## Running each project
